@@ -75,6 +75,7 @@ class User extends Authenticatable
             Role::FINANCE => 'finance.dashboard',
             Role::CUSTODIAN => 'custodian.dashboard',
             Role::PRESIDENT => 'president.dashboard',
+            // Dept. Heads and the Treasurer use the requester dashboard until their approvals inbox is built
             default => 'requester.dashboard',
         };
     }

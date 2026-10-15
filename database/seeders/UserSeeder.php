@@ -19,6 +19,8 @@ class UserSeeder extends Seeder
             [Role::FINANCE, 'Test Finance', 'finance@school.test', 'FIN'],
             [Role::CUSTODIAN, 'Test Custodian', 'custodian@school.test', 'ADMIN'],
             [Role::PRESIDENT, 'Test President', 'president@school.test', 'ADMIN'],
+            [Role::DEPARTMENT_HEAD, 'Test Dept Head (Elementary)', 'depthead@school.test', 'ELEM'],
+            [Role::TREASURER, 'Test Treasurer', 'treasurer@school.test', 'FIN'],
         ];
 
         foreach ($accounts as [$slug, $name, $email, $deptCode]) {

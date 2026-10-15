@@ -5,6 +5,16 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            @if (session('status'))
+                <div class="mb-6 rounded-lg bg-green-100 p-4 text-green-800 font-semibold">{{ session('status') }}</div>
+            @endif
+
+            @if (auth()->user()->hasRole('requester', 'department_head'))
+                <a href="{{ route('repairs.create') }}" class="mb-6 block rounded-xl bg-blue-600 px-6 py-5 text-center text-xl font-bold text-white shadow hover:bg-blue-700">
+                    🛠️ Request for Repairs &amp; Improvement (FO-08)
+                </a>
+            @endif
+
             <p class="mb-6 text-gray-600">
                 Welcome, {{ auth()->user()->name }} ({{ auth()->user()->role->name }})
             </p>

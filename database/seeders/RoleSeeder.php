@@ -15,6 +15,8 @@ class RoleSeeder extends Seeder
             [Role::FINANCE, 'Finance / Bookkeeper', 'Budget review, receipts and expenditures'],
             [Role::CUSTODIAN, 'Property Custodian', 'Inventory, property tags and clearance'],
             [Role::PRESIDENT, 'School President', 'Final approving authority'],
+            [Role::DEPARTMENT_HEAD, 'OIC / Unit Head / Dept. Head', 'Endorses and notes requests of their own department'],
+            [Role::TREASURER, 'Treasurer', 'Approves repair requests (Form FO-08)'],
         ];
 
         foreach ($roles as [$slug, $name, $description]) {

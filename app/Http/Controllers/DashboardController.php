@@ -28,14 +28,10 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function maintenance(): View
+    /** Maintenance staff land straight on the big-button card board. */
+    public function maintenance(): RedirectResponse
     {
-        return $this->show('Maintenance Admin Dashboard', [
-            'New requests' => MaintenanceRequest::where('status', 'submitted')->count(),
-            'Emergency (open)' => MaintenanceRequest::where('priority', 'emergency')->whereNotIn('status', ['completed', 'closed', 'rejected'])->count(),
-            'In progress' => MaintenanceRequest::where('status', 'in_progress')->count(),
-            'Completed' => MaintenanceRequest::where('status', 'completed')->count(),
-        ]);
+        return redirect()->route('maintenance.board');
     }
 
     public function finance(): View
