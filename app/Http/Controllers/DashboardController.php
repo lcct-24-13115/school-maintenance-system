@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TicketStatus;
 use App\Models\Inventory;
 use App\Models\MaintenanceRequest;
 use Illuminate\Http\RedirectResponse;
@@ -21,10 +22,10 @@ class DashboardController extends Controller
         $mine = $request->user()->requests();
 
         return $this->show('Requester Dashboard', [
-            'My requests' => (clone $mine)->count(),
-            'Waiting for review' => (clone $mine)->where('status', 'submitted')->count(),
-            'In progress' => (clone $mine)->whereIn('status', ['under_review', 'queued', 'in_progress', 'for_finance', 'for_president_approval'])->count(),
-            'Closed' => (clone $mine)->where('status', 'closed')->count(),
+            'My tickets' => (clone $mine)->count(),
+            'Waiting for authorization' => (clone $mine)->whereIn('status', [TicketStatus::Submitted->value, TicketStatus::PendingAuthorization->value])->count(),
+            'In progress' => (clone $mine)->whereIn('status', [TicketStatus::Approved->value, TicketStatus::Assigned->value, TicketStatus::InProgress->value, TicketStatus::WorkCompleted->value])->count(),
+            'Closed' => (clone $mine)->where('status', TicketStatus::Closed->value)->count(),
         ]);
     }
 
@@ -37,8 +38,9 @@ class DashboardController extends Controller
     public function finance(): View
     {
         return $this->show('Finance Dashboard', [
-            'For finance review' => MaintenanceRequest::where('status', 'for_finance')->count(),
-            'Waiting for President' => MaintenanceRequest::where('status', 'for_president_approval')->count(),
+            'Pending tickets' => MaintenanceRequest::pending()->count(),
+            'Waiting for authorization' => MaintenanceRequest::where('status', TicketStatus::PendingAuthorization->value)->count(),
+            'Work completed (awaiting closure)' => MaintenanceRequest::where('status', TicketStatus::WorkCompleted->value)->count(),
         ]);
     }
 
@@ -53,9 +55,9 @@ class DashboardController extends Controller
     public function president(): View
     {
         return $this->show('School President Dashboard', [
-            'Waiting for your approval' => MaintenanceRequest::where('status', 'for_president_approval')->count(),
-            'Approved' => MaintenanceRequest::where('status', 'approved')->count(),
-            'Closed' => MaintenanceRequest::where('status', 'closed')->count(),
+            'Waiting for your approval' => MaintenanceRequest::where('status', TicketStatus::PendingAuthorization->value)->count(),
+            'Authorized by you' => MaintenanceRequest::whereNotNull('president_approved_at')->count(),
+            'Closed' => MaintenanceRequest::where('status', TicketStatus::Closed->value)->count(),
         ]);
     }
 

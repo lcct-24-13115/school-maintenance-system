@@ -38,7 +38,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.readAll');
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
-    // ---- Form 3: Request for Repairs & Improvement (FO-08) ----
+    // ---- Form 3: Request for Repairs & Improvement (FO-08) -> files a maintenance ticket ----
     Route::get('/repairs/create', [RepairRequestController::class, 'create'])->name('repairs.create');
     Route::post('/repairs', [RepairRequestController::class, 'store'])->name('repairs.store');
 
@@ -46,8 +46,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware(CheckRole::class.':'.Role::MAINTENANCE_ADMIN)->prefix('maintenance')->name('maintenance.')->group(function () {
         Route::get('/board', [MaintenanceBoardController::class, 'index'])->name('board');
         Route::get('/board/cards', [MaintenanceBoardController::class, 'cards'])->name('board.cards');
-        Route::post('/repairs/{repair}/accept', [MaintenanceBoardController::class, 'accept'])->name('accept');
-        Route::post('/repairs/{repair}/complete', [MaintenanceBoardController::class, 'complete'])->name('complete');
+        Route::post('/tickets/{ticket}/accept', [MaintenanceBoardController::class, 'accept'])->name('accept');
+        Route::post('/tickets/{ticket}/complete', [MaintenanceBoardController::class, 'complete'])->name('complete');
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

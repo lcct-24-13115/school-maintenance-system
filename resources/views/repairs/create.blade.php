@@ -23,6 +23,17 @@
                 </div>
 
                 <div>
+                    <label class="block text-base font-semibold text-gray-800">Maintenance category</label>
+                    <select name="category_id" class="mt-1 w-full rounded-lg border-gray-300 py-3 text-base">
+                        <option value="">— Choose one —</option>
+                        @foreach ($categories as $c)
+                            <option value="{{ $c->id }}" @selected(old('category_id') == $c->id)>{{ $c->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('category_id')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                </div>
+
+                <div>
                     <label class="block text-base font-semibold text-gray-800">Where is it? (building / room)</label>
                     <input name="location" value="{{ old('location') }}" class="mt-1 w-full rounded-lg border-gray-300 py-3 text-base" placeholder="e.g. Grade 5 Room 204">
                     @error('location')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror

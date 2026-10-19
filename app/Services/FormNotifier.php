@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\FacilityRequest;
 use App\Models\FormApproval;
+use App\Models\MaintenanceRequest;
 use App\Models\RepairRequest;
 use App\Models\RequisitionSlip;
 use App\Models\Role;
@@ -22,8 +23,12 @@ class FormNotifier
     /** A new form was filed: maintenance staff + the first approver are alerted. */
     public static function submitted(Model $form): void
     {
-        $recipients = self::usersWithRole(Role::MAINTENANCE_ADMIN)
-            ->merge(self::approversFor($form->nextApproval(), $form));
+        $recipients = self::usersWithRole(Role::MAINTENANCE_ADMIN);
+
+        // The 3 school forms have a signature chain; tickets do not (yet - Phase 3).
+        if (method_exists($form, 'nextApproval')) {
+            $recipients = $recipients->merge(self::approversFor($form->nextApproval(), $form));
+        }
 
         self::send($recipients, $form, 'submitted', $form->requester,
             'filed a new '.$form::LABEL);
@@ -52,12 +57,13 @@ class FormNotifier
         self::send($recipients, $form, $event, $actor, "{$verb} {$form->reference_no}".($note ? " — {$note}" : ''));
     }
 
-    /** Maintenance tapped [Accept Task] / [Mark Completed]. */
-    public static function work(RepairRequest $repair, User $actor, string $event): void
+    /** Maintenance tapped [Accept Task] / [Mark Completed] on a ticket (or the old repair form). */
+    public static function work(Model $form, User $actor, string $event): void
     {
-        $text = $event === 'accepted' ? 'accepted your repair request and will work on it' : 'finished the repair';
+        $noun = $form instanceof MaintenanceRequest ? 'ticket' : 'repair request';
+        $text = $event === 'accepted' ? "accepted your {$noun} and will work on it" : "finished the work on your {$noun}";
 
-        self::send(collect([$repair->requester]), $repair, $event, $actor, $text);
+        self::send(collect([$form->requester]), $form, $event, $actor, $text);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -72,7 +78,7 @@ class FormNotifier
             return;
         }
 
-        $urgent = $form instanceof RepairRequest && $form->isEmergency();
+        $urgent = ($form instanceof MaintenanceRequest || $form instanceof RepairRequest) && $form->isEmergency();
 
         $payload = [
             'event' => $event,
@@ -82,7 +88,7 @@ class FormNotifier
             'reference_no' => $form->reference_no,
             'requester_name' => $form->requester->name,
             'department' => $form->department?->name,
-            'location' => $form instanceof RepairRequest ? $form->location : null,
+            'location' => ($form instanceof RepairRequest || $form instanceof MaintenanceRequest) ? $form->location : null,
             'urgent' => $urgent,
             'actor_name' => $actor->name,
             'title' => ($urgent ? 'EMERGENCY: ' : '').$actor->name.' '.$text,
@@ -99,6 +105,7 @@ class FormNotifier
     private static function summary(Model $form): string
     {
         return match (true) {
+            $form instanceof MaintenanceRequest => "{$form->location} — ".str($form->description)->limit(80),
             $form instanceof RepairRequest => "{$form->location} — ".str($form->job_description)->limit(80),
             $form instanceof FacilityRequest => str($form->purpose)->limit(80),
             $form instanceof RequisitionSlip => 'Needed '.$form->date_needed->format('M j, Y'),
@@ -109,6 +116,7 @@ class FormNotifier
     private static function typeOf(Model $form): string
     {
         return match (true) {
+            $form instanceof MaintenanceRequest => 'ticket',
             $form instanceof RepairRequest => 'repair',
             $form instanceof FacilityRequest => 'facility',
             default => 'requisition',

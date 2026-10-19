@@ -22,7 +22,7 @@ class FormActivity extends Notification
 
     public function toArray(object $notifiable): array
     {
-        $url = ($this->payload['form_type'] === 'repair' && $notifiable->hasRole(Role::MAINTENANCE_ADMIN))
+        $url = (in_array($this->payload['form_type'], ['repair', 'ticket'], true) && $notifiable->hasRole(Role::MAINTENANCE_ADMIN))
             ? route('maintenance.board')
             : route('notifications.index');
 

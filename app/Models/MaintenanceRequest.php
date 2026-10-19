@@ -2,16 +2,21 @@
 
 namespace App\Models;
 
+use App\Enums\TicketStatus;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
- * Table is "requests"; model is named MaintenanceRequest to avoid
+ * THE maintenance ticket. Table is "requests"; the model is named MaintenanceRequest to avoid
  * clashing with Illuminate\Http\Request.
+ *
+ * Change status / assignment / emergency flag ONLY through App\Services\TicketWorkflow so every
+ * change is validated and written to request_status_logs.
  */
 class MaintenanceRequest extends Model
 {
@@ -19,26 +24,34 @@ class MaintenanceRequest extends Model
 
     protected $table = 'requests';
 
+    public const LABEL = 'Maintenance Ticket';
+    public const TICKET_PREFIX = 'MT';
+
+    // Stored in the legacy `priority` column; kept in sync with is_emergency automatically.
     public const PRIORITY_FCFS = 'first_come_first_served';
     public const PRIORITY_EMERGENCY = 'emergency';
 
-    public const STATUS_SUBMITTED = 'submitted';
-    public const STATUS_APPROVED = 'approved';
-    public const STATUS_COMPLETED = 'completed';
-    public const STATUS_CLOSED = 'closed';
-
     protected $fillable = [
-        'reference_no', 'requester_id', 'department_id', 'category_id',
-        'request_type', 'maintenance_type', 'location', 'description',
-        'priority', 'status', 'assigned_to',
+        'ticket_no', 'requester_id', 'department_id', 'category_id',
+        'request_type', 'maintenance_type', 'location', 'description', 'needed_by', 'reason',
+        'priority', 'is_emergency', 'emergency_reason', 'emergency_flagged_by', 'emergency_flagged_at',
+        'is_confidential',
+        'status', 'assigned_to', 'assigned_at',
         'president_id', 'president_approved_at', 'president_remarks',
+        'problems_encountered', 'recommendations',
         'submitted_at', 'completed_at', 'closed_at',
     ];
 
     protected function casts(): array
     {
         return [
+            'status' => TicketStatus::class,
+            'is_emergency' => 'boolean',
+            'is_confidential' => 'boolean',
+            'needed_by' => 'date',
             'submitted_at' => 'datetime',
+            'assigned_at' => 'datetime',
+            'emergency_flagged_at' => 'datetime',
             'president_approved_at' => 'datetime',
             'completed_at' => 'datetime',
             'closed_at' => 'datetime',
@@ -47,43 +60,120 @@ class MaintenanceRequest extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (self $request) {
-            $request->reference_no ??= self::generateReferenceNo();
-            $request->submitted_at ??= now();
+        static::creating(function (self $ticket) {
+            $ticket->submitted_at ??= now();
+            $ticket->status ??= TicketStatus::Submitted;
+            $ticket->ticket_no ??= self::generateTicketNo($ticket->submitted_at);
         });
 
-        static::saving(function (self $request) {
-            // Rule 1: Materials / Equipment are mutually exclusive.
-            // The chosen category must belong to the chosen request type.
-            if ($request->isDirty(['category_id', 'request_type'])) {
-                $category = Category::find($request->category_id);
-                if ($category && $category->type !== $request->request_type) {
-                    throw new DomainException('Category does not match the request type (materials/equipment).');
+        static::saving(function (self $ticket) {
+            // Rule 1: a ticket classified as materials/equipment/supplies must use a category of that type.
+            // (request_type is optional: pure service work such as a repair has none.)
+            if ($ticket->request_type && $ticket->isDirty(['category_id', 'request_type'])) {
+                $category = Category::find($ticket->category_id);
+                if ($category && $category->type !== $ticket->request_type) {
+                    throw new DomainException('Category does not match the request type (materials/equipment/supplies).');
                 }
             }
 
-            // Rule 2: no Completed/Closed without the School President's approval.
-            if ($request->isDirty('status')
-                && in_array($request->status, [self::STATUS_COMPLETED, self::STATUS_CLOSED], true)
-                && (! $request->president_id || ! $request->president_approved_at)) {
-                throw new DomainException('A request cannot be completed or closed without President approval.');
+            // Rule 2: an emergency flag always carries a reason.
+            if ($ticket->is_emergency && blank($ticket->emergency_reason)) {
+                throw new DomainException('An emergency flag needs a reason.');
+            }
+
+            // The legacy `priority` column mirrors is_emergency (one source of truth: is_emergency).
+            $ticket->priority = $ticket->is_emergency ? self::PRIORITY_EMERGENCY : self::PRIORITY_FCFS;
+
+            // Rule 3: authorization evidence before closure.
+            // (Phase 3 extends this with uploaded signed evidence.)
+            if ($ticket->isDirty('status') && $ticket->status === TicketStatus::Closed && ! $ticket->isPresidentApproved()) {
+                throw new DomainException('A ticket cannot be closed without recorded authorization (School President approval).');
+            }
+        });
+
+        // Safety net: even a direct ->update(['status' => ...]) cannot skip steps.
+        static::updating(function (self $ticket) {
+            if (! $ticket->isDirty('status')) {
+                return;
+            }
+
+            $from = TicketStatus::tryFrom((string) $ticket->getRawOriginal('status'));
+            $to = $ticket->status;
+
+            if ($from && $to && $from !== $to && ! $from->canTransitionTo($to)) {
+                throw new DomainException(self::invalidTransitionMessage($ticket->ticket_no, $from, $to));
             }
         });
     }
 
-    public static function generateReferenceNo(): string
+    public static function invalidTransitionMessage(?string $ticketNo, TicketStatus $from, TicketStatus $to): string
     {
-        $next = (static::withTrashed()->max('id') ?? 0) + 1;
+        $allowed = collect($from->allowedNext())->map->label()->implode(', ');
 
-        return sprintf('MR-%d-%05d', now()->year, $next);
+        return sprintf(
+            'Ticket %s cannot move from "%s" to "%s". %s',
+            $ticketNo ?? '(new)',
+            $from->label(),
+            $to->label(),
+            $allowed === '' ? 'This status is final.' : "Allowed next status: {$allowed}."
+        );
     }
 
-    /** Queue order: Emergency first, then First Come First Served by submission time. */
+    /**
+     * Next number for the year of $at, e.g. MT-2026-00001. Numbers restart each year.
+     * The unique index on ticket_no is the real guard; TicketWorkflow::open() retries on a clash.
+     */
+    public static function generateTicketNo(?Carbon $at = null): string
+    {
+        $prefix = sprintf('%s-%d-', self::TICKET_PREFIX, ($at ?? now())->year);
+
+        $last = static::withTrashed()
+            ->where('ticket_no', 'like', $prefix.'%')
+            ->orderByDesc('ticket_no')
+            ->value('ticket_no');
+
+        $next = $last ? ((int) substr($last, strlen($prefix))) + 1 : 1;
+
+        return $prefix.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+    }
+
+    /** Old name used by the notification service and the 3 school forms. */
+    public function getReferenceNoAttribute(): ?string
+    {
+        return $this->ticket_no;
+    }
+
+    // ---- queue ---------------------------------------------------------------------------------
+
+    /** Emergency first, then routine tickets strictly by ORIGINAL submission time (FCFS). */
     public function scopeQueueOrder(Builder $query): Builder
     {
-        return $query
-            ->orderByRaw("CASE WHEN priority = 'emergency' THEN 0 ELSE 1 END")
-            ->orderBy('submitted_at');
+        return $query->orderByDesc('is_emergency')->orderBy('submitted_at')->orderBy('id');
+    }
+
+    /** Routine queue only, in first-come-first-served order. */
+    public function scopeRoutineQueue(Builder $query): Builder
+    {
+        return $query->where('is_emergency', false)->orderBy('submitted_at')->orderBy('id');
+    }
+
+    /** Not completed, not closed, not disapproved. */
+    public function scopePending(Builder $query): Builder
+    {
+        return $query->whereIn('status', TicketStatus::pendingValues());
+    }
+
+    /** Work Completed or Closed. */
+    public function scopeCompleted(Builder $query): Builder
+    {
+        return $query->whereIn('status', TicketStatus::completedValues());
+    }
+
+    // ---- helpers -------------------------------------------------------------------------------
+
+    public function isEmergency(): bool
+    {
+        return $this->is_emergency;
     }
 
     public function isPresidentApproved(): bool
@@ -91,46 +181,34 @@ class MaintenanceRequest extends Model
         return $this->president_id !== null && $this->president_approved_at !== null;
     }
 
-    /** Only a user with the President role may sign off. */
-    public function approveByPresident(User $president, ?string $remarks = null): void
+    /** First image attachment, for the photo on the maintenance card. */
+    public function photoUrl(): ?string
     {
-        if (! $president->isPresident()) {
-            throw new DomainException('Only the School President can approve this request.');
-        }
+        $photo = $this->attachments->first(fn (RequestAttachment $a) => $a->isImage());
 
-        $from = $this->status;
-        $this->update([
-            'president_id' => $president->id,
-            'president_approved_at' => now(),
-            'president_remarks' => $remarks,
-            'status' => self::STATUS_APPROVED,
-        ]);
-        $this->logStatus($from, self::STATUS_APPROVED, $president, $remarks);
+        return $photo?->url();
     }
 
-    public function transitionTo(string $status, ?User $by = null, ?string $note = null): void
-    {
-        $from = $this->status;
-        $data = ['status' => $status];
-        if ($status === self::STATUS_COMPLETED) {
-            $data['completed_at'] = now();
-        }
-        if ($status === self::STATUS_CLOSED) {
-            $data['closed_at'] = now();
-        }
-        $this->update($data); // saving hook blocks completed/closed without President approval
-        $this->logStatus($from, $status, $by, $note);
-    }
-
-    protected function logStatus(?string $from, string $to, ?User $by, ?string $note): void
-    {
-        $this->statusLogs()->create([
+    /** Write one line in the history (status change, assignment, emergency flag, note...). */
+    public function logEvent(
+        string $action,
+        ?User $by = null,
+        ?string $note = null,
+        ?TicketStatus $from = null,
+        ?TicketStatus $to = null,
+        ?array $meta = null,
+    ): RequestStatusLog {
+        return $this->statusLogs()->create([
             'user_id' => $by?->id,
-            'from_status' => $from,
-            'to_status' => $to,
+            'action' => $action,
+            'from_status' => $from?->value,
+            'to_status' => $to?->value,
             'note' => $note,
+            'meta' => $meta,
         ]);
     }
+
+    // ---- relations -----------------------------------------------------------------------------
 
     public function requester(): BelongsTo
     {
@@ -145,6 +223,11 @@ class MaintenanceRequest extends Model
     public function president(): BelongsTo
     {
         return $this->belongsTo(User::class, 'president_id');
+    }
+
+    public function emergencyFlagger(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'emergency_flagged_by');
     }
 
     public function department(): BelongsTo
@@ -167,9 +250,10 @@ class MaintenanceRequest extends Model
         return $this->hasMany(RequestAttachment::class, 'request_id');
     }
 
+    /** Full change history (oldest first). */
     public function statusLogs(): HasMany
     {
-        return $this->hasMany(RequestStatusLog::class, 'request_id');
+        return $this->hasMany(RequestStatusLog::class, 'request_id')->oldest('id');
     }
 
     public function expenditures(): HasMany

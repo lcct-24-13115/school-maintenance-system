@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\RepairRequest;
+use App\Enums\TicketStatus;
+use App\Models\MaintenanceRequest;
 use App\Services\FormNotifier;
+use App\Services\TicketWorkflow;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,17 +25,17 @@ class MaintenanceBoardController extends Controller
         return view('maintenance._cards', $this->columns());
     }
 
-    public function accept(Request $request, RepairRequest $repair): RedirectResponse
+    public function accept(Request $request, MaintenanceRequest $ticket): RedirectResponse
     {
-        return $this->act($request, $repair, 'accepted', fn () => $repair->accept($request->user()), 'Task accepted. It is yours now.');
+        return $this->act($request, $ticket, 'accepted', fn () => TicketWorkflow::startWork($ticket, $request->user()), 'Task accepted. It is yours now.');
     }
 
-    public function complete(Request $request, RepairRequest $repair): RedirectResponse
+    public function complete(Request $request, MaintenanceRequest $ticket): RedirectResponse
     {
-        return $this->act($request, $repair, 'completed', fn () => $repair->markCompleted($request->user()), 'Great job! Marked as completed.');
+        return $this->act($request, $ticket, 'completed', fn () => TicketWorkflow::markWorkCompleted($ticket, $request->user()), 'Great job! Marked as completed.');
     }
 
-    private function act(Request $request, RepairRequest $repair, string $event, \Closure $do, string $okMessage): RedirectResponse
+    private function act(Request $request, MaintenanceRequest $ticket, string $event, \Closure $do, string $okMessage): RedirectResponse
     {
         try {
             $do();
@@ -41,19 +43,24 @@ class MaintenanceBoardController extends Controller
             return back()->withErrors(['board' => $e->getMessage()]);
         }
 
-        FormNotifier::work($repair->refresh(), $request->user(), $event);
+        FormNotifier::work($ticket->refresh(), $request->user(), $event);
 
         return back()->with('status', $okMessage);
     }
 
     private function columns(): array
     {
-        $base = fn () => RepairRequest::with(['requester', 'department', 'assignee'])->where('status', '!=', 'rejected');
+        $base = fn () => MaintenanceRequest::with(['requester', 'department', 'category', 'assignee', 'attachments']);
 
         return [
-            'newTasks' => $base()->where('work_status', 'pending')->queueOrder()->get(),
-            'doingTasks' => $base()->where('work_status', 'accepted')->queueOrder()->get(),
-            'doneTasks' => $base()->where('work_status', 'completed')->where('completed_at', '>=', now()->subDays(7))
+            // not started yet (waiting for authorization, approved, or assigned)
+            'newTasks' => $base()->whereIn('status', [
+                TicketStatus::Submitted->value, TicketStatus::PendingAuthorization->value,
+                TicketStatus::Approved->value, TicketStatus::Assigned->value,
+            ])->queueOrder()->get(),
+            'doingTasks' => $base()->where('status', TicketStatus::InProgress->value)->queueOrder()->get(),
+            'doneTasks' => $base()->whereIn('status', TicketStatus::completedValues())
+                ->where('completed_at', '>=', now()->subDays(7))
                 ->latest('completed_at')->limit(10)->get(),
         ];
     }

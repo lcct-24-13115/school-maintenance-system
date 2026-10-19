@@ -1,3 +1,5 @@
+@use('App\Enums\TicketStatus')
+
 @php
     $columns = [
         ['title' => '🆕 NEW', 'tasks' => $newTasks, 'color' => 'bg-blue-600'],
@@ -15,9 +17,12 @@
 
             <div class="space-y-4">
                 @forelse ($col['tasks'] as $r)
-                    <article class="overflow-hidden rounded-xl bg-white shadow {{ $r->isEmergency() && $r->work_status !== 'completed' ? 'ring-4 ring-red-500' : '' }}">
+                    <article class="overflow-hidden rounded-xl bg-white shadow {{ $r->isEmergency() && ! $r->status->isCompleted() ? 'ring-4 ring-red-500' : '' }}">
                         @if ($r->isEmergency())
                             <div class="bg-red-600 px-4 py-1 text-center text-sm font-extrabold uppercase tracking-widest text-white">🚨 Emergency</div>
+                        @endif
+                        @if ($r->is_confidential)
+                            <div class="bg-gray-800 px-4 py-1 text-center text-xs font-bold uppercase tracking-widest text-white">🔒 Confidential</div>
                         @endif
 
                         @if ($r->photoUrl())
@@ -26,24 +31,30 @@
 
                         <div class="space-y-1 p-4">
                             <div class="text-2xl font-extrabold text-gray-900">📍 {{ $r->location }}</div>
-                            <div class="text-base text-gray-800">{{ $r->job_description }}</div>
+                            <div class="text-base text-gray-800">{{ $r->description }}</div>
                             <div class="pt-1 text-base font-semibold text-gray-700">👤 {{ $r->requester->name }}</div>
-                            <div class="text-sm text-gray-500">{{ $r->department?->name }} · {{ $r->reference_no }} · {{ $r->created_at->diffForHumans() }}</div>
+                            <div class="text-sm text-gray-500">{{ $r->department?->name }} · {{ $r->category?->name }}</div>
+                            <div class="text-sm text-gray-500">{{ $r->ticket_no }} · {{ $r->submitted_at->diffForHumans() }}</div>
+                            <div class="inline-block rounded bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-700">{{ $r->status->label() }}</div>
                             @if ($r->assignee)
                                 <div class="text-sm font-semibold text-amber-700">Assigned to {{ $r->assignee->name }}</div>
                             @endif
                         </div>
 
-                        @if ($r->work_status === 'pending')
+                        @if ($r->status === TicketStatus::Approved || ($r->status === TicketStatus::Assigned && (int) $r->assigned_to === (int) auth()->id()))
                             <form method="POST" action="{{ route('maintenance.accept', $r) }}">
                                 @csrf
                                 <button class="w-full bg-blue-600 py-5 text-2xl font-extrabold text-white active:bg-blue-800">ACCEPT TASK</button>
                             </form>
-                        @elseif ($r->work_status === 'accepted')
+                        @elseif ($r->status === TicketStatus::InProgress)
                             <form method="POST" action="{{ route('maintenance.complete', $r) }}">
                                 @csrf
                                 <button class="w-full bg-green-600 py-5 text-2xl font-extrabold text-white active:bg-green-800">MARK COMPLETED</button>
                             </form>
+                        @elseif (in_array($r->status, [TicketStatus::Submitted, TicketStatus::PendingAuthorization], true))
+                            <div class="bg-gray-100 py-4 text-center text-base font-bold text-gray-500">⏳ Waiting for authorization</div>
+                        @elseif ($r->status === TicketStatus::Assigned)
+                            <div class="bg-gray-100 py-4 text-center text-base font-bold text-gray-500">Assigned to {{ $r->assignee?->name }}</div>
                         @endif
                     </article>
                 @empty
