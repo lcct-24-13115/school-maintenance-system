@@ -25,6 +25,8 @@ use Throwable;
  */
 class TicketWorkflow
 {
+    public const STALE_MESSAGE = 'This ticket was just updated by someone else. Reload the page to see its latest status, then try again.';
+
     /**
      * File a new ticket with any number of files and items. Everything happens in ONE transaction:
      * if a file or an item fails, no ticket is left behind and files already saved are removed again.
@@ -130,7 +132,7 @@ class TicketWorkflow
     /**
      * Add one upload (1..max_files files) of one `kind` to an existing ticket, with ONE history line.
      * Enforces the file rules (type by content, 5 MB, count, names). WHO may add files is TicketPolicy@addAttachment.
-     * Phase 4 adds the closure rules for the signed_evidence kind; here it is only uploadable.
+     * The closure rule for the signed_evidence kind is enforced in Phase 4B; here it is only uploadable.
      *
      * @param  array<int, UploadedFile>  $files
      * @return Collection<int, RequestAttachment>
@@ -187,25 +189,56 @@ class TicketWorkflow
         return self::apply($ticket, $to, [], RequestStatusLog::ACTION_STATUS, $by, $note);
     }
 
-    /** Record authorization and move to Approved. Only the School President may authorize (confirm with client). */
-    public static function authorize(MaintenanceRequest $ticket, User $president, ?string $remarks = null): MaintenanceRequest
+    /** Maintenance sends a Submitted ticket to the authorizer's queue (Submitted -> Pending Authorization). */
+    public static function sendForAuthorization(MaintenanceRequest $ticket, User $by, ?string $note = null): MaintenanceRequest
     {
-        if (! $president->is_active || ! $president->isPresident()) {
-            throw new DomainException('Only the School President can authorize a ticket.');
+        if ($ticket->status !== TicketStatus::Submitted) {
+            throw new DomainException("Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\". Only a Submitted ticket can be sent for authorization.");
         }
 
-        return self::apply($ticket, TicketStatus::Approved, [
-            'president_id' => $president->id,
-            'president_approved_at' => now(),
-            'president_remarks' => $remarks,
-        ], RequestStatusLog::ACTION_AUTHORIZATION, $president, $remarks ?: 'Authorized.');
+        return self::apply($ticket, TicketStatus::PendingAuthorization, [], RequestStatusLog::ACTION_STATUS, $by, $note ?: 'Sent for authorization.');
+    }
+
+    /**
+     * Record authorization and move to Approved. Only the roles in school.workflow.authorizers may do it
+     * (CONFIRM WITH CLIENT). Optional signed files are saved as `signed_evidence` in the SAME transaction.
+     *
+     * @param  array<int, UploadedFile>  $files
+     */
+    public static function authorize(MaintenanceRequest $ticket, User $by, ?string $remarks = null, array $files = []): MaintenanceRequest
+    {
+        self::assertAuthorizer($by, 'authorize');
+        self::assertAuthorizableStatus($ticket, TicketStatus::Approved);
+
+        $files = array_values(array_filter($files));
+        if ($files !== [] && ($error = AttachmentService::checkMany($files))) {
+            throw new DomainException($error);   // refused BEFORE anything is written
+        }
+
+        return DB::transaction(function () use ($ticket, $by, $remarks, $files) {
+            self::apply($ticket, TicketStatus::Approved, [
+                'president_id' => $by->id,
+                'president_approved_at' => now(),
+                'president_remarks' => $remarks,
+            ], RequestStatusLog::ACTION_AUTHORIZATION, $by, $remarks ?: 'Authorized.');
+
+            if ($files !== []) {
+                self::addAttachments($ticket, $files, $by, RequestAttachment::KIND_SIGNED_EVIDENCE);
+            }
+
+            return $ticket->refresh();
+        });
     }
 
     public static function disapprove(MaintenanceRequest $ticket, User $by, string $reason): MaintenanceRequest
     {
+        self::assertAuthorizer($by, 'disapprove');
+
         if (blank($reason)) {
             throw new DomainException('Disapproving a ticket needs a reason.');
         }
+
+        self::assertAuthorizableStatus($ticket, TicketStatus::Disapproved);
 
         return self::apply($ticket, TicketStatus::Disapproved, [], RequestStatusLog::ACTION_AUTHORIZATION, $by, $reason);
     }
@@ -323,6 +356,9 @@ class TicketWorkflow
     /** Remove the flag. submitted_at is never touched, so the ticket returns to its ORIGINAL routine position. */
     public static function clearEmergency(MaintenanceRequest $ticket, User $by, ?string $note = null): MaintenanceRequest
     {
+        if ($ticket->status->isTerminal()) {
+            throw new DomainException("Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\" and can no longer be changed.");
+        }
         if (! $ticket->is_emergency) {
             throw new DomainException("Ticket {$ticket->ticket_no} is not flagged as an emergency.");
         }
@@ -340,6 +376,9 @@ class TicketWorkflow
     {
         if (blank($note)) {
             throw new DomainException('A note cannot be empty.');
+        }
+        if ($ticket->status->isTerminal()) {
+            throw new DomainException("Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\" and can no longer be changed.");
         }
 
         return $ticket->logEvent(RequestStatusLog::ACTION_NOTE, $by, $note);
@@ -377,7 +416,47 @@ class TicketWorkflow
         return $clean;
     }
 
-    /** Validate the move, update the ticket and write ONE history line, atomically. */
+    /** The signatory check shared by authorize() and disapprove(). Roles: school.workflow.authorizers. */
+    private static function assertAuthorizer(User $by, string $verb): void
+    {
+        if (! $by->canAuthorize()) {
+            throw new DomainException('Only the '.self::authorizerLabel()." can {$verb} a ticket.");
+        }
+    }
+
+    /** "School President" (or "A or B") for the error messages, taken from the configured authorizer roles. */
+    private static function authorizerLabel(): string
+    {
+        $names = Role::query()
+            ->whereIn('slug', (array) config('school.workflow.authorizers', []))
+            ->orderBy('name')->pluck('name')->all();
+
+        return $names === [] ? 'authorized signatory' : implode(' or ', $names);
+    }
+
+    /**
+     * The ticket must be in a status the authorizer can act on. With school.workflow.authorize_from_submitted
+     * off it must be sent for authorization first. A ticket that was already decided (or is final) is refused
+     * with the usual "cannot move from ... to ..." message instead of being decided twice.
+     */
+    private static function assertAuthorizableStatus(MaintenanceRequest $ticket, TicketStatus $to): void
+    {
+        if ($ticket->status === TicketStatus::Submitted && ! config('school.workflow.authorize_from_submitted', true)) {
+            throw new DomainException("Ticket {$ticket->ticket_no} is still \"Submitted\". It must be sent for authorization first.");
+        }
+
+        if (! $ticket->status->canTransitionTo($to)) {
+            throw new DomainException(MaintenanceRequest::invalidTransitionMessage($ticket->ticket_no, $ticket->status, $to));
+        }
+    }
+
+    /**
+     * Validate the move, update the ticket and write ONE history line, atomically.
+     *
+     * The ticket row is re-read with lockForUpdate() inside the transaction, so two people cannot change the
+     * same ticket at the same instant. If it changed since the caller loaded it, the second person gets a
+     * clear "just updated" message instead of silently overwriting (or repeating) the first person's action.
+     */
     private static function apply(
         MaintenanceRequest $ticket,
         ?TicketStatus $to,
@@ -394,6 +473,15 @@ class TicketWorkflow
         }
 
         DB::transaction(function () use ($ticket, $to, $from, $attributes, $action, $by, $note, $meta) {
+            $current = MaintenanceRequest::query()->lockForUpdate()->find($ticket->getKey());
+
+            if ($current === null
+                || $current->status !== $from
+                || (int) $current->assigned_to !== (int) $ticket->assigned_to
+                || (bool) $current->is_emergency !== (bool) $ticket->is_emergency) {
+                throw new DomainException(self::STALE_MESSAGE);
+            }
+
             if ($to !== null) {
                 $attributes['status'] = $to;
             }

@@ -8,6 +8,7 @@ use App\Models\Department;
 use App\Models\MaintenanceRequest;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\TicketActions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -15,7 +16,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
-/** Ticket list (search + filters) and the ticket detail page. Read-only: actions come in Phase 4. */
+/** Ticket list (search + filters) and the ticket detail page. The buttons post to TicketActionController. */
 class TicketController extends Controller
 {
     private const PER_PAGE = 15;
@@ -86,7 +87,16 @@ class TicketController extends Controller
             'items', 'attachments', 'statusLogs.user',
         ]);
 
-        return view('tickets.show', ['ticket' => $ticket]);
+        $actions = TicketActions::for($ticket, request()->user());
+
+        return view('tickets.show', [
+            'ticket' => $ticket,
+            'actions' => $actions,
+            // only loaded when the Assign / Reassign form will be shown
+            'staff' => array_intersect([TicketActions::ASSIGN, TicketActions::REASSIGN], $actions) !== []
+                ? TicketActions::assignableStaff()
+                : collect(),
+        ]);
     }
 
     private function applyFilters(Builder $query, array $f, User $user): void

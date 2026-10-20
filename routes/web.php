@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MaintenanceBoardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RepairRequestController;
+use App\Http\Controllers\TicketActionController;
 use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Controllers\TicketController;
 use App\Http\Middleware\CheckRole;
@@ -52,6 +54,20 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets/create', [RepairRequestController::class, 'create'])->name('tickets.create');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
     Route::post('/tickets/{ticket}/attachments', [TicketAttachmentController::class, 'store'])->name('tickets.attachments.store');
+
+    // ---- Ticket actions (Phase 4A). {ticket} hidden = 404; no capability = 403; wrong status = flash error ----
+    Route::prefix('tickets/{ticket}')->name('tickets.')->group(function () {
+        Route::post('/send-for-authorization', [TicketActionController::class, 'sendForAuthorization'])->name('send-for-authorization');
+        Route::post('/approve', [TicketActionController::class, 'approve'])->name('approve');
+        Route::post('/disapprove', [TicketActionController::class, 'disapprove'])->name('disapprove');
+        Route::post('/assign', [TicketActionController::class, 'assign'])->name('assign');
+        Route::post('/emergency', [TicketActionController::class, 'flagEmergency'])->name('emergency.flag');
+        Route::post('/emergency/clear', [TicketActionController::class, 'clearEmergency'])->name('emergency.clear');
+        Route::post('/notes', [TicketActionController::class, 'note'])->name('notes.store');
+    });
+
+    // ---- Authorizer inbox (school.workflow.authorizers only; others get 403) ----
+    Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
 
     // ---- Attachments: private files, opened only through here (ticket visibility decides; hidden = 404) ----
     Route::get('/attachments/{attachment}', [AttachmentController::class, 'show'])->name('attachments.show');

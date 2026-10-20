@@ -89,6 +89,12 @@ class User extends Authenticatable
         return $this->hasRole(Role::PRESIDENT);
     }
 
+    /** May this user approve / disapprove tickets? Configurable: school.workflow.authorizers. */
+    public function canAuthorize(): bool
+    {
+        return $this->is_active && $this->hasRole(...(array) config('school.workflow.authorizers', []));
+    }
+
     /** Route name of this user's dashboard (used after login). */
     public function dashboardRoute(): string
     {

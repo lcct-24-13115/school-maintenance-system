@@ -39,9 +39,51 @@ class TicketPolicy
         return $this->can($user, $ticket, 'clear_emergency');
     }
 
+    /** Approve. WHO is an authorizer is school.workflow.authorizers (CONFIRM WITH CLIENT), not the matrix. */
     public function authorize(User $user, MaintenanceRequest $ticket): bool
     {
-        return $this->can($user, $ticket, 'authorize');
+        return $user->canAuthorize() && $ticket->isVisibleTo($user);
+    }
+
+    /** Disapprove: the same people who may approve. */
+    public function disapprove(User $user, MaintenanceRequest $ticket): bool
+    {
+        return $this->authorize($user, $ticket);
+    }
+
+    /** Submitted -> Pending Authorization (Maintenance Admin). */
+    public function sendForAuthorization(User $user, MaintenanceRequest $ticket): bool
+    {
+        return $this->can($user, $ticket, 'send_for_authorization');
+    }
+
+    /**
+     * Add a note to the history: the requester, the assignee, and anyone with a working role on tickets
+     * (authorizers, maintenance admin, anyone who can assign/work/close/flag). Dept. heads, treasurer,
+     * custodian and finance stay view-only. CONFIRM WITH CLIENT.
+     */
+    public function addNote(User $user, MaintenanceRequest $ticket): bool
+    {
+        if (! $ticket->isVisibleTo($user)) {
+            return false;
+        }
+
+        if ((int) $ticket->requester_id === (int) $user->id
+            || ($ticket->assigned_to !== null && (int) $ticket->assigned_to === (int) $user->id)) {
+            return true;
+        }
+
+        if ($user->canAuthorize()) {
+            return true;
+        }
+
+        foreach (['assign', 'work', 'close', 'flag_emergency', 'clear_emergency', 'send_for_authorization'] as $capability) {
+            if ($user->can_do($capability)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function assign(User $user, MaintenanceRequest $ticket): bool

@@ -165,6 +165,27 @@ class MaintenanceRequest extends Model
         return $query->whereIn('status', TicketStatus::pendingValues());
     }
 
+    /**
+     * Tickets an authorizer can act on: Pending Authorization, plus Submitted when
+     * school.workflow.authorize_from_submitted is on.
+     */
+    public function scopeAwaitingAuthorization(Builder $query): Builder
+    {
+        return $query->whereIn('status', self::authorizableStatusValues());
+    }
+
+    /** @return list<string> */
+    public static function authorizableStatusValues(): array
+    {
+        $statuses = [TicketStatus::PendingAuthorization->value];
+
+        if (config('school.workflow.authorize_from_submitted', true)) {
+            $statuses[] = TicketStatus::Submitted->value;
+        }
+
+        return $statuses;
+    }
+
     /** Work Completed or Closed. */
     public function scopeCompleted(Builder $query): Builder
     {

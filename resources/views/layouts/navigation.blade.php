@@ -18,6 +18,11 @@
                     <x-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
                         {{ __('Tickets') }}
                     </x-nav-link>
+                    @if (auth()->user()->canAuthorize())
+                        <x-nav-link :href="route('approvals.index')" :active="request()->routeIs('approvals.*')">
+                            {{ __('Approvals') }}
+                        </x-nav-link>
+                    @endif
                     @can('create', \App\Models\MaintenanceRequest::class)
                         <x-nav-link :href="route('repairs.create')" :active="request()->routeIs('repairs.*')">
                             {{ __('New request') }}
@@ -84,6 +89,11 @@
             <x-responsive-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')" class="min-h-[44px] py-3">
                 {{ __('Tickets') }}
             </x-responsive-nav-link>
+            @if (auth()->user()->canAuthorize())
+                <x-responsive-nav-link :href="route('approvals.index')" :active="request()->routeIs('approvals.*')" class="min-h-[44px] py-3">
+                    {{ __('Approvals') }}
+                </x-responsive-nav-link>
+            @endif
             @can('create', \App\Models\MaintenanceRequest::class)
                 <x-responsive-nav-link :href="route('repairs.create')" :active="request()->routeIs('repairs.*')" class="min-h-[44px] py-3">
                     {{ __('New request') }}

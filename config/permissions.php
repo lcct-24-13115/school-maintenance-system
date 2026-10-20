@@ -11,8 +11,9 @@
 |   view_confidential  see confidential tickets too
 |   flag_emergency     create/set an emergency ticket
 |   clear_emergency    remove an emergency flag
-|   authorize          authorize a ticket (Phase 4 action)
-|   disapprove         disapprove a ticket (Phase 4 action)
+|   authorize          (matrix entry only) WHO may authorize/disapprove is school.workflow.authorizers since Phase 4;
+|   disapprove         the policy reads that config. Kept here so the matrix stays readable.
+|   send_for_authorization  move a Submitted ticket to Pending Authorization (Phase 4)
 |   assign             assign / reassign a ticket (Phase 4 action)
 |   work               accept and complete tasks
 |   close              close a ticket (Phase 4 action)
@@ -31,7 +32,7 @@ return [
     // maintenance_admin is the proposal's "Admin".
     'maintenance_admin' => [
         'view_all_tickets', 'view_confidential', 'flag_emergency', 'clear_emergency',
-        'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users',
+        'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users',
     ],
 
     // CONFIRM WITH CLIENT: Finance sees all tickets EXCEPT confidential ones.

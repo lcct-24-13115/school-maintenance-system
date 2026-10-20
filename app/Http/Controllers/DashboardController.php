@@ -72,7 +72,7 @@ class DashboardController extends Controller
         $closed = TicketStatus::Closed->value;
 
         return $this->show('School President Dashboard', [
-            'Waiting for your approval' => $this->card($visible()->where('status', $pending)->count(), route('tickets.index', ['status' => [$pending]])),
+            'Waiting for your approval' => $this->card($visible()->awaitingAuthorization()->count(), $user->canAuthorize() ? route('approvals.index') : route('tickets.index', ['status' => [$pending]])),
             'Authorized by you' => $this->card($visible()->whereNotNull('president_approved_at')->count()),
             'Closed' => $this->card($visible()->where('status', $closed)->count(), route('tickets.index', ['status' => [$closed]])),
         ]);

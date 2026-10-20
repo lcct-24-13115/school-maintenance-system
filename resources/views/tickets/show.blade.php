@@ -149,11 +149,7 @@
                 @endcan
             </section>
 
-            {{-- Actions: empty for now. Phase 4 puts authorize / assign / flag / close here. --}}
-            <section class="rounded-xl border-2 border-dashed border-gray-200 p-4" id="actions">
-                <h3 class="mb-1 text-lg font-bold text-gray-900">Actions</h3>
-                <p class="text-sm text-gray-500">No actions are available on this page yet.</p>
-            </section>
+            @include('tickets._actions')
 
             {{-- Full history --}}
             <section class="rounded-xl bg-white p-4 shadow-sm">

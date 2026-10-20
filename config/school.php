@@ -29,6 +29,27 @@ return [
     ],
 
     /*
+    | Ticket workflow rules (Phase 4). Role slugs, see App\Models\Role.
+    |
+    |  authorizers               roles that may approve / disapprove a ticket (the recorded "Authorized by").
+    |  closers                   roles that may close a ticket (enforced from Phase 4B).
+    |  closure_requires          what must exist before a ticket can be closed (enforced from Phase 4B):
+    |                            'authorization' and/or 'signed_evidence'.
+    |  authorize_from_submitted  true: an authorizer may approve/disapprove straight from Submitted.
+    |                            false: Maintenance must first send it for authorization (Pending Authorization).
+    */
+    'workflow' => [
+        // CONFIRM WITH CLIENT: who the final signatory/authorizer is.
+        'authorizers' => ['president'],
+        // CONFIRM WITH CLIENT: who may formally close a ticket.
+        'closers' => ['maintenance_admin', 'president'],
+        // CONFIRM WITH CLIENT: what must be on file before closing.
+        'closure_requires' => ['authorization', 'signed_evidence'],
+        // CONFIRM WITH CLIENT: may the authorizer approve directly from Submitted?
+        'authorize_from_submitted' => true,
+    ],
+
+    /*
     | File attachments (Phase 3). One set of rules used EVERYWHERE files are accepted
     | (App\Rules\ValidAttachment + App\Services\AttachmentService).
     |
