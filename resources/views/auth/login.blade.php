@@ -109,11 +109,11 @@
                         <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-6 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
                             @php
                                 $demoRoles = [
-                                    ['requester', 'Requester', 'fa-user-pen', 'requester@school.test'],
-                                    ['maintenance', 'Maintenance', 'fa-screwdriver-wrench', 'maintenance@school.test'],
-                                    ['finance', 'Finance', 'fa-coins', 'finance@school.test'],
-                                    ['custodian', 'Custodian', 'fa-boxes-stacked', 'custodian@school.test'],
-                                    ['president', 'President', 'fa-user-shield', 'president@school.test'],
+                                    ['requester', 'Requester', 'fa-user-pen', 'requester@lcctanauan.edu.ph'],
+                                    ['maintenance', 'Maintenance', 'fa-screwdriver-wrench', 'maintenance@lcctanauan.edu.ph'],
+                                    ['finance', 'Finance', 'fa-coins', 'finance@lcctanauan.edu.ph'],
+                                    ['custodian', 'Custodian', 'fa-boxes-stacked', 'custodian@lcctanauan.edu.ph'],
+                                    ['president', 'President', 'fa-user-shield', 'president@lcctanauan.edu.ph'],
                                 ];
                             @endphp
                             @foreach ($demoRoles as $i => [$key, $label, $icon, $email])

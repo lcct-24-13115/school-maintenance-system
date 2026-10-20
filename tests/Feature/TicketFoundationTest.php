@@ -37,7 +37,7 @@ class TicketFoundationTest extends TestCase
 
     private function data(array $overrides = []): array
     {
-        $requester = $this->user('requester@school.test');
+        $requester = $this->user('requester@lcctanauan.edu.ph');
 
         return $overrides + [
             'department_id' => $requester->department_id,
@@ -50,7 +50,7 @@ class TicketFoundationTest extends TestCase
     /** A ticket created straight through the model (used where we need exact submission times). */
     private function ticketAt($submittedAt): MaintenanceRequest
     {
-        $requester = $this->user('requester@school.test');
+        $requester = $this->user('requester@lcctanauan.edu.ph');
 
         return MaintenanceRequest::create([
             'requester_id' => $requester->id,
@@ -66,7 +66,7 @@ class TicketFoundationTest extends TestCase
     public function test_ticket_numbers_use_the_mt_year_format_and_increase(): void
     {
         $this->seedBase();
-        $requester = $this->user('requester@school.test');
+        $requester = $this->user('requester@lcctanauan.edu.ph');
 
         $a = TicketWorkflow::open($requester, $this->data());
         $b = TicketWorkflow::open($requester, $this->data());
@@ -81,7 +81,7 @@ class TicketFoundationTest extends TestCase
     public function test_filing_a_ticket_writes_the_first_history_line(): void
     {
         $this->seedBase();
-        $ticket = TicketWorkflow::open($this->user('requester@school.test'), $this->data());
+        $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
 
         $this->assertDatabaseHas('request_status_logs', [
             'request_id' => $ticket->id,
@@ -93,18 +93,18 @@ class TicketFoundationTest extends TestCase
     public function test_an_invalid_transition_is_refused_with_a_clear_message(): void
     {
         $this->seedBase();
-        $ticket = TicketWorkflow::open($this->user('requester@school.test'), $this->data());
+        $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Allowed next status');
 
-        TicketWorkflow::transition($ticket, TicketStatus::Closed, $this->user('maintenance@school.test'));
+        TicketWorkflow::transition($ticket, TicketStatus::Closed, $this->user('maintenance@lcctanauan.edu.ph'));
     }
 
     public function test_a_status_cannot_be_skipped_even_by_updating_the_model_directly(): void
     {
         $this->seedBase();
-        $ticket = TicketWorkflow::open($this->user('requester@school.test'), $this->data());
+        $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('cannot move from "Submitted" to "In Progress"');
@@ -123,8 +123,8 @@ class TicketFoundationTest extends TestCase
     public function test_a_ticket_cannot_be_closed_without_authorization(): void
     {
         $this->seedBase();
-        $staff = $this->user('maintenance@school.test');
-        $ticket = TicketWorkflow::open($this->user('requester@school.test'), $this->data());
+        $staff = $this->user('maintenance@lcctanauan.edu.ph');
+        $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
 
         // approved WITHOUT the president's recorded authorization
         TicketWorkflow::transition($ticket, TicketStatus::PendingAuthorization, $staff);
@@ -146,10 +146,10 @@ class TicketFoundationTest extends TestCase
     public function test_full_happy_path_records_every_step_in_the_history(): void
     {
         $this->seedBase();
-        $staff = $this->user('maintenance@school.test');
-        $ticket = TicketWorkflow::open($this->user('requester@school.test'), $this->data());
+        $staff = $this->user('maintenance@lcctanauan.edu.ph');
+        $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
 
-        TicketWorkflow::authorize($ticket, $this->user('president@school.test'), 'OK');
+        TicketWorkflow::authorize($ticket, $this->user('president@lcctanauan.edu.ph'), 'OK');
         TicketWorkflow::startWork($ticket, $staff);                  // assignment + in progress
         TicketWorkflow::markWorkCompleted($ticket, $staff, 'Part was out of stock', 'Keep spares');
         TicketWorkflow::close($ticket, $staff);
@@ -173,32 +173,32 @@ class TicketFoundationTest extends TestCase
     public function test_only_the_president_can_authorize(): void
     {
         $this->seedBase();
-        $ticket = TicketWorkflow::open($this->user('requester@school.test'), $this->data());
+        $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Only the School President');
 
-        TicketWorkflow::authorize($ticket, $this->user('maintenance@school.test'));
+        TicketWorkflow::authorize($ticket, $this->user('maintenance@lcctanauan.edu.ph'));
     }
 
     public function test_a_ticket_waiting_for_authorization_cannot_be_accepted(): void
     {
         $this->seedBase();
-        $ticket = TicketWorkflow::open($this->user('requester@school.test'), $this->data());
+        $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('needs authorization');
 
-        TicketWorkflow::startWork($ticket, $this->user('maintenance@school.test'));
+        TicketWorkflow::startWork($ticket, $this->user('maintenance@lcctanauan.edu.ph'));
     }
 
     public function test_reassignment_needs_a_note_and_is_logged(): void
     {
         $this->seedBase();
-        $first = $this->user('maintenance@school.test');
-        $second = $this->user('maintenance2@school.test');
-        $ticket = TicketWorkflow::open($this->user('requester@school.test'), $this->data());
-        TicketWorkflow::authorize($ticket, $this->user('president@school.test'));
+        $first = $this->user('maintenance@lcctanauan.edu.ph');
+        $second = $this->user('maintenance2@lcctanauan.edu.ph');
+        $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
+        TicketWorkflow::authorize($ticket, $this->user('president@lcctanauan.edu.ph'));
 
         TicketWorkflow::assign($ticket, $first, $first);
         $this->assertSame(TicketStatus::Assigned, $ticket->status);
@@ -220,18 +220,18 @@ class TicketFoundationTest extends TestCase
     public function test_an_emergency_flag_needs_a_reason(): void
     {
         $this->seedBase();
-        $ticket = TicketWorkflow::open($this->user('requester@school.test'), $this->data());
+        $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('needs a reason');
 
-        TicketWorkflow::flagEmergency($ticket, $this->user('maintenance@school.test'), '   ');
+        TicketWorkflow::flagEmergency($ticket, $this->user('maintenance@lcctanauan.edu.ph'), '   ');
     }
 
     public function test_emergency_goes_first_and_routine_order_stays_by_submission_time(): void
     {
         $this->seedBase();
-        $staff = $this->user('maintenance@school.test');
+        $staff = $this->user('maintenance@lcctanauan.edu.ph');
 
         $a = $this->ticketAt(now()->subHours(3));
         $b = $this->ticketAt(now()->subHours(2));
@@ -261,7 +261,7 @@ class TicketFoundationTest extends TestCase
     {
         $this->seedBase();
         $equipment = Category::where('type', Category::TYPE_EQUIPMENT)->firstOrFail();
-        $requester = $this->user('requester@school.test');
+        $requester = $this->user('requester@lcctanauan.edu.ph');
 
         $this->expectException(DomainException::class);
 
@@ -290,7 +290,7 @@ class TicketFoundationTest extends TestCase
     public function test_the_repair_form_files_a_ticket_in_the_unified_table(): void
     {
         $this->seedBase();
-        $requester = $this->user('requester@school.test');
+        $requester = $this->user('requester@lcctanauan.edu.ph');
 
         $response = $this->actingAs($requester)->post(route('repairs.store'), [
             'department_id' => $requester->department_id,
@@ -317,7 +317,7 @@ class TicketFoundationTest extends TestCase
     public function test_an_emergency_repair_form_flags_the_ticket_with_a_reason(): void
     {
         $this->seedBase();
-        $requester = $this->user('requester@school.test');
+        $requester = $this->user('requester@lcctanauan.edu.ph');
 
         $this->actingAs($requester)->post(route('repairs.store'), [
             'department_id' => $requester->department_id,
@@ -337,7 +337,7 @@ class TicketFoundationTest extends TestCase
     public function test_the_repair_form_requires_a_category(): void
     {
         $this->seedBase();
-        $requester = $this->user('requester@school.test');
+        $requester = $this->user('requester@lcctanauan.edu.ph');
 
         $this->actingAs($requester)->post(route('repairs.store'), [
             'department_id' => $requester->department_id,
@@ -355,9 +355,9 @@ class TicketFoundationTest extends TestCase
     public function test_the_board_accepts_and_completes_an_approved_ticket(): void
     {
         $this->seedBase();
-        $staff = $this->user('maintenance@school.test');
-        $ticket = TicketWorkflow::open($this->user('requester@school.test'), $this->data());
-        TicketWorkflow::authorize($ticket, $this->user('president@school.test'));
+        $staff = $this->user('maintenance@lcctanauan.edu.ph');
+        $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
+        TicketWorkflow::authorize($ticket, $this->user('president@lcctanauan.edu.ph'));
 
         $this->actingAs($staff)->post(route('maintenance.accept', $ticket))->assertSessionHas('status');
         $this->assertSame(TicketStatus::InProgress, $ticket->fresh()->status);
@@ -370,9 +370,9 @@ class TicketFoundationTest extends TestCase
     public function test_the_board_refuses_a_ticket_that_is_still_waiting_for_authorization(): void
     {
         $this->seedBase();
-        $ticket = TicketWorkflow::open($this->user('requester@school.test'), $this->data());
+        $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
 
-        $this->actingAs($this->user('maintenance@school.test'))
+        $this->actingAs($this->user('maintenance@lcctanauan.edu.ph'))
             ->post(route('maintenance.accept', $ticket))
             ->assertSessionHasErrors('board');
 
@@ -382,9 +382,9 @@ class TicketFoundationTest extends TestCase
     public function test_a_requester_cannot_use_the_board_actions(): void
     {
         $this->seedBase();
-        $ticket = TicketWorkflow::open($this->user('requester@school.test'), $this->data());
+        $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
 
-        $this->actingAs($this->user('requester@school.test'))
+        $this->actingAs($this->user('requester@lcctanauan.edu.ph'))
             ->post(route('maintenance.accept', $ticket))
             ->assertForbidden();
     }
@@ -429,15 +429,15 @@ class TicketFoundationTest extends TestCase
         $this->withoutVite();
         $this->seed();
 
-        $this->actingAs($this->user('maintenance@school.test'))
+        $this->actingAs($this->user('maintenance@lcctanauan.edu.ph'))
             ->get(route('maintenance.board'))->assertOk()->assertSee('ACCEPT TASK');
 
-        $this->actingAs($this->user('maintenance@school.test'))
+        $this->actingAs($this->user('maintenance@lcctanauan.edu.ph'))
             ->get(route('maintenance.board.cards'))->assertOk();
 
-        $this->actingAs($this->user('requester@school.test'))->get(route('requester.dashboard'))->assertOk();
-        $this->actingAs($this->user('finance@school.test'))->get(route('finance.dashboard'))->assertOk();
-        $this->actingAs($this->user('president@school.test'))->get(route('president.dashboard'))->assertOk();
-        $this->actingAs($this->user('requester@school.test'))->get(route('repairs.create'))->assertOk();
+        $this->actingAs($this->user('requester@lcctanauan.edu.ph'))->get(route('requester.dashboard'))->assertOk();
+        $this->actingAs($this->user('finance@lcctanauan.edu.ph'))->get(route('finance.dashboard'))->assertOk();
+        $this->actingAs($this->user('president@lcctanauan.edu.ph'))->get(route('president.dashboard'))->assertOk();
+        $this->actingAs($this->user('requester@lcctanauan.edu.ph'))->get(route('repairs.create'))->assertOk();
     }
 }

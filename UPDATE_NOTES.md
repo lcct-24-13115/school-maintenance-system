@@ -11,7 +11,7 @@ npm install
 npm run dev
 php artisan serve
 ```
-Test logins (password: `password`): requester@, maintenance@, depthead@, finance@, treasurer@, custodian@, president@school.test
+Test logins (password: `password`): requester@, maintenance@, depthead@, finance@, treasurer@, custodian@, president@lcctanauan.edu.ph
 
 ## What's new
 - Migrations 2026_10_16_000001..5: facilities + Form 1 tables, Form 2 tables, Form 3 table, `form_approvals` (signature lines), `notifications`

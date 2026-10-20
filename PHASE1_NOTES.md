@@ -35,7 +35,7 @@ To approve one by hand:
 ```
 php artisan tinker
 >>> $t = App\Models\MaintenanceRequest::latest('id')->first();
->>> App\Services\TicketWorkflow::authorize($t, App\Models\User::where('email','president@school.test')->first());
+>>> App\Services\TicketWorkflow::authorize($t, App\Models\User::where('email','president@lcctanauan.edu.ph')->first());
 ```
 Seeded data already has an Approved, an Assigned and an In Progress ticket for the board.
 
