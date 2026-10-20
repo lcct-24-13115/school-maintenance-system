@@ -14,6 +14,7 @@ class RequisitionSlip extends Model
     use HasApprovalWorkflow, SoftDeletes;
 
     public const REF_PREFIX = 'RS';
+
     public const LABEL = 'Requisition Slip';
 
     public const TYPES = [
@@ -51,7 +52,18 @@ class RequisitionSlip extends Model
         $this->update(['total_amount' => $this->items()->sum('amount')]);
     }
 
-    public function requester(): BelongsTo { return $this->belongsTo(User::class, 'requester_id'); }
-    public function department(): BelongsTo { return $this->belongsTo(Department::class); }
-    public function items(): HasMany { return $this->hasMany(RequisitionSlipItem::class); }
+    public function requester(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'requester_id');
+    }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(RequisitionSlipItem::class);
+    }
 }

@@ -72,7 +72,9 @@ class FormNotifier
     {
         $recipients = $recipients->filter()->unique('id')
             ->reject(fn (User $u) => $u->id === $actor->id)
-            ->filter(fn (User $u) => $u->is_active);
+            ->filter(fn (User $u) => $u->is_active)
+            // an alert carries the location and description, so never send it to someone who may not see the ticket
+            ->filter(fn (User $u) => ! $form instanceof MaintenanceRequest || $form->isVisibleTo($u));
 
         if ($recipients->isEmpty()) {
             return;

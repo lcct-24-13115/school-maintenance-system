@@ -25,10 +25,12 @@ class MaintenanceRequest extends Model
     protected $table = 'requests';
 
     public const LABEL = 'Maintenance Ticket';
+
     public const TICKET_PREFIX = 'MT';
 
     // Stored in the legacy `priority` column; kept in sync with is_emergency automatically.
     public const PRIORITY_FCFS = 'first_come_first_served';
+
     public const PRIORITY_EMERGENCY = 'emergency';
 
     protected $fillable = [
@@ -167,6 +169,54 @@ class MaintenanceRequest extends Model
     public function scopeCompleted(Builder $query): Builder
     {
         return $query->whereIn('status', TicketStatus::completedValues());
+    }
+
+    /**
+     * Only the tickets $user may see. USE THIS in every query that lists, counts or exports tickets.
+     * Keep it in step with isVisibleTo() below (a test compares the two).
+     *
+     *  - your own tickets and tickets assigned to you: always
+     *  - confidential tickets: only with view_confidential (plus the two cases above)
+     *  - non-confidential tickets: with view_all_tickets, or your own department for department roles
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if (! $user->is_active) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $q) use ($user) {
+            $q->where('requester_id', $user->id)->orWhere('assigned_to', $user->id);
+
+            if ($user->can_do('view_confidential')) {
+                $q->orWhere('is_confidential', true);
+            }
+
+            if ($user->can_do('view_all_tickets')) {
+                $q->orWhere('is_confidential', false);
+            } elseif ($user->seesOwnDepartment()) {
+                $q->orWhere(fn (Builder $d) => $d->where('is_confidential', false)->where('department_id', $user->department_id));
+            }
+        });
+    }
+
+    /** Same rule as scopeVisibleTo, for a single loaded ticket (policies, notifications). */
+    public function isVisibleTo(User $user): bool
+    {
+        if (! $user->is_active) {
+            return false;
+        }
+
+        if ((int) $this->requester_id === (int) $user->id || ((int) $this->assigned_to === (int) $user->id && $this->assigned_to !== null)) {
+            return true;
+        }
+
+        if ($this->is_confidential) {
+            return $user->can_do('view_confidential');
+        }
+
+        return $user->can_do('view_all_tickets')
+            || ($user->seesOwnDepartment() && (int) $this->department_id === (int) $user->department_id);
     }
 
     // ---- helpers -------------------------------------------------------------------------------

@@ -3,8 +3,9 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MaintenanceBoardController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\RepairRequestController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RepairRequestController;
+use App\Http\Controllers\TicketController;
 use App\Http\Middleware\CheckRole;
 use App\Models\Role;
 use Illuminate\Support\Facades\Route;
@@ -18,7 +19,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/requester/dashboard', [DashboardController::class, 'requester'])
-        ->middleware(CheckRole::class.':'.Role::REQUESTER)->name('requester.dashboard');
+        // Dept. Heads and the Treasurer land here too (User::dashboardRoute). Before Phase 2 they got a 403.
+        ->middleware(CheckRole::class.':'.Role::REQUESTER.','.Role::DEPARTMENT_HEAD.','.Role::TREASURER)->name('requester.dashboard');
 
     Route::get('/maintenance/dashboard', [DashboardController::class, 'maintenance'])
         ->middleware(CheckRole::class.':'.Role::MAINTENANCE_ADMIN)->name('maintenance.dashboard');
@@ -41,6 +43,10 @@ Route::middleware('auth')->group(function () {
     // ---- Form 3: Request for Repairs & Improvement (FO-08) -> files a maintenance ticket ----
     Route::get('/repairs/create', [RepairRequestController::class, 'create'])->name('repairs.create');
     Route::post('/repairs', [RepairRequestController::class, 'store'])->name('repairs.store');
+
+    // ---- Ticket list + detail (TicketPolicy / visibleTo decide what each user sees; hidden = 404) ----
+    Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
+    Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
 
     // ---- Maintenance card board ----
     Route::middleware(CheckRole::class.':'.Role::MAINTENANCE_ADMIN)->prefix('maintenance')->name('maintenance.')->group(function () {

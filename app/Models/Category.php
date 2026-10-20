@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Category extends Model
 {
     public const TYPE_MATERIALS = 'materials';
+
     public const TYPE_EQUIPMENT = 'equipment';
+
     public const TYPE_SUPPLIES = 'supplies';
 
     protected $fillable = ['name', 'type', 'description', 'is_active'];

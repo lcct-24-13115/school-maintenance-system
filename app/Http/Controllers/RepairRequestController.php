@@ -11,6 +11,7 @@ use App\Services\FormNotifier;
 use App\Services\TicketWorkflow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 /**
@@ -21,7 +22,13 @@ class RepairRequestController extends Controller
 {
     public function create(Request $request): View
     {
+        Gate::authorize('create', MaintenanceRequest::class);
+
+        $canFlag = $request->user()->can_do('flag_emergency');
+
         return view('repairs.create', [
+            'canFlag' => $canFlag,
+            'emergencyBypass' => $canFlag && config('school.emergency_bypasses_advance_notice'),
             'departments' => Department::orderBy('name')->get(),
             'categories' => Category::where('is_active', true)->orderBy('name')->get(),
             'defaultDepartment' => $request->user()->department_id,
@@ -32,7 +39,12 @@ class RepairRequestController extends Controller
     public function store(StoreRepairRequestRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $emergency = $data['priority'] === MaintenanceRequest::PRIORITY_EMERGENCY;
+        $asked = $data['priority'] === MaintenanceRequest::PRIORITY_EMERGENCY;
+
+        // Only users with flag_emergency can really set the flag. Everyone else who ticks "Emergency"
+        // files a ROUTINE ticket and the request for review is written to the history instead.
+        $emergency = $asked && $request->user()->can_do('flag_emergency');
+        $reviewAsked = $asked && ! $emergency;
 
         $ticket = TicketWorkflow::open($request->user(), [
             'department_id' => $data['department_id'],
@@ -43,13 +55,18 @@ class RepairRequestController extends Controller
             'reason' => $data['reason'],
             'needed_by' => $data['needed_by'] ?? null,
             'is_emergency' => $emergency,
-            // the requester's reason doubles as the emergency reason; Phase 2 decides who may flag
+            // the requester's reason doubles as the emergency reason
             'emergency_reason' => $emergency ? $data['reason'] : null,
+            'emergency_review_reason' => $reviewAsked ? $data['reason'] : null,
         ], $request->file('photo'));
 
         FormNotifier::submitted($ticket);   // chime + pop-up for maintenance
 
-        return redirect()->route('dashboard')
-            ->with('status', "Sent! Your ticket {$ticket->ticket_no} was received and Maintenance has been alerted.");
+        $message = "Sent! Your ticket {$ticket->ticket_no} was received and Maintenance has been alerted.";
+        if ($reviewAsked) {
+            $message .= ' It was filed as a routine ticket; your emergency request was passed to Maintenance for review.';
+        }
+
+        return redirect()->route('dashboard')->with('status', $message);
     }
 }

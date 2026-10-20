@@ -7,6 +7,7 @@ use App\Models\MaintenanceRequest;
 use App\Services\FormNotifier;
 use App\Services\TicketWorkflow;
 use DomainException;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -14,15 +15,15 @@ use Illuminate\View\View;
 /** Card board for the maintenance staff: big buttons, no typing. */
 class MaintenanceBoardController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        return view('maintenance.board', $this->columns());
+        return view('maintenance.board', $this->columns($request));
     }
 
     /** Just the cards; the page re-fetches this when an alert arrives and every 30 seconds. */
-    public function cards(): View
+    public function cards(Request $request): View
     {
-        return view('maintenance._cards', $this->columns());
+        return view('maintenance._cards', $this->columns($request));
     }
 
     public function accept(Request $request, MaintenanceRequest $ticket): RedirectResponse
@@ -37,6 +38,9 @@ class MaintenanceBoardController extends Controller
 
     private function act(Request $request, MaintenanceRequest $ticket, string $event, \Closure $do, string $okMessage): RedirectResponse
     {
+        // {ticket} is resolved through visibleTo() (404 if hidden); this checks the "work" capability too.
+        Gate::authorize('work', $ticket);
+
         try {
             $do();
         } catch (DomainException $e) {
@@ -48,9 +52,13 @@ class MaintenanceBoardController extends Controller
         return back()->with('status', $okMessage);
     }
 
-    private function columns(): array
+    private function columns(Request $request): array
     {
-        $base = fn () => MaintenanceRequest::with(['requester', 'department', 'category', 'assignee', 'attachments']);
+        $user = $request->user();
+
+        // visibleTo: the board never shows a ticket this user may not see (e.g. confidential ones)
+        $base = fn () => MaintenanceRequest::visibleTo($user)
+            ->with(['requester', 'department', 'category', 'assignee', 'attachments']);
 
         return [
             // not started yet (waiting for authorization, approved, or assigned)

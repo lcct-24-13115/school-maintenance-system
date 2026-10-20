@@ -57,6 +57,14 @@ class TicketWorkflow
                             meta: ['flagged' => true]);
                     }
 
+                    // Someone without the flag_emergency capability asked for an emergency: the ticket stays
+                    // routine, and the request is kept on the history for Maintenance to review.
+                    if (! $emergency && filled($data['emergency_review_reason'] ?? null)) {
+                        $ticket->logEvent(RequestStatusLog::ACTION_NOTE, $requester,
+                            'Requester asked for emergency review: '.$data['emergency_review_reason'],
+                            meta: ['emergency_review_requested' => true]);
+                    }
+
                     return $ticket;
                 });
 

@@ -19,13 +19,20 @@ class DashboardController extends Controller
 
     public function requester(Request $request): View
     {
-        $mine = $request->user()->requests();
+        $user = $request->user();
+        $mine = $user->requests();   // own tickets: always visible to their owner
+
+        // A department head's dashboard also covers the department, so its list link adds ?mine=1
+        $own = fn (array $statuses = []) => route('tickets.index', ['mine' => 1] + ($statuses ? ['status' => $statuses] : []));
+
+        $waiting = [TicketStatus::Submitted->value, TicketStatus::PendingAuthorization->value];
+        $active = [TicketStatus::Approved->value, TicketStatus::Assigned->value, TicketStatus::InProgress->value, TicketStatus::WorkCompleted->value];
 
         return $this->show('Requester Dashboard', [
-            'My tickets' => (clone $mine)->count(),
-            'Waiting for authorization' => (clone $mine)->whereIn('status', [TicketStatus::Submitted->value, TicketStatus::PendingAuthorization->value])->count(),
-            'In progress' => (clone $mine)->whereIn('status', [TicketStatus::Approved->value, TicketStatus::Assigned->value, TicketStatus::InProgress->value, TicketStatus::WorkCompleted->value])->count(),
-            'Closed' => (clone $mine)->where('status', TicketStatus::Closed->value)->count(),
+            'My tickets' => $this->card((clone $mine)->count(), $own()),
+            'Waiting for authorization' => $this->card((clone $mine)->whereIn('status', $waiting)->count(), $own($waiting)),
+            'In progress' => $this->card((clone $mine)->whereIn('status', $active)->count(), $own($active)),
+            'Closed' => $this->card((clone $mine)->where('status', TicketStatus::Closed->value)->count(), $own([TicketStatus::Closed->value])),
         ]);
     }
 
@@ -35,30 +42,46 @@ class DashboardController extends Controller
         return redirect()->route('maintenance.board');
     }
 
-    public function finance(): View
+    public function finance(Request $request): View
     {
+        $user = $request->user();
+        $visible = fn () => MaintenanceRequest::query()->visibleTo($user);
+        $pending = TicketStatus::PendingAuthorization->value;
+        $completed = TicketStatus::WorkCompleted->value;
+
         return $this->show('Finance Dashboard', [
-            'Pending tickets' => MaintenanceRequest::pending()->count(),
-            'Waiting for authorization' => MaintenanceRequest::where('status', TicketStatus::PendingAuthorization->value)->count(),
-            'Work completed (awaiting closure)' => MaintenanceRequest::where('status', TicketStatus::WorkCompleted->value)->count(),
+            'Pending tickets' => $this->card($visible()->pending()->count(), route('tickets.index', ['status' => TicketStatus::pendingValues()])),
+            'Waiting for authorization' => $this->card($visible()->where('status', $pending)->count(), route('tickets.index', ['status' => [$pending]])),
+            'Work completed (awaiting closure)' => $this->card($visible()->where('status', $completed)->count(), route('tickets.index', ['status' => [$completed]])),
         ]);
     }
 
     public function custodian(): View
     {
         return $this->show('Property Custodian Dashboard', [
-            'Inventory items' => Inventory::count(),
-            'Needs repair' => Inventory::where('condition', 'needs_repair')->count(),
+            'Inventory items' => $this->card(Inventory::count()),
+            'Needs repair' => $this->card(Inventory::where('condition', 'needs_repair')->count()),
         ]);
     }
 
-    public function president(): View
+    public function president(Request $request): View
     {
+        $user = $request->user();
+        $visible = fn () => MaintenanceRequest::query()->visibleTo($user);
+        $pending = TicketStatus::PendingAuthorization->value;
+        $closed = TicketStatus::Closed->value;
+
         return $this->show('School President Dashboard', [
-            'Waiting for your approval' => MaintenanceRequest::where('status', TicketStatus::PendingAuthorization->value)->count(),
-            'Authorized by you' => MaintenanceRequest::whereNotNull('president_approved_at')->count(),
-            'Closed' => MaintenanceRequest::where('status', TicketStatus::Closed->value)->count(),
+            'Waiting for your approval' => $this->card($visible()->where('status', $pending)->count(), route('tickets.index', ['status' => [$pending]])),
+            'Authorized by you' => $this->card($visible()->whereNotNull('president_approved_at')->count()),
+            'Closed' => $this->card($visible()->where('status', $closed)->count(), route('tickets.index', ['status' => [$closed]])),
         ]);
+    }
+
+    /** One dashboard card: the number, and the pre-filtered ticket list it links to (if any). */
+    private function card(int $count, ?string $url = null): array
+    {
+        return ['count' => $count, 'url' => $url];
     }
 
     private function show(string $title, array $cards): View

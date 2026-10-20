@@ -41,6 +41,8 @@
                             @endif
                         </div>
 
+                        <a href="{{ route('tickets.show', $r) }}" class="flex min-h-[44px] items-center justify-center border-t border-gray-100 text-sm font-bold text-blue-700 hover:bg-blue-50">View details &amp; history</a>
+
                         @if ($r->status === TicketStatus::Approved || ($r->status === TicketStatus::Assigned && (int) $r->assigned_to === (int) auth()->id()))
                             <form method="POST" action="{{ route('maintenance.accept', $r) }}">
                                 @csrf

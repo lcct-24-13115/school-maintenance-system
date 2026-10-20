@@ -314,13 +314,15 @@ class TicketFoundationTest extends TestCase
         $this->assertFalse($ticket->is_emergency);
     }
 
+    // Phase 2 changed this rule ON PURPOSE: only users with flag_emergency can set the flag from the form
+    // (before, anyone could). A requester asking for an emergency is covered in TicketAccessTest.
     public function test_an_emergency_repair_form_flags_the_ticket_with_a_reason(): void
     {
         $this->seedBase();
-        $requester = $this->user('requester@lcctanauan.edu.ph');
+        $staff = $this->user('maintenance@lcctanauan.edu.ph');
 
-        $this->actingAs($requester)->post(route('repairs.store'), [
-            'department_id' => $requester->department_id,
+        $this->actingAs($staff)->post(route('repairs.store'), [
+            'department_id' => $staff->department_id,
             'category_id' => Category::query()->firstOrFail()->id,
             'location' => 'Comfort Room',
             'job_description' => 'Pipe burst',
@@ -331,7 +333,7 @@ class TicketFoundationTest extends TestCase
         $ticket = MaintenanceRequest::firstOrFail();
         $this->assertTrue($ticket->is_emergency);
         $this->assertSame('Water is flooding the floor.', $ticket->emergency_reason);
-        $this->assertEquals($requester->id, $ticket->emergency_flagged_by);
+        $this->assertEquals($staff->id, $ticket->emergency_flagged_by);
     }
 
     public function test_the_repair_form_requires_a_category(): void

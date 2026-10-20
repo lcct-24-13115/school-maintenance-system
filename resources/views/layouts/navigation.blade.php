@@ -15,6 +15,14 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
+                        {{ __('Tickets') }}
+                    </x-nav-link>
+                    @can('create', \App\Models\MaintenanceRequest::class)
+                        <x-nav-link :href="route('repairs.create')" :active="request()->routeIs('repairs.*')">
+                            {{ __('New request') }}
+                        </x-nav-link>
+                    @endcan
                 </div>
             </div>
 
@@ -73,6 +81,14 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')" class="min-h-[44px] py-3">
+                {{ __('Tickets') }}
+            </x-responsive-nav-link>
+            @can('create', \App\Models\MaintenanceRequest::class)
+                <x-responsive-nav-link :href="route('repairs.create')" :active="request()->routeIs('repairs.*')" class="min-h-[44px] py-3">
+                    {{ __('New request') }}
+                </x-responsive-nav-link>
+            @endcan
             <x-responsive-nav-link :href="route('notifications.index')" :active="request()->routeIs('notifications.*')">
                 🔔 {{ __('Notifications') }}
             </x-responsive-nav-link>

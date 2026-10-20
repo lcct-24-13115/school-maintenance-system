@@ -173,7 +173,7 @@
                 </div>
 
                 <div class="mt-6 pt-5 border-t border-slate-200 text-xs text-slate-500">
-                    @if (Route::has('register'))
+                    @if (Route::has('register') && config('school.allow_public_registration'))
                         No account yet?
                         <a href="{{ route('register') }}" class="text-lcct-light hover:underline font-semibold">Register as Requester</a>
                     @endif

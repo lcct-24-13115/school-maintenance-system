@@ -12,10 +12,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class RequestStatusLog extends Model
 {
     public const ACTION_STATUS = 'status_change';
+
     public const ACTION_ASSIGNMENT = 'assignment';
+
     public const ACTION_REASSIGNMENT = 'reassignment';
+
     public const ACTION_EMERGENCY = 'emergency_flag';
+
     public const ACTION_AUTHORIZATION = 'authorization';
+
     public const ACTION_NOTE = 'note';
 
     protected $fillable = ['request_id', 'user_id', 'action', 'from_status', 'to_status', 'note', 'meta'];

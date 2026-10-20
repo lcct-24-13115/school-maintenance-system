@@ -60,13 +60,22 @@
                         </label>
                         <label class="cursor-pointer rounded-xl border-2 p-4 text-center font-bold" :class="priority === 'emergency' ? 'border-red-600 bg-red-50 text-red-700' : 'border-gray-200 text-gray-600'">
                             <input type="radio" name="priority" value="emergency" x-model="priority" class="sr-only">
-                            🚨 Emergency
+                            @if ($canFlag)
+                                🚨 Emergency
+                            @else
+                                🚨 Ask for<br>emergency review
+                            @endif
                         </label>
                     </div>
+                    @unless ($canFlag)
+                        <p x-show="priority === 'emergency'" class="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                            Your ticket will be filed as a routine request. Maintenance will see that you asked for an emergency review and your reason below.
+                        </p>
+                    @endunless
                     @error('priority')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                 </fieldset>
 
-                <div x-show="priority !== 'emergency' || {{ config('school.emergency_bypasses_advance_notice') ? 'false' : 'true' }}">
+                <div x-show="priority !== 'emergency' || {{ $emergencyBypass ? 'false' : 'true' }}">
                     <label class="block text-base font-semibold text-gray-800">Date needed</label>
                     <input type="date" name="needed_by" value="{{ old('needed_by') }}" min="{{ $earliest->toDateString() }}" class="mt-1 w-full rounded-lg border-gray-300 py-3 text-base">
                     <p class="mt-1 text-xs text-gray-500">Earliest allowed: {{ $earliest->format('M j, Y (l)') }}</p>

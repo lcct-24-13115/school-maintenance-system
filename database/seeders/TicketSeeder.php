@@ -158,7 +158,8 @@ class TicketSeeder extends Seeder
             'reason' => 'Affects classes and daily operations.',
             'is_emergency' => $emergency,
             'emergency_reason' => $emergency ? self::EMERGENCY_REASONS[$i % count(self::EMERGENCY_REASONS)] : null,
-            'emergency_flagged_by' => $emergency ? $requester->id : null,
+            // Phase 2: only users with the flag_emergency capability set the flag (a requester can only ask for a review)
+            'emergency_flagged_by' => $emergency ? $staff->first()->id : null,
             'emergency_flagged_at' => $emergency ? $submittedAt->copy()->addMinutes(2) : null,
             'is_confidential' => $confidential,
             'status' => $final,
@@ -182,7 +183,7 @@ class TicketSeeder extends Seeder
         $this->log($ticket, RequestStatusLog::ACTION_STATUS, $requester->id, $submittedAt, null, TicketStatus::Submitted, 'Ticket submitted.');
 
         if ($emergency) {
-            $this->log($ticket, RequestStatusLog::ACTION_EMERGENCY, $requester->id, $submittedAt->copy()->addMinutes(2),
+            $this->log($ticket, RequestStatusLog::ACTION_EMERGENCY, $staff->first()->id, $submittedAt->copy()->addMinutes(2),
                 null, null, $ticket->emergency_reason, ['flagged' => true]);
         }
 

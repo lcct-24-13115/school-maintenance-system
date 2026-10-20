@@ -15,6 +15,7 @@ class FacilityRequest extends Model
     use HasApprovalWorkflow, SoftDeletes;
 
     public const REF_PREFIX = 'FE';
+
     public const LABEL = 'Use of Facilities & Equipment';
 
     protected $table = 'facilities_equipment_requests';
@@ -61,9 +62,28 @@ class FacilityRequest extends Model
         return $this->returned_at ? null : 'Equipment/facility has not been marked as returned yet.';
     }
 
-    public function requester(): BelongsTo { return $this->belongsTo(User::class, 'requester_id'); }
-    public function department(): BelongsTo { return $this->belongsTo(Department::class); }
-    public function receiver(): BelongsTo { return $this->belongsTo(User::class, 'received_by'); }
-    public function facilities(): BelongsToMany { return $this->belongsToMany(Facility::class, 'fe_request_facility', 'fe_request_id', 'facility_id'); }
-    public function items(): HasMany { return $this->hasMany(FacilityRequestItem::class, 'fe_request_id'); }
+    public function requester(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'requester_id');
+    }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function receiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
+    }
+
+    public function facilities(): BelongsToMany
+    {
+        return $this->belongsToMany(Facility::class, 'fe_request_facility', 'fe_request_id', 'facility_id');
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(FacilityRequestItem::class, 'fe_request_id');
+    }
 }

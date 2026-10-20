@@ -20,11 +20,19 @@
             </p>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                @foreach ($cards as $label => $value)
-                    <div class="bg-white shadow-sm sm:rounded-lg p-6">
-                        <div class="text-sm text-gray-500">{{ $label }}</div>
-                        <div class="mt-2 text-3xl font-semibold text-gray-900">{{ $value }}</div>
-                    </div>
+                @foreach ($cards as $label => $card)
+                    @if ($card['url'])
+                        <a href="{{ $card['url'] }}" class="block min-h-[44px] rounded-lg bg-white p-6 shadow-sm hover:bg-blue-50">
+                            <div class="text-sm text-gray-500">{{ $label }}</div>
+                            <div class="mt-2 text-3xl font-semibold text-gray-900">{{ $card['count'] }}</div>
+                            <div class="mt-1 text-xs font-semibold text-blue-700">View list &rarr;</div>
+                        </a>
+                    @else
+                        <div class="rounded-lg bg-white p-6 shadow-sm">
+                            <div class="text-sm text-gray-500">{{ $label }}</div>
+                            <div class="mt-2 text-3xl font-semibold text-gray-900">{{ $card['count'] }}</div>
+                        </div>
+                    @endif
                 @endforeach
             </div>
         </div>

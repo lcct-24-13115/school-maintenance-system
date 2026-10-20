@@ -16,9 +16,11 @@ class RepairRequest extends Model
     use HasApprovalWorkflow, SoftDeletes;
 
     public const REF_PREFIX = 'RR';
+
     public const LABEL = 'Request for Repairs & Improvement';
 
     public const PRIORITY_FCFS = 'first_come_first_served';
+
     public const PRIORITY_EMERGENCY = 'emergency';
 
     protected $fillable = [
@@ -89,7 +91,18 @@ class RepairRequest extends Model
         }
     }
 
-    public function requester(): BelongsTo { return $this->belongsTo(User::class, 'requester_id'); }
-    public function department(): BelongsTo { return $this->belongsTo(Department::class); }
-    public function assignee(): BelongsTo { return $this->belongsTo(User::class, 'assigned_to'); }
+    public function requester(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'requester_id');
+    }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
 }

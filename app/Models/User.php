@@ -62,6 +62,28 @@ class User extends Authenticatable
         return in_array($this->role?->slug, $slugs, true);
     }
 
+    /**
+     * Does this user's role have the capability? Reads config/permissions.php (role slug => list).
+     * Inactive accounts can do nothing.
+     */
+    public function can_do(string $capability): bool
+    {
+        $slug = $this->role?->slug;
+
+        if (! $this->is_active || $slug === null) {
+            return false;
+        }
+
+        return in_array($capability, (array) config("permissions.{$slug}", []), true);
+    }
+
+    /** Department-level visibility (e.g. Department Head). Configurable: school.department_visibility_roles. */
+    public function seesOwnDepartment(): bool
+    {
+        return $this->department_id !== null
+            && $this->hasRole(...(array) config('school.department_visibility_roles', []));
+    }
+
     public function isPresident(): bool
     {
         return $this->hasRole(Role::PRESIDENT);

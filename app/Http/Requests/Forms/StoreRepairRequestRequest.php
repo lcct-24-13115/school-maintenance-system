@@ -12,12 +12,15 @@ class StoreRepairRequestRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        return $this->user()?->can('create', MaintenanceRequest::class) ?? false;
     }
 
     public function rules(): array
     {
+        // Only people who may really flag an emergency skip the advance-notice rule.
+        // Anyone else who ticks "Emergency" is only ASKING for a review, so the normal date rule applies.
         $bypass = config('school.emergency_bypasses_advance_notice')
+            && $this->user()->can_do('flag_emergency')
             && $this->input('priority') === MaintenanceRequest::PRIORITY_EMERGENCY;
 
         return [
