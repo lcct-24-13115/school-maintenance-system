@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MaintenanceBoardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RepairRequestController;
+use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Controllers\TicketController;
 use App\Http\Middleware\CheckRole;
 use App\Models\Role;
@@ -46,7 +48,13 @@ Route::middleware('auth')->group(function () {
 
     // ---- Ticket list + detail (TicketPolicy / visibleTo decide what each user sees; hidden = 404) ----
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
+    // Alias of /repairs/create. MUST stay above /tickets/{ticket}, or "create" would be looked up as a ticket.
+    Route::get('/tickets/create', [RepairRequestController::class, 'create'])->name('tickets.create');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
+    Route::post('/tickets/{ticket}/attachments', [TicketAttachmentController::class, 'store'])->name('tickets.attachments.store');
+
+    // ---- Attachments: private files, opened only through here (ticket visibility decides; hidden = 404) ----
+    Route::get('/attachments/{attachment}', [AttachmentController::class, 'show'])->name('attachments.show');
 
     // ---- Maintenance card board ----
     Route::middleware(CheckRole::class.':'.Role::MAINTENANCE_ADMIN)->prefix('maintenance')->name('maintenance.')->group(function () {

@@ -9,6 +9,7 @@
         RequestStatusLog::ACTION_EMERGENCY => 'Emergency flag',
         RequestStatusLog::ACTION_AUTHORIZATION => 'Authorization',
         RequestStatusLog::ACTION_NOTE => 'Note',
+        RequestStatusLog::ACTION_ATTACHMENT => 'Attachment',
     ];
 @endphp
 
@@ -25,6 +26,10 @@
         <div class="max-w-5xl mx-auto space-y-4 px-3 sm:px-6 lg:px-8">
 
             <a href="{{ route('tickets.index') }}" class="inline-flex min-h-[44px] items-center text-sm font-semibold text-blue-700 hover:underline">&larr; Back to tickets</a>
+
+            @if (session('status'))
+                <div class="rounded-xl bg-green-100 p-4 font-semibold text-green-800">{{ session('status') }}</div>
+            @endif
 
             @if ($ticket->is_emergency)
                 <div class="rounded-xl bg-red-50 p-4 text-red-900">
@@ -90,14 +95,58 @@
                 </section>
             @endif
 
-            {{-- Attachments: names only. Downloads come in Phase 3 (private storage). --}}
-            <section class="rounded-xl bg-white p-4 shadow-sm">
-                <h3 class="mb-3 text-lg font-bold text-gray-900">Attachments</h3>
+            {{-- Attachments: opened only through the authorized route (private storage) --}}
+            <section class="rounded-xl bg-white p-4 shadow-sm" id="attachments">
+                <h3 class="mb-3 text-lg font-bold text-gray-900">Attachments <span class="text-sm font-normal text-gray-500">({{ $ticket->attachments->count() }})</span></h3>
+
                 @forelse ($ticket->attachments as $file)
-                    <div class="break-all py-1">📎 {{ $file->original_name }} <span class="text-xs text-gray-500">(uploaded by {{ $file->uploader?->name ?? 'unknown' }})</span></div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 py-3 last:border-0">
+                        <div class="min-w-0 flex-1">
+                            <a href="{{ $file->url() }}" @if ($file->isInline()) target="_blank" rel="noopener" @endif class="break-all font-semibold text-blue-700 hover:underline">
+                                <span aria-hidden="true">{{ $file->icon() }}</span> {{ $file->original_name }}
+                            </a>
+                            <div class="text-xs text-gray-500">
+                                {{ $file->sizeForHumans() }} · {{ $file->uploader?->name ?? 'unknown' }} · {{ $file->created_at?->format('M j, Y g:i A') }}
+                                @unless ($file->isRequestFile())
+                                    <span class="ms-1 rounded bg-indigo-100 px-1.5 py-0.5 font-semibold text-indigo-800">{{ $file->kindLabel() }}</span>
+                                @endunless
+                            </div>
+                        </div>
+                        <a href="{{ $file->downloadUrl() }}" class="inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm font-bold text-gray-700 hover:bg-gray-50">Download</a>
+                    </div>
                 @empty
                     <p class="text-gray-500">No attachments.</p>
                 @endforelse
+
+                @can('addAttachment', $ticket)
+                    <form method="POST" action="{{ route('tickets.attachments.store', $ticket) }}" enctype="multipart/form-data" class="mt-4 space-y-3 border-t border-gray-100 pt-4">
+                        @csrf
+                        <div class="text-base font-semibold text-gray-800">Add files</div>
+
+                        <x-file-picker name="files" />
+
+                        @if (auth()->user()->can_do('work'))
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700">What are these files?</label>
+                                <select name="kind" class="mt-1 w-full rounded-lg border-gray-300 py-3 text-base sm:w-auto">
+                                    @foreach (\App\Models\RequestAttachment::kindLabels() as $value => $label)
+                                        <option value="{{ $value }}" @selected(old('kind') === $value)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                @error('kind')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                            </div>
+                        @endif
+
+                        @error('files')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+                        @foreach ($errors->get('files.*') as $messages)
+                            @foreach ((array) $messages as $message)
+                                <p class="text-sm text-red-600">{{ $message }}</p>
+                            @endforeach
+                        @endforeach
+
+                        <button class="min-h-[48px] w-full rounded-xl bg-blue-600 px-6 py-3 text-base font-bold text-white hover:bg-blue-700 sm:w-auto">Upload</button>
+                    </form>
+                @endcan
             </section>
 
             {{-- Actions: empty for now. Phase 4 puts authorize / assign / flag / close here. --}}

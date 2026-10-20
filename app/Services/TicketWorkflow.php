@@ -9,9 +9,12 @@ use App\Models\RequestStatusLog;
 use App\Models\Role;
 use App\Models\User;
 use DomainException;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * The ONE place that changes a ticket. Every method validates the move and writes the history line
@@ -22,14 +25,35 @@ use Illuminate\Support\Facades\DB;
  */
 class TicketWorkflow
 {
-    /** File a new ticket. Retries if two people get the same ticket number at the same instant. */
-    public static function open(User $requester, array $data, ?UploadedFile $photo = null): MaintenanceRequest
+    /**
+     * File a new ticket with any number of files and items. Everything happens in ONE transaction:
+     * if a file or an item fails, no ticket is left behind and files already saved are removed again.
+     * Retries if two people get the same ticket number at the same instant.
+     *
+     * @param  UploadedFile|array<int, UploadedFile>|null  $files  request attachments (kind "request")
+     * @param  array<int, array{item_name: string, quantity?: int|string, unit?: ?string, specification?: ?string}>  $items
+     */
+    public static function open(User $requester, array $data, UploadedFile|array|null $files = null, array $items = []): MaintenanceRequest
     {
+        $files = array_values(array_filter(Arr::wrap($files)));
+        $items = self::cleanItems($items);
+
+        if ($items !== [] && blank($data['request_type'] ?? null)) {
+            throw new DomainException('Items can only be added when a request type (materials, equipment or supplies) is chosen.');
+        }
+
+        // Refuse a bad upload BEFORE anything is written.
+        if ($files !== [] && ($error = AttachmentService::checkMany($files))) {
+            throw new DomainException($error);
+        }
+
         $attempts = 0;
 
         while (true) {
+            $stored = [];   // [disk, path] of files saved in this attempt, removed again if the attempt fails
+
             try {
-                $ticket = DB::transaction(function () use ($requester, $data) {
+                $ticket = DB::transaction(function () use ($requester, $data, $files, $items, &$stored) {
                     $emergency = (bool) ($data['is_emergency'] ?? false);
 
                     $ticket = MaintenanceRequest::create([
@@ -65,32 +89,96 @@ class TicketWorkflow
                             meta: ['emergency_review_requested' => true]);
                     }
 
+                    foreach ($items as $item) {
+                        $ticket->items()->create($item);
+                    }
+
+                    foreach ($files as $file) {
+                        self::storeAttachment($ticket, $file, $requester, RequestAttachment::KIND_REQUEST, $stored);
+                    }
+
                     return $ticket;
                 });
 
                 break;
             } catch (UniqueConstraintViolationException $e) {
+                AttachmentService::discard($stored);
+
                 if (++$attempts >= 5) {
                     throw $e;
                 }
+            } catch (Throwable $e) {
+                AttachmentService::discard($stored);
+
+                throw $e;
             }
         }
 
-        if ($photo) {
-            self::addAttachment($ticket, $photo, $requester);
-        }
-
-        return $ticket->load('attachments');
+        return $ticket->load(['attachments', 'items']);
     }
 
-    public static function addAttachment(MaintenanceRequest $ticket, UploadedFile $file, User $by): RequestAttachment
-    {
-        return $ticket->attachments()->create([
-            'uploaded_by' => $by->id,
-            'path' => $file->store('ticket-attachments', RequestAttachment::DISK),
-            'original_name' => $file->getClientOriginalName(),
-            'mime_type' => $file->getClientMimeType(),
-        ]);
+    /** Add ONE file to an existing ticket (a history line is written). See addAttachments(). */
+    public static function addAttachment(
+        MaintenanceRequest $ticket,
+        UploadedFile $file,
+        User $by,
+        string $kind = RequestAttachment::KIND_REQUEST,
+    ): RequestAttachment {
+        return self::addAttachments($ticket, [$file], $by, $kind)->first();
+    }
+
+    /**
+     * Add one upload (1..max_files files) of one `kind` to an existing ticket, with ONE history line.
+     * Enforces the file rules (type by content, 5 MB, count, names). WHO may add files is TicketPolicy@addAttachment.
+     * Phase 4 adds the closure rules for the signed_evidence kind; here it is only uploadable.
+     *
+     * @param  array<int, UploadedFile>  $files
+     * @return Collection<int, RequestAttachment>
+     */
+    public static function addAttachments(
+        MaintenanceRequest $ticket,
+        array $files,
+        User $by,
+        string $kind = RequestAttachment::KIND_REQUEST,
+    ): Collection {
+        if (! in_array($kind, RequestAttachment::KINDS, true)) {
+            throw new DomainException('Unknown attachment type "'.$kind.'".');
+        }
+
+        $files = array_values(array_filter($files));
+        if ($files === []) {
+            throw new DomainException('Choose at least one file.');
+        }
+        if ($error = AttachmentService::checkMany($files)) {
+            throw new DomainException($error);
+        }
+
+        $stored = [];
+
+        try {
+            return DB::transaction(function () use ($ticket, $files, $by, $kind, &$stored) {
+                $created = new Collection;
+
+                foreach ($files as $file) {
+                    $created->push(self::storeAttachment($ticket, $file, $by, $kind, $stored));
+                }
+
+                $names = $created->pluck('original_name')->implode(', ');
+                $count = $created->count();
+                $ticket->logEvent(
+                    RequestStatusLog::ACTION_ATTACHMENT,
+                    $by,
+                    sprintf('Added %s (%s): %s', $count === 1 ? '1 file' : "{$count} files", RequestAttachment::kindLabels()[$kind], $names),
+                    meta: ['kind' => $kind, 'attachment_ids' => $created->pluck('id')->all()],
+                );
+
+                return $created;
+            });
+        } catch (Throwable $e) {
+            AttachmentService::discard($stored);
+
+            throw $e;
+        }
     }
 
     /** A plain status change (the transition map decides if it is allowed). */
@@ -258,6 +346,36 @@ class TicketWorkflow
     }
 
     // ---------------------------------------------------------------------------------------------
+
+    /** Save one file (private disk, random name) and its row. Remembers the saved path in $stored. */
+    private static function storeAttachment(MaintenanceRequest $ticket, UploadedFile $file, User $by, string $kind, array &$stored): RequestAttachment
+    {
+        $meta = AttachmentService::store($file);
+        $stored[] = [$meta['disk'], $meta['path']];
+
+        return $ticket->attachments()->create($meta + ['uploaded_by' => $by->id, 'kind' => $kind]);
+    }
+
+    /** Drop empty rows and tidy the rest. A row needs an item name; quantity is at least 1. */
+    private static function cleanItems(array $items): array
+    {
+        $clean = [];
+
+        foreach ($items as $item) {
+            if (! is_array($item) || blank($item['item_name'] ?? null)) {
+                continue;
+            }
+
+            $clean[] = [
+                'item_name' => trim((string) $item['item_name']),
+                'quantity' => max(1, (int) ($item['quantity'] ?? 1)),
+                'unit' => filled($item['unit'] ?? null) ? trim((string) $item['unit']) : null,
+                'specification' => filled($item['specification'] ?? null) ? trim((string) $item['specification']) : null,
+            ];
+        }
+
+        return $clean;
+    }
 
     /** Validate the move, update the ticket and write ONE history line, atomically. */
     private static function apply(

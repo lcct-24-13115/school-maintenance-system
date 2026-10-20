@@ -16,7 +16,8 @@
 |   assign             assign / reassign a ticket (Phase 4 action)
 |   work               accept and complete tasks
 |   close              close a ticket (Phase 4 action)
-|   add_attachment     add files to an existing ticket (Phase 3/4)
+|   add_attachment     add files to ANY visible ticket (the requester of their own non-closed ticket and the
+|                      assignee can add files through TicketPolicy@addAttachment without this capability)
 |   view_analytics     see analytics (Phase 6)
 |   export_reports     export reports (Phase 7)
 |   manage_users       manage user accounts (later phase)

@@ -9,6 +9,7 @@ use App\Models\MaintenanceRequest;
 use App\Rules\AdvanceNotice;
 use App\Services\FormNotifier;
 use App\Services\TicketWorkflow;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -30,7 +31,12 @@ class RepairRequestController extends Controller
             'canFlag' => $canFlag,
             'emergencyBypass' => $canFlag && config('school.emergency_bypasses_advance_notice'),
             'departments' => Department::orderBy('name')->get(),
-            'categories' => Category::where('is_active', true)->orderBy('name')->get(),
+            'categories' => Category::where('is_active', true)->orderBy('name')->get(['id', 'name', 'type']),
+            'requestTypes' => [
+                Category::TYPE_MATERIALS => 'Materials',
+                Category::TYPE_EQUIPMENT => 'Equipment',
+                Category::TYPE_SUPPLIES => 'Supplies',
+            ],
             'defaultDepartment' => $request->user()->department_id,
             'earliest' => AdvanceNotice::earliest('repair'),
         ]);
@@ -46,19 +52,26 @@ class RepairRequestController extends Controller
         $emergency = $asked && $request->user()->can_do('flag_emergency');
         $reviewAsked = $asked && ! $emergency;
 
-        $ticket = TicketWorkflow::open($request->user(), [
-            'department_id' => $data['department_id'],
-            'category_id' => $data['category_id'],
-            'maintenance_type' => 'repair',
-            'location' => $data['location'],
-            'description' => $data['job_description'],
-            'reason' => $data['reason'],
-            'needed_by' => $data['needed_by'] ?? null,
-            'is_emergency' => $emergency,
-            // the requester's reason doubles as the emergency reason
-            'emergency_reason' => $emergency ? $data['reason'] : null,
-            'emergency_review_reason' => $reviewAsked ? $data['reason'] : null,
-        ], $request->file('photo'));
+        try {
+            $ticket = TicketWorkflow::open($request->user(), [
+                'department_id' => $data['department_id'],
+                'category_id' => $data['category_id'],
+                'request_type' => $data['request_type'] ?? null,
+                'maintenance_type' => 'repair',
+                'location' => $data['location'],
+                'description' => $data['job_description'],
+                'reason' => $data['reason'],
+                'needed_by' => $data['needed_by'] ?? null,
+                'is_confidential' => (bool) ($data['is_confidential'] ?? false),
+                'is_emergency' => $emergency,
+                // the requester's reason doubles as the emergency reason
+                'emergency_reason' => $emergency ? $data['reason'] : null,
+                'emergency_review_reason' => $reviewAsked ? $data['reason'] : null,
+            ], $request->file('files', []), $data['items'] ?? []);
+        } catch (DomainException $e) {
+            // a rule the form could not foresee (e.g. a file or category changed while sending)
+            return back()->withInput()->withErrors(['form' => $e->getMessage()]);
+        }
 
         FormNotifier::submitted($ticket);   // chime + pop-up for maintenance
 

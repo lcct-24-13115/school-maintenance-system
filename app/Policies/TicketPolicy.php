@@ -59,9 +59,25 @@ class TicketPolicy
         return $this->can($user, $ticket, 'close');
     }
 
+    /**
+     * Add files after filing: anyone with the add_attachment capability (Maintenance Admin), the staff member
+     * the ticket is assigned to, or the requester of their OWN ticket while it is not Closed/Disapproved.
+     */
     public function addAttachment(User $user, MaintenanceRequest $ticket): bool
     {
-        return $this->can($user, $ticket, 'add_attachment');
+        if (! $ticket->isVisibleTo($user)) {
+            return false;
+        }
+
+        if ($user->can_do('add_attachment')) {
+            return true;
+        }
+
+        if ($ticket->assigned_to !== null && (int) $ticket->assigned_to === (int) $user->id) {
+            return true;
+        }
+
+        return (int) $ticket->requester_id === (int) $user->id && ! $ticket->status->isTerminal();
     }
 
     private function can(User $user, MaintenanceRequest $ticket, string $capability): bool

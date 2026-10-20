@@ -23,6 +23,8 @@ class RequestStatusLog extends Model
 
     public const ACTION_NOTE = 'note';
 
+    public const ACTION_ATTACHMENT = 'attachment';
+
     protected $fillable = ['request_id', 'user_id', 'action', 'from_status', 'to_status', 'note', 'meta'];
 
     protected function casts(): array

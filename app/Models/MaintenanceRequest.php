@@ -231,10 +231,10 @@ class MaintenanceRequest extends Model
         return $this->president_id !== null && $this->president_approved_at !== null;
     }
 
-    /** First image attachment, for the photo on the maintenance card. */
+    /** First request photo, for the card on the maintenance board (an authorized route, never a /storage URL). */
     public function photoUrl(): ?string
     {
-        $photo = $this->attachments->first(fn (RequestAttachment $a) => $a->isImage());
+        $photo = $this->attachments->first(fn (RequestAttachment $a) => $a->isRequestFile() && $a->isImage());
 
         return $photo?->url();
     }
