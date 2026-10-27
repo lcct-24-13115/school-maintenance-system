@@ -29,6 +29,23 @@ return [
     ],
 
     /*
+    | Default values for the editable settings page (/admin/settings, Merge Phase M1).
+    | The database table `settings` overrides these; this array is only the fallback.
+    |
+    |  sla_hours_routine    target hours from submission to completion for a routine ticket
+    |  sla_hours_emergency  same, for a ticket flagged as emergency
+    |  reopen_window_days   used by Merge Phase M2 (how long after closing a ticket may be reopened)
+    |
+    | CONFIRM WITH CLIENT: the numbers are placeholders (routine = 120 h = the 5 working days printed on FO-08;
+    | emergency = 24 h). Hours are CALENDAR hours, not working hours.
+    */
+    'settings_defaults' => [
+        'sla_hours_routine' => 120,
+        'sla_hours_emergency' => 24,
+        'reopen_window_days' => 14,
+    ],
+
+    /*
     | Ticket workflow rules (Phase 4). Role slugs, see App\Models\Role.
     |
     |  authorizers               roles that may approve / disapprove a ticket (the recorded "Authorized by").

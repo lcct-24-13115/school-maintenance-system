@@ -41,7 +41,7 @@ class MaintenanceRequest extends Model
         'status', 'assigned_to', 'assigned_at',
         'president_id', 'president_approved_at', 'president_remarks',
         'problems_encountered', 'recommendations',
-        'submitted_at', 'completed_at', 'closed_at',
+        'submitted_at', 'due_at', 'completed_at', 'closed_at',
     ];
 
     protected function casts(): array
@@ -52,6 +52,7 @@ class MaintenanceRequest extends Model
             'is_confidential' => 'boolean',
             'needed_by' => 'date',
             'submitted_at' => 'datetime',
+            'due_at' => 'datetime',
             'assigned_at' => 'datetime',
             'emergency_flagged_at' => 'datetime',
             'president_approved_at' => 'datetime',
@@ -66,9 +67,16 @@ class MaintenanceRequest extends Model
             $ticket->submitted_at ??= now();
             $ticket->status ??= TicketStatus::Submitted;
             $ticket->ticket_no ??= self::generateTicketNo($ticket->submitted_at);
+            $ticket->due_at ??= self::computeDueAt($ticket->submitted_at, (bool) $ticket->is_emergency);
         });
 
         static::saving(function (self $ticket) {
+            // M1: flagging / clearing an emergency changes the SLA class, so the target date is recomputed
+            // from the ORIGINAL submission time (submitted_at never moves).
+            if ($ticket->exists && $ticket->isDirty('is_emergency') && $ticket->submitted_at) {
+                $ticket->due_at = self::computeDueAt($ticket->submitted_at, (bool) $ticket->is_emergency);
+            }
+
             // Rule 1: a ticket classified as materials/equipment/supplies must use a category of that type.
             // (request_type is optional: pure service work such as a repair has none.)
             if ($ticket->request_type && $ticket->isDirty(['category_id', 'request_type'])) {
@@ -143,6 +151,29 @@ class MaintenanceRequest extends Model
     public function getReferenceNoAttribute(): ?string
     {
         return $this->ticket_no;
+    }
+
+    // ---- due date / overdue (Merge Phase M1) -----------------------------------------------------
+
+    /** Target completion = submission time + SLA hours (Setting: sla_hours_routine / sla_hours_emergency). */
+    public static function computeDueAt(Carbon $submittedAt, bool $emergency): Carbon
+    {
+        $hours = Setting::int($emergency ? 'sla_hours_emergency' : 'sla_hours_routine', $emergency ? 24 : 120);
+
+        return $submittedAt->copy()->addHours(max($hours, 1));
+    }
+
+    /** Past its target date and still pending (Work Completed, Closed and Disapproved are never overdue). */
+    public function scopeOverdue(Builder $query): Builder
+    {
+        return $query->whereNotNull('due_at')
+            ->where('due_at', '<', now())
+            ->whereIn('status', TicketStatus::pendingValues());
+    }
+
+    public function isOverdue(): bool
+    {
+        return $this->due_at !== null && $this->due_at->isPast() && $this->status->isPending();
     }
 
     // ---- queue ---------------------------------------------------------------------------------

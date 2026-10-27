@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\DashboardController;
@@ -79,6 +80,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/tickets/{ticket}/accept', [MaintenanceBoardController::class, 'accept'])->name('accept');
         Route::post('/tickets/{ticket}/complete', [MaintenanceBoardController::class, 'complete'])->name('complete');
     });
+
+    // ---- Admin settings (Merge Phase M1). Capability manage_settings is checked in the controller (others get 403) ----
+    Route::get('/admin/settings', [SettingsController::class, 'edit'])->name('admin.settings.edit');
+    Route::put('/admin/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

@@ -80,6 +80,10 @@
                         Emergency only
                     </label>
                     <label class="flex min-h-[44px] items-center gap-2 text-sm font-semibold text-gray-700">
+                        <input type="checkbox" name="overdue" value="1" @checked($filters['overdue']) class="h-5 w-5 rounded border-gray-300">
+                        Overdue only
+                    </label>
+                    <label class="flex min-h-[44px] items-center gap-2 text-sm font-semibold text-gray-700">
                         <input type="checkbox" name="mine" value="1" @checked($filters['mine']) class="h-5 w-5 rounded border-gray-300">
                         Only tickets I filed
                     </label>

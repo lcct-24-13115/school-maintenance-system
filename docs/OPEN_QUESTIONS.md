@@ -25,3 +25,7 @@ Each one is marked `// CONFIRM WITH CLIENT` in the code. Add new rows as later p
 | 18 | 4A | Who may **add notes** to a ticket? | Requester (own), assignee, authorizers, Maintenance Admin. Finance, Dept. Heads, Treasurer, Custodian are view-only until their roles are confirmed. | `TicketPolicy@addNote` |
 | 19 | 4A | Is the note when **clearing an emergency** required? Who may clear? | Optional note; Maintenance Admin only (the President may flag but not clear) | `config/permissions.php` (`clear_emergency`), `TicketActionController@clearEmergency` |
 | 20 | 4A | Can the authorizer upload a signed file when approving? | Yes, stored as `signed_evidence` (the President still cannot upload files from the attachments box) | `TicketActionController@approve` |
+| 21 | M1 | Target completion time (SLA): how many hours, and calendar or working hours? | Routine 120 h, emergency 24 h, calendar hours | `/admin/settings` (table `settings`), fallback `config/school.php` -> `settings_defaults` |
+| 22 | M1 | Should the requester's `needed_by` date replace the SLA target date? | No: `due_at` = submitted_at + SLA hours; `needed_by` is shown separately | `MaintenanceRequest::computeDueAt()` |
+| 23 | M1 | Who may edit system settings? | Maintenance Admin only | `config/permissions.php` (`manage_settings`) |
+

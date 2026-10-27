@@ -22,6 +22,7 @@
 |   view_analytics     see analytics (Phase 6)
 |   export_reports     export reports (Phase 7)
 |   manage_users       manage user accounts (later phase)
+|   manage_settings    edit /admin/settings: SLA hours, reopen window (Merge Phase M1)
 |
 | Requesters always see their own tickets, and staff always see tickets assigned to them;
 | that is not a capability. See also school.department_visibility_roles.
@@ -32,7 +33,7 @@ return [
     // maintenance_admin is the proposal's "Admin".
     'maintenance_admin' => [
         'view_all_tickets', 'view_confidential', 'flag_emergency', 'clear_emergency',
-        'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users',
+        'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users', 'manage_settings',
     ],
 
     // CONFIRM WITH CLIENT: Finance sees all tickets EXCEPT confidential ones.

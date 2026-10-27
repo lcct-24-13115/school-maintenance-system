@@ -33,6 +33,7 @@ class TicketController extends Controller
             'department_id' => ['nullable', 'integer'],
             'assigned_to' => ['nullable', 'string', 'max:20'],
             'emergency' => ['nullable', 'boolean'],
+            'overdue' => ['nullable', 'boolean'],
             'mine' => ['nullable', 'boolean'],
         ]);
 
@@ -51,6 +52,7 @@ class TicketController extends Controller
             'department_id' => $request->query('department_id'),
             'assigned_to' => $request->query('assigned_to'),
             'emergency' => $request->boolean('emergency'),
+            'overdue' => $request->boolean('overdue'),
             'mine' => $request->boolean('mine'),
         ];
 
@@ -134,6 +136,9 @@ class TicketController extends Controller
         }
         if ($f['emergency']) {
             $query->where('is_emergency', true);
+        }
+        if ($f['overdue']) {
+            $query->overdue();
         }
         if ($f['mine']) {
             $query->where('requester_id', $user->id);

@@ -28,6 +28,11 @@
                             {{ __('New request') }}
                         </x-nav-link>
                     @endcan
+                    @if (auth()->user()->can_do('manage_settings'))
+                        <x-nav-link :href="route('admin.settings.edit')" :active="request()->routeIs('admin.settings.*')">
+                            {{ __('Settings') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -99,6 +104,11 @@
                     {{ __('New request') }}
                 </x-responsive-nav-link>
             @endcan
+            @if (auth()->user()->can_do('manage_settings'))
+                <x-responsive-nav-link :href="route('admin.settings.edit')" :active="request()->routeIs('admin.settings.*')" class="min-h-[44px] py-3">
+                    {{ __('Settings') }}
+                </x-responsive-nav-link>
+            @endif
             <x-responsive-nav-link :href="route('notifications.index')" :active="request()->routeIs('notifications.*')">
                 🔔 {{ __('Notifications') }}
             </x-responsive-nav-link>
