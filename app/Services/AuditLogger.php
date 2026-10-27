@@ -29,6 +29,10 @@ class AuditLogger
 
     public const LOGIN_FAILED = 'login_failed';
 
+    public const REGISTERED = 'registered';
+
+    public const PASSWORD_RESET = 'password_reset';
+
     public const USER_CREATED = 'user_created';
 
     public const USER_UPDATED = 'user_updated';
@@ -64,7 +68,7 @@ class AuditLogger
     public static function actions(): array
     {
         return [
-            self::LOGIN, self::LOGOUT, self::LOGIN_FAILED,
+            self::LOGIN, self::LOGOUT, self::LOGIN_FAILED, self::REGISTERED, self::PASSWORD_RESET,
             self::USER_CREATED, self::USER_UPDATED, self::USER_DEACTIVATED, self::USER_REACTIVATED, self::ROLE_CHANGED,
             self::SETTINGS_UPDATED,
             self::TICKET_STATUS, self::TICKET_ASSIGNED, self::TICKET_REASSIGNED,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\MaintenanceRequest;
 use App\Models\Setting;
+use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -35,8 +36,29 @@ class SettingsController extends Controller
             'recalculate_open' => ['nullable', 'boolean'],
         ]);
 
+        // Remember what actually changed (old -> new) before saving, for the audit trail.
+        $changes = [];
+        foreach (self::KEYS as $key) {
+            $old = Setting::int($key);
+            $new = (int) $data[$key];
+
+            if ($old !== $new) {
+                $changes[$key] = [$old, $new];
+            }
+        }
+
         foreach (self::KEYS as $key) {
             Setting::put($key, $data[$key]);
+        }
+
+        if ($changes !== []) {
+            AuditLogger::log(
+                AuditLogger::SETTINGS_UPDATED,
+                'Settings changed: '.implode(', ', array_keys($changes)),
+                null,
+                $request->user(),
+                ['changes' => $changes],
+            );
         }
 
         // Optional: re-date the tickets that are still pending. Quietly, so history/guards are untouched.

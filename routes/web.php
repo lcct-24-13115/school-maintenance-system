@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
@@ -84,6 +85,9 @@ Route::middleware('auth')->group(function () {
     // ---- Admin settings (Merge Phase M1). Capability manage_settings is checked in the controller (others get 403) ----
     Route::get('/admin/settings', [SettingsController::class, 'edit'])->name('admin.settings.edit');
     Route::put('/admin/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
+
+    // ---- Audit trail (Merge Phase M3). Read-only. Capability view_audit_logs is checked in the controller (others get 403) ----
+    Route::get('/admin/audit-logs', [AuditLogController::class, 'index'])->name('admin.audit-logs.index');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

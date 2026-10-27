@@ -25,3 +25,10 @@ Test logins (password: `password`): requester@, maintenance@, depthead@, finance
 
 ## Not built yet
 Blade pages + controllers for Form 1 and Form 2, approvals inbox for Dept Head/Finance/Treasurer/Custodian/President, PDF replicas of the 3 forms.
+
+## Merge Phase M3: audit log
+- `/admin/audit-logs` (route `admin.audit-logs.index`, capability `view_audit_logs`: maintenance_admin + president). Read-only; filters: user, action, date from/to (whole "to" day), search. 25 per page.
+- Rows are written only through `App\Services\AuditLogger::log()` (never throws, strips passwords/tokens). `AuditLogger::EXPORT` is ready for the future export feature.
+- Hooks: auth listeners + `UserObserver` (AppServiceProvider), `TicketWorkflow::apply()` / uploads, `AttachmentController::show`, `Admin\SettingsController::update`.
+- Ticket rows are short and point at `request_status_logs` through `meta.status_log_id`; notes/reasons are not copied.
+- Tests: `tests/Feature/AuditLogTest.php` (+ `AuditLoggerTest.php` for the foundation).

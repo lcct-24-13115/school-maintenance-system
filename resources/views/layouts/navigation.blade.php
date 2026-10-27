@@ -33,6 +33,11 @@
                             {{ __('Settings') }}
                         </x-nav-link>
                     @endif
+                    @if (auth()->user()->can_do('view_audit_logs'))
+                        <x-nav-link :href="route('admin.audit-logs.index')" :active="request()->routeIs('admin.audit-logs.*')">
+                            {{ __('Audit log') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -107,6 +112,11 @@
             @if (auth()->user()->can_do('manage_settings'))
                 <x-responsive-nav-link :href="route('admin.settings.edit')" :active="request()->routeIs('admin.settings.*')" class="min-h-[44px] py-3">
                     {{ __('Settings') }}
+                </x-responsive-nav-link>
+            @endif
+            @if (auth()->user()->can_do('view_audit_logs'))
+                <x-responsive-nav-link :href="route('admin.audit-logs.index')" :active="request()->routeIs('admin.audit-logs.*')" class="min-h-[44px] py-3">
+                    {{ __('Audit log') }}
                 </x-responsive-nav-link>
             @endif
             <x-responsive-nav-link :href="route('notifications.index')" :active="request()->routeIs('notifications.*')">

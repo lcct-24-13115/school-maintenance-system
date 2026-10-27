@@ -116,7 +116,13 @@ class TicketWorkflow
             }
         }
 
-        return $ticket->load(['attachments', 'items']);
+        $ticket->load(['attachments', 'items']);
+
+        if ($files !== []) {
+            self::auditUpload($ticket, $ticket->attachments, $requester, RequestAttachment::KIND_REQUEST);
+        }
+
+        return $ticket;
     }
 
     /** Add ONE file to an existing ticket (a history line is written). See addAttachments(). */
@@ -158,7 +164,7 @@ class TicketWorkflow
         $stored = [];
 
         try {
-            return DB::transaction(function () use ($ticket, $files, $by, $kind, &$stored) {
+            $created = DB::transaction(function () use ($ticket, $files, $by, $kind, &$stored) {
                 $created = new Collection;
 
                 foreach ($files as $file) {
@@ -176,6 +182,10 @@ class TicketWorkflow
 
                 return $created;
             });
+
+            self::auditUpload($ticket, $created, $by, $kind);   // once per upload, after the files are saved
+
+            return $created;
         } catch (Throwable $e) {
             AttachmentService::discard($stored);
 
@@ -472,7 +482,7 @@ class TicketWorkflow
             throw new DomainException(MaintenanceRequest::invalidTransitionMessage($ticket->ticket_no, $from, $to));
         }
 
-        DB::transaction(function () use ($ticket, $to, $from, $attributes, $action, $by, $note, $meta) {
+        $log = DB::transaction(function () use ($ticket, $to, $from, $attributes, $action, $by, $note, $meta) {
             $current = MaintenanceRequest::query()->lockForUpdate()->find($ticket->getKey());
 
             if ($current === null
@@ -488,9 +498,76 @@ class TicketWorkflow
 
             $ticket->update($attributes);   // the model's own guards run here too
 
-            $ticket->logEvent($action, $by, $note, $to !== null ? $from : null, $to, $meta);
+            return $ticket->logEvent($action, $by, $note, $to !== null ? $from : null, $to, $meta);
         });
 
+        self::auditChange($ticket, $from, $to, $action, $by, $meta, $log);
+
         return $ticket->refresh();
+    }
+
+    // ---- audit trail (Merge Phase M3) ------------------------------------------------------------
+    // Short rows only. The note/reason stays in request_status_logs; meta.status_log_id points at it.
+    // AuditLogger never throws, and these helpers swallow anything else, so logging can never block the action.
+
+    /** One row for a status change and/or one for an assignment, each pointing at the history line just written. */
+    private static function auditChange(
+        MaintenanceRequest $ticket,
+        TicketStatus $from,
+        ?TicketStatus $to,
+        string $action,
+        ?User $by,
+        ?array $meta,
+        RequestStatusLog $log,
+    ): void {
+        try {
+            $no = $ticket->ticket_no;
+
+            if ($to !== null && $to !== $from) {
+                AuditLogger::log(AuditLogger::TICKET_STATUS, "{$no}: {$from->label()} -> {$to->label()}", $ticket, $by, [
+                    'status_log_id' => $log->getKey(),
+                ]);
+            }
+
+            if (in_array($action, [RequestStatusLog::ACTION_ASSIGNMENT, RequestStatusLog::ACTION_REASSIGNMENT], true)) {
+                $isReassignment = $action === RequestStatusLog::ACTION_REASSIGNMENT;
+                $to_name = User::query()->whereKey($meta['to_user_id'] ?? null)->value('name') ?? 'unknown';
+                $from_name = User::query()->whereKey($meta['from_user_id'] ?? null)->value('name') ?? 'unknown';
+
+                AuditLogger::log(
+                    $isReassignment ? AuditLogger::TICKET_REASSIGNED : AuditLogger::TICKET_ASSIGNED,
+                    $isReassignment ? "{$no}: Reassigned from {$from_name} to {$to_name}" : "{$no}: Assigned to {$to_name}",
+                    $ticket,
+                    $by,
+                    ['status_log_id' => $log->getKey(), 'from_user_id' => $meta['from_user_id'] ?? null, 'to_user_id' => $meta['to_user_id'] ?? null],
+                );
+            }
+        } catch (Throwable $e) {
+            report($e);
+        }
+    }
+
+    /** ONE row per upload (not per file). File names only; the status log line has the rest. */
+    private static function auditUpload(MaintenanceRequest $ticket, iterable $files, User $by, string $kind): void
+    {
+        try {
+            $files = collect($files);
+
+            if ($files->isEmpty()) {
+                return;
+            }
+
+            $count = $files->count();
+
+            AuditLogger::log(
+                AuditLogger::ATTACHMENT_UPLOADED,
+                sprintf('%s: Uploaded %s: %s', $ticket->ticket_no, $count === 1 ? '1 file' : "{$count} files", $files->pluck('original_name')->implode(', ')),
+                $ticket,
+                $by,
+                ['kind' => $kind, 'attachment_ids' => $files->pluck('id')->all()],
+            );
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 }

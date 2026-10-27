@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\RequestAttachment;
 use App\Services\AttachmentService;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -32,8 +33,17 @@ class AttachmentController extends Controller
         ];
 
         $name = AttachmentService::sanitizeName((string) $attachment->original_name);
+        $inline = $attachment->isInline() && ! $request->boolean('download');
 
-        if ($attachment->isInline() && ! $request->boolean('download')) {
+        AuditLogger::log(
+            AuditLogger::ATTACHMENT_DOWNLOADED,
+            sprintf('%s: %s %s', $attachment->request->ticket_no, $inline ? 'Opened' : 'Downloaded', $name),
+            $attachment->request,
+            $request->user(),
+            ['attachment_id' => $attachment->id],
+        );
+
+        if ($inline) {
             return $disk->response($attachment->path, $name, $headers, 'inline');
         }
 

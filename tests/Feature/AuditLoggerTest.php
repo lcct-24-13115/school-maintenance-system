@@ -146,7 +146,8 @@ class AuditLoggerTest extends TestCase
         $user->forceDelete();
 
         $this->assertNull($row->fresh()->user_id);
-        $this->assertSame(1, AuditLog::count());
+        // (creating the user also wrote a user_created row through the observer, so count the login row only)
+        $this->assertSame(1, AuditLog::where('action', AuditLogger::LOGIN)->count());
     }
 
     public function test_only_maintenance_admin_and_president_have_the_capability(): void
