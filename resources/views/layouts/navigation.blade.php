@@ -28,6 +28,11 @@
                             {{ __('New request') }}
                         </x-nav-link>
                     @endcan
+                    @if (auth()->user()->can_do('view_analytics'))
+                        <x-nav-link :href="route('reports.index')" :active="request()->routeIs('reports.*')">
+                            {{ __('Reports') }}
+                        </x-nav-link>
+                    @endif
                     @if (auth()->user()->can_do('manage_settings'))
                         <x-nav-link :href="route('admin.settings.edit')" :active="request()->routeIs('admin.settings.*')">
                             {{ __('Settings') }}
@@ -109,6 +114,11 @@
                     {{ __('New request') }}
                 </x-responsive-nav-link>
             @endcan
+            @if (auth()->user()->can_do('view_analytics'))
+                <x-responsive-nav-link :href="route('reports.index')" :active="request()->routeIs('reports.*')" class="min-h-[44px] py-3">
+                    {{ __('Reports') }}
+                </x-responsive-nav-link>
+            @endif
             @if (auth()->user()->can_do('manage_settings'))
                 <x-responsive-nav-link :href="route('admin.settings.edit')" :active="request()->routeIs('admin.settings.*')" class="min-h-[44px] py-3">
                     {{ __('Settings') }}

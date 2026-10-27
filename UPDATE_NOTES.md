@@ -32,3 +32,10 @@ Blade pages + controllers for Form 1 and Form 2, approvals inbox for Dept Head/F
 - Hooks: auth listeners + `UserObserver` (AppServiceProvider), `TicketWorkflow::apply()` / uploads, `AttachmentController::show`, `Admin\SettingsController::update`.
 - Ticket rows are short and point at `request_status_logs` through `meta.status_log_id`; notes/reasons are not copied.
 - Tests: `tests/Feature/AuditLogTest.php` (+ `AuditLoggerTest.php` for the foundation).
+
+## Merge Phase M4: reports and CSV export
+- `/reports` (route `reports.index`, capability `view_analytics`): tickets per status / category / month / department, overdue, emergency, average time to approve and to complete, workload per staff. Date filter on the submission date.
+- `/reports/export` (route `reports.export`, capability `export_reports`): CSV of the same filtered list. UTF-8 BOM, text cells starting with `= + - @` are prefixed with `'` (`App\Support\Csv`). Every export is written to audit_logs (`export`).
+- Everything goes through `App\Services\ReportMetrics::tickets()` = `visibleTo($user)` + dates, so confidential tickets only reach roles with `view_confidential`.
+- Charts: Chart.js is an npm dependency bundled by Vite (`resources/js/reports.js`, loaded only on /reports). After pulling: `npm install` then `npm run build`.
+- Tests: `tests/Feature/ReportTest.php`.

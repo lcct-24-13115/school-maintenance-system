@@ -9,6 +9,7 @@ use App\Http\Controllers\MaintenanceBoardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RepairRequestController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketActionController;
 use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Controllers\TicketController;
@@ -87,6 +88,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/admin/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
 
     // ---- Audit trail (Merge Phase M3). Read-only. Capability view_audit_logs is checked in the controller (others get 403) ----
+    // ---- Reports (Merge Phase M4). view_analytics opens the page, export_reports the CSV; both checked in the controller (others get 403) ----
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
+
     Route::get('/admin/audit-logs', [AuditLogController::class, 'index'])->name('admin.audit-logs.index');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

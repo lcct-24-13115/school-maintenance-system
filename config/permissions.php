@@ -19,8 +19,9 @@
 |   close              close a ticket (Phase 4 action)
 |   add_attachment     add files to ANY visible ticket (the requester of their own non-closed ticket and the
 |                      assignee can add files through TicketPolicy@addAttachment without this capability)
-|   view_analytics     see analytics (Phase 6)
-|   export_reports     export reports (Phase 7)
+|   view_analytics     open /reports: charts and numbers (Phase 6, built in Merge Phase M4)
+|   export_reports     download the CSV from /reports/export (Phase 7, built in M4). Logged to audit_logs.
+|                      Both only ever cover the tickets the user may see (confidential: view_confidential).
 |   manage_users       manage user accounts (later phase)
 |   manage_settings    edit /admin/settings: SLA hours, reopen window (Merge Phase M1)
 |   cancel_own         cancel YOUR OWN ticket, before it is Assigned (Merge Phase M2). Every role has it.
