@@ -23,6 +23,12 @@
 |   export_reports     export reports (Phase 7)
 |   manage_users       manage user accounts (later phase)
 |   manage_settings    edit /admin/settings: SLA hours, reopen window (Merge Phase M1)
+|   cancel_own         cancel YOUR OWN ticket, before it is Assigned (Merge Phase M2). Every role has it.
+|   reopen_own         reopen YOUR OWN Work Completed / Closed ticket inside reopen_window_days (M2). Every role has it.
+|   request_info       ask the requester for information: ticket goes to Waiting for User (M2)
+|   view_audit_logs    open /admin/audit-logs, the read-only audit trail (Merge Phase M3)
+|   escalate           escalate to the President / authorizer (M2). Handing it back is the authorizer's
+|                      (school.workflow.authorizers), like approve/disapprove.
 |
 | Requesters always see their own tickets, and staff always see tickets assigned to them;
 | that is not a capability. See also school.department_visibility_roles.
@@ -34,23 +40,26 @@ return [
     'maintenance_admin' => [
         'view_all_tickets', 'view_confidential', 'flag_emergency', 'clear_emergency',
         'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users', 'manage_settings',
+        'cancel_own', 'reopen_own', 'request_info', 'escalate', 'view_audit_logs',
     ],
 
     // CONFIRM WITH CLIENT: Finance sees all tickets EXCEPT confidential ones.
     'finance' => [
         'view_all_tickets', 'view_analytics', 'export_reports',
+        'cancel_own', 'reopen_own',
     ],
 
     // CONFIRM WITH CLIENT: the proposal does not say whether the President may flag emergencies.
     'president' => [
         'view_all_tickets', 'view_confidential', 'authorize', 'disapprove', 'flag_emergency',
-        'view_analytics', 'export_reports',
+        'view_analytics', 'export_reports', 'view_audit_logs',
+        'cancel_own', 'reopen_own',
     ],
 
     // CONFIRM WITH CLIENT: no global powers. Requesters see their own tickets;
     // department heads also see their own department (school.department_visibility_roles).
-    'requester' => [],
-    'department_head' => [],
-    'treasurer' => [],
-    'custodian' => [],
+    'requester' => ['cancel_own', 'reopen_own'],
+    'department_head' => ['cancel_own', 'reopen_own'],
+    'treasurer' => ['cancel_own', 'reopen_own'],
+    'custodian' => ['cancel_own', 'reopen_own'],
 ];

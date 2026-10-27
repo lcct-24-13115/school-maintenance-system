@@ -1,0 +1,150 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\AuditLog;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
+use Throwable;
+
+/**
+ * Writes the audit trail (Merge Phase M3). Call it from the services/listeners that already do the work:
+ *
+ *   AuditLogger::log(AuditLogger::LOGIN, 'Signed in', user: $user);
+ *   AuditLogger::log(AuditLogger::TICKET_STATUS, 'MT-2026-00001: Approved -> Assigned', $ticket, meta: ['status_log_id' => 12]);
+ *
+ * Rules:
+ *  - It NEVER throws. If the row cannot be written the error is reported and the real action carries on.
+ *  - It NEVER stores passwords or tokens: sensitive meta keys are dropped and "password=..." style text is redacted.
+ *  - Ticket notes and reasons are not copied; point at request_status_logs with meta.status_log_id instead.
+ *  - The IP address and user agent come from the current request, so they are empty in artisan commands and seeders.
+ */
+class AuditLogger
+{
+    // ---- action names (one place, so the page filter and the tests use the same words) -------------
+
+    public const LOGIN = 'login';
+
+    public const LOGOUT = 'logout';
+
+    public const LOGIN_FAILED = 'login_failed';
+
+    public const USER_CREATED = 'user_created';
+
+    public const USER_UPDATED = 'user_updated';
+
+    public const USER_DEACTIVATED = 'user_deactivated';
+
+    public const USER_REACTIVATED = 'user_reactivated';
+
+    public const ROLE_CHANGED = 'role_changed';
+
+    public const SETTINGS_UPDATED = 'settings_updated';
+
+    public const TICKET_STATUS = 'ticket_status';
+
+    public const TICKET_ASSIGNED = 'ticket_assigned';
+
+    public const TICKET_REASSIGNED = 'ticket_reassigned';
+
+    public const ATTACHMENT_UPLOADED = 'attachment_uploaded';
+
+    public const ATTACHMENT_DOWNLOADED = 'attachment_downloaded';
+
+    public const EXPORT = 'export';
+
+    public const DESCRIPTION_LIMIT = 1000;
+
+    public const USER_AGENT_LIMIT = 255;
+
+    /** Words that mark a meta key or a "word=value" fragment as secret. */
+    private const SENSITIVE = ['password', 'passwd', 'token', 'secret', 'authorization', 'cookie'];
+
+    /** @return list<string> every action name, for the page's filter dropdown */
+    public static function actions(): array
+    {
+        return [
+            self::LOGIN, self::LOGOUT, self::LOGIN_FAILED,
+            self::USER_CREATED, self::USER_UPDATED, self::USER_DEACTIVATED, self::USER_REACTIVATED, self::ROLE_CHANGED,
+            self::SETTINGS_UPDATED,
+            self::TICKET_STATUS, self::TICKET_ASSIGNED, self::TICKET_REASSIGNED,
+            self::ATTACHMENT_UPLOADED, self::ATTACHMENT_DOWNLOADED,
+            self::EXPORT,
+        ];
+    }
+
+    /**
+     * Record one event. Returns the row, or null when it could not be written (never throws).
+     *
+     * @param  ?User  $user  who did it; defaults to the signed-in user. Pass null AND no session for system events.
+     * @param  ?array<string, mixed>  $meta  small structured details (ids, old/new values). No secrets.
+     */
+    public static function log(
+        string $action,
+        string $description,
+        ?Model $subject = null,
+        ?User $user = null,
+        ?array $meta = null,
+    ): ?AuditLog {
+        try {
+            $user ??= auth()->user();
+            $request = request();
+
+            return AuditLog::create([
+                'user_id' => $user?->getKey(),
+                'action' => mb_substr($action, 0, 50),
+                'description' => mb_substr(self::redact($description), 0, self::DESCRIPTION_LIMIT),
+                'subject_type' => $subject?->getMorphClass(),
+                'subject_id' => $subject?->getKey(),
+                'meta' => $meta === null || $meta === [] ? null : self::cleanMeta($meta),
+                'ip_address' => $request?->ip(),
+                'user_agent' => ($agent = $request?->userAgent()) !== null ? mb_substr($agent, 0, self::USER_AGENT_LIMIT) : null,
+            ]);
+        } catch (Throwable $e) {
+            report($e);
+
+            return null;
+        }
+    }
+
+    /** Drop secret keys (at any depth) from the structured details. */
+    public static function cleanMeta(array $meta): array
+    {
+        $clean = [];
+
+        foreach ($meta as $key => $value) {
+            if (is_string($key) && self::isSensitive($key)) {
+                continue;
+            }
+
+            $clean[$key] = is_array($value) ? self::cleanMeta($value) : $value;
+        }
+
+        return $clean;
+    }
+
+    /** "password=abc123", "token: xyz" and "Authorization: Bearer xyz" become "password=[redacted]" etc. */
+    public static function redact(string $text): string
+    {
+        $words = implode('|', array_map('preg_quote', self::SENSITIVE));
+
+        return (string) preg_replace(
+            '/\b([\w-]*(?:'.$words.')[\w-]*)\b(\s*[:=]\s*)(?:Bearer\s+)?[^\s,;]+/i',
+            '$1$2[redacted]',
+            $text
+        );
+    }
+
+    private static function isSensitive(string $key): bool
+    {
+        $key = strtolower($key);
+
+        foreach (self::SENSITIVE as $word) {
+            if (str_contains($key, $word)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
