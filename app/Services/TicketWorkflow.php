@@ -466,6 +466,120 @@ class TicketWorkflow
         return self::close($ticket, $by, 'Confirmed resolved by the requester.');
     }
 
+    // ---- Phase 9: ask the requester for information, and auto-close when nobody answers -------------
+    // Waiting for User PAUSES the SLA clock: it is never Overdue while waiting, and when the ticket leaves
+    // Waiting for User its due_at moves later by the time it waited (see apply()). The start of the wait is the
+    // history line that entered Waiting for User, so no new column is needed.
+
+    /** The history line that put the ticket in Waiting for User (the latest one), or null when it is not waiting. */
+    public static function waitingLog(MaintenanceRequest $ticket): ?RequestStatusLog
+    {
+        if ($ticket->status !== TicketStatus::WaitingForUser) {
+            return null;
+        }
+
+        return $ticket->statusLogs()->reorder('id', 'desc')
+            ->where('to_status', TicketStatus::WaitingForUser->value)->first();
+    }
+
+    /** When the current wait started, or null when the ticket is not waiting. */
+    public static function waitingSince(MaintenanceRequest $ticket): ?Carbon
+    {
+        return self::waitingLog($ticket)?->created_at;
+    }
+
+    /**
+     * Staff (request_info) ask the requester a question: the ticket goes to Waiting for User and the SLA clock pauses.
+     * The status it came from is kept in the history line, so the reply can send it back there.
+     */
+    public static function requestInfo(MaintenanceRequest $ticket, User $by, string $question): MaintenanceRequest
+    {
+        if (! $by->is_active || ! $by->can_do('request_info')) {
+            throw new DomainException('Only maintenance staff can ask the requester for information.');
+        }
+
+        if (blank($question)) {
+            throw new DomainException('Write what you need to know from the requester.');
+        }
+
+        if ($ticket->status === TicketStatus::WaitingForUser) {
+            throw new DomainException("Ticket {$ticket->ticket_no} is already waiting for the requester.");
+        }
+
+        if (! $ticket->status->canTransitionTo(TicketStatus::WaitingForUser)) {
+            throw new DomainException("Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\". Information can no longer be requested.");
+        }
+
+        return self::apply(
+            $ticket,
+            TicketStatus::WaitingForUser,
+            [],
+            RequestStatusLog::ACTION_STATUS,
+            $by,
+            'Information requested: '.trim($question),
+            ['info_requested' => true, 'waiting_from' => $ticket->status->value],
+        );
+    }
+
+    /**
+     * The requester answers. The ticket goes back to the status it was in when the question was asked
+     * (In Progress when staff asked during the work), and the SLA clock runs again with the waited time added.
+     */
+    public static function respondToInfo(MaintenanceRequest $ticket, User $by, string $reply): MaintenanceRequest
+    {
+        if ((int) $ticket->requester_id !== (int) $by->id) {
+            throw new DomainException('Only the person who filed the ticket can answer.');
+        }
+
+        if ($ticket->status !== TicketStatus::WaitingForUser) {
+            throw new DomainException("Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\". It is not waiting for an answer.");
+        }
+
+        if (blank($reply)) {
+            throw new DomainException('Write your answer first.');
+        }
+
+        $back = TicketStatus::tryFrom((string) self::waitingLog($ticket)?->from_status)
+            ?? ($ticket->assigned_to !== null ? TicketStatus::InProgress : TicketStatus::Submitted);
+
+        return self::apply($ticket, $back, [], RequestStatusLog::ACTION_STATUS, $by,
+            'Requester replied: '.trim($reply), ['info_reply' => true]);
+    }
+
+    /**
+     * Close a ticket that has waited for the requester for settings.autoclose_waiting_days (default 7).
+     * It becomes CANCELLED (the status table has no Waiting for User -> Closed, and Closed needs authorization).
+     * Called by the tickets:autoclose command; it refuses a ticket that is not waiting or not waiting long enough.
+     */
+    public static function autoCloseWaiting(MaintenanceRequest $ticket, ?int $days = null): MaintenanceRequest
+    {
+        $days ??= Setting::int('autoclose_waiting_days');
+
+        if ($days <= 0) {
+            throw new DomainException('Auto-close is turned off.');
+        }
+
+        $since = self::waitingSince($ticket);
+
+        if ($since === null) {
+            throw new DomainException("Ticket {$ticket->ticket_no} is not waiting for the requester.");
+        }
+
+        if (now()->lessThan($since->copy()->addDays($days))) {
+            throw new DomainException("Ticket {$ticket->ticket_no} has not waited {$days} days yet.");
+        }
+
+        return self::apply(
+            $ticket,
+            TicketStatus::Cancelled,
+            [],
+            RequestStatusLog::ACTION_STATUS,
+            null,
+            "Auto-closed: no reply from the requester for {$days} days.",
+            ['auto_closed' => true, 'waiting_since' => $since->toIso8601String()],
+        );
+    }
+
     /** Raise an emergency flag. The reason is required. Who may flag is enforced in Phase 2. */
     public static function flagEmergency(MaintenanceRequest $ticket, User $by, string $reason): MaintenanceRequest
     {
@@ -620,6 +734,15 @@ class TicketWorkflow
                 || (int) $current->assigned_to !== (int) $ticket->assigned_to
                 || (bool) $current->is_emergency !== (bool) $ticket->is_emergency) {
                 throw new DomainException(self::STALE_MESSAGE);
+            }
+
+            // Phase 9: leaving Waiting for User un-pauses the SLA clock: due_at moves later by the time it waited.
+            if ($from === TicketStatus::WaitingForUser && $to !== null && $to !== $from && $to->isPending() && $ticket->due_at !== null) {
+                $since = self::waitingSince($ticket);
+
+                if ($since !== null) {
+                    $attributes['due_at'] = $ticket->due_at->copy()->addSeconds(abs((int) $since->diffInSeconds(now())));
+                }
             }
 
             if ($to !== null) {

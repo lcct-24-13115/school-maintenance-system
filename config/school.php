@@ -62,7 +62,8 @@ return [
     |
     |  sla_hours_routine    target hours from submission to completion for a routine ticket
     |  sla_hours_emergency  same, for a ticket flagged as emergency
-    |  reopen_window_days   used by Merge Phase M2 (how long after closing a ticket may be reopened)
+    |  reopen_window_days   how long after completing/closing a ticket may be reopened (Phase 8)
+    |  autoclose_waiting_days  days a ticket may wait for the requester before tickets:autoclose closes it (Phase 9; 0 = off)
     |
     | CONFIRM WITH CLIENT: the numbers are placeholders (routine = 120 h = the 5 working days printed on FO-08;
     | emergency = 24 h). Hours are CALENDAR hours, not working hours.
@@ -71,6 +72,7 @@ return [
         'sla_hours_routine' => 120,
         'sla_hours_emergency' => 24,
         'reopen_window_days' => 14,
+        'autoclose_waiting_days' => 7,   // Phase 9: days without an answer before a Waiting for User ticket is auto-closed (0 = off)
     ],
 
     /*

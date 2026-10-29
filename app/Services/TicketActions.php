@@ -41,6 +41,11 @@ class TicketActions
 
     public const REOPEN = 'reopen';
 
+    // Phase 9: ask for information / answer
+    public const REQUEST_INFO = 'request_info';
+
+    public const RESPOND_INFO = 'respond_info';
+
     /** @return list<string> */
     public static function for(MaintenanceRequest $ticket, User $user): array
     {
@@ -86,6 +91,14 @@ class TicketActions
         }
         if ($ticket->is_emergency && $can('clearEmergency')) {
             $actions[] = self::CLEAR_EMERGENCY;
+        }
+
+        // Phase 9: staff ask a question (not while already waiting); the requester answers it
+        if ($status !== TicketStatus::WaitingForUser && $status->canTransitionTo(TicketStatus::WaitingForUser) && $can('requestInfo')) {
+            $actions[] = self::REQUEST_INFO;
+        }
+        if ($status === TicketStatus::WaitingForUser && $can('respondToInfo')) {
+            $actions[] = self::RESPOND_INFO;
         }
 
         // Phase 8: the requester's own actions (policy = who, TicketWorkflow = which status / window)

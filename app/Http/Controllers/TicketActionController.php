@@ -90,6 +90,32 @@ class TicketActionController extends Controller
             'Emergency flag removed. The ticket is back in its original place in the queue.');
     }
 
+    /** Phase 9: staff ask the requester a question. The ticket waits for the answer and the SLA clock pauses. */
+    public function requestInfo(Request $request, MaintenanceRequest $ticket): RedirectResponse
+    {
+        return $this->act($request, $ticket, 'requestInfo', 'info', [
+            'info_question' => ['required', 'string', 'max:1000'],
+        ], ['info_question.required' => 'Write what you need to know from the requester.'],
+            function (array $data) use ($request, $ticket) {
+                TicketWorkflow::requestInfo($ticket, $request->user(), $data['info_question']);
+                FormNotifier::infoRequested($ticket->refresh(), $request->user());
+            },
+            'The requester was asked. The ticket now waits for the answer and its target time is paused.');
+    }
+
+    /** Phase 9: the requester answers; the ticket goes back to where it was. */
+    public function respondToInfo(Request $request, MaintenanceRequest $ticket): RedirectResponse
+    {
+        return $this->act($request, $ticket, 'respondToInfo', 'reply', [
+            'info_reply' => ['required', 'string', 'max:1000'],
+        ], ['info_reply.required' => 'Write your answer first.'],
+            function (array $data) use ($request, $ticket) {
+                TicketWorkflow::respondToInfo($ticket, $request->user(), $data['info_reply']);
+                FormNotifier::requesterAction($ticket->refresh(), $request->user(), 'replied');
+            },
+            'Thank you. Your answer was sent and the work continues.');
+    }
+
     /** Phase 8: the requester cancels their own ticket, before it is Assigned. */
     public function cancel(Request $request, MaintenanceRequest $ticket): RedirectResponse
     {

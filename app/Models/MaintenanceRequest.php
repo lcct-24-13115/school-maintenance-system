@@ -168,12 +168,14 @@ class MaintenanceRequest extends Model
     {
         return $query->whereNotNull('due_at')
             ->where('due_at', '<', now())
-            ->whereIn('status', TicketStatus::pendingValues());
+            ->whereIn('status', TicketStatus::pendingValues())
+            ->where('status', '!=', TicketStatus::WaitingForUser->value);   // Phase 9: the SLA clock is paused while waiting
     }
 
     public function isOverdue(): bool
     {
-        return $this->due_at !== null && $this->due_at->isPast() && $this->status->isPending();
+        return $this->due_at !== null && $this->due_at->isPast() && $this->status->isPending()
+            && $this->status !== TicketStatus::WaitingForUser;
     }
 
     // ---- queue ---------------------------------------------------------------------------------

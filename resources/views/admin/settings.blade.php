@@ -45,6 +45,14 @@
                 @error('reopen_window_days')<div class="field-err">{{ $message }}</div>@enderror
             </div>
 
+            <div class="field">
+                <label for="autoclose_waiting_days">Auto-close after no answer (days)</label>
+                <input id="autoclose_waiting_days" type="number" name="autoclose_waiting_days" min="0" max="365" inputmode="numeric"
+                       value="{{ old('autoclose_waiting_days', $values['autoclose_waiting_days']) }}">
+                <div class="p6-hint">When staff ask the requester for information, the ticket waits and its target time is paused. If nobody answers for this many days the ticket is closed (as Cancelled). Enter 0 to turn it off.</div>
+                @error('autoclose_waiting_days')<div class="field-err">{{ $message }}</div>@enderror
+            </div>
+
             <label class="p6-check">
                 <input type="checkbox" name="recalculate_open" value="1">
                 <span>Also re-date tickets that are still pending

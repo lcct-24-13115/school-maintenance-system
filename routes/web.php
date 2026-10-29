@@ -73,6 +73,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/cancel', [TicketActionController::class, 'cancel'])->name('cancel');
         Route::post('/confirm-resolved', [TicketActionController::class, 'confirmResolved'])->name('confirm-resolved');
         Route::post('/reopen', [TicketActionController::class, 'reopen'])->name('reopen');
+        // Phase 9: ask for information / answer
+        Route::post('/request-info', [TicketActionController::class, 'requestInfo'])->name('request-info');
+        Route::post('/respond-info', [TicketActionController::class, 'respondToInfo'])->name('respond-info');
     });
 
     // ---- Authorizer inbox (school.workflow.authorizers only; others get 403) ----

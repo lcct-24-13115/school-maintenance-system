@@ -134,6 +134,45 @@
             </form>
         @endif
 
+        {{-- Requester (Phase 9): staff asked a question --}}
+        @if ($has(A::RESPOND_INFO))
+            @php
+                $ask = \App\Services\TicketWorkflow::waitingLog($ticket);
+                $autoDays = \App\Models\Setting::int('autoclose_waiting_days');
+            @endphp
+            <form method="POST" action="{{ route('tickets.respond-info', $ticket) }}" style="{{ $box('#f1d78f', 'var(--amber-dim)') }}">
+                @csrf
+                <div class="lbl" style="font-size:16px"><i class="fa-regular fa-circle-question"></i> Maintenance needs more information</div>
+                @if ($ask)
+                    <p style="margin:0 0 12px;white-space:pre-line">{{ \Illuminate\Support\Str::after($ask->note, 'Information requested: ') }}</p>
+                @endif
+                <div class="field">
+                    <label for="info_reply" class="lbl">Your answer (required)</label>
+                    <textarea id="info_reply" name="info_reply" rows="3" required style="{{ $area }}">{{ old('info_reply') }}</textarea>
+                    @if ($errors->reply->has('info_reply'))<p class="field-err">{{ $errors->reply->first('info_reply') }}</p>@endif
+                </div>
+                @if ($ask && $autoDays > 0)
+                    <p class="hint" style="margin:0 0 12px">Please answer before {{ $ask->created_at->copy()->addDays($autoDays)->timezone(config('app.timezone'))->format('M j, Y g:i A') }}. Without an answer the ticket is closed automatically.</p>
+                @endif
+                <button class="btn btn-primary">Send answer</button>
+            </form>
+        @endif
+
+        {{-- Staff (Phase 9): ask the requester a question --}}
+        @if ($has(A::REQUEST_INFO))
+            <form method="POST" action="{{ route('tickets.request-info', $ticket) }}" style="{{ $box('#f1d78f', 'var(--amber-dim)') }}">
+                @csrf
+                <div class="lbl" style="font-size:16px"><i class="fa-regular fa-circle-question"></i> Ask the requester for information</div>
+                <div class="field">
+                    <label for="info_question" class="lbl">What do you need to know? (required)</label>
+                    <textarea id="info_question" name="info_question" rows="2" required style="{{ $area }}">{{ old('info_question') }}</textarea>
+                    @if ($errors->info->has('info_question'))<p class="field-err">{{ $errors->info->first('info_question') }}</p>@endif
+                </div>
+                <p class="hint" style="margin:0 0 12px">The ticket waits for the answer and its target time is paused. It goes back to where it is now when the requester answers.</p>
+                <button class="btn btn-primary" style="background:var(--gold);border-color:var(--gold);color:var(--navy)">Ask the requester</button>
+            </form>
+        @endif
+
         {{-- Requester (Phase 8): confirm the work is done --}}
         @if ($has(A::CONFIRM_RESOLVED))
             <form method="POST" action="{{ route('tickets.confirm-resolved', $ticket) }}" style="{{ $box('#bfe6cc', 'var(--green-dim)') }}">

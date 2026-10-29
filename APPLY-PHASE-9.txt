@@ -1,0 +1,58 @@
+PHASE 9 - Ask for info (Waiting for User) at auto-close
+=========================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 9 ask for info"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase9-ask-info-autoclose-patch.zip" -DestinationPath . -Force
+  php artisan view:clear
+  php artisan route:clear
+  php artisan config:clear
+  php artisan test --filter=TicketInfoRequestTest
+  php artisan test
+
+WALANG migration at WALANG "php artisan migrate". Walang bagong column.
+Ang simula ng paghihintay ay ang history line na pumasok sa Waiting for User.
+
+Para tumakbo ang auto-close sa totoong sistema, kailangang tumatakbo ang Laravel scheduler:
+  Lokal na pagsubok:   php artisan schedule:work          (iwanan bukas ang terminal)
+  Subukan agad:        php artisan tickets:autoclose --dry-run     (listahan lang, walang binabago)
+                       php artisan tickets:autoclose
+  Sa server (Linux):   * * * * * cd /path/to/project && php artisan schedule:run >> /dev/null 2>&1
+  Sa Windows/Laragon:  Task Scheduler, bawat 1 minuto:  php C:\laragon\www\school-maintenance-system\artisan schedule:run
+  Tingnan ang iskedyul: php artisan schedule:list
+
+Bago / ino-overwrite:
+  app/Console/Commands/AutoCloseTickets.php              <- BAGO: tickets:autoclose (--dry-run)
+  routes/console.php                                     <- Schedule::command('tickets:autoclose')->hourly()
+  app/Services/TicketWorkflow.php                        <- requestInfo(), respondToInfo(), autoCloseWaiting(), waitingLog/waitingSince; SLA resume sa apply()
+  app/Models/MaintenanceRequest.php                      <- hindi Overdue ang Waiting for User
+  app/Policies/TicketPolicy.php                          <- requestInfo, respondToInfo
+  app/Services/TicketActions.php                         <- REQUEST_INFO, RESPOND_INFO
+  app/Http/Controllers/TicketActionController.php        <- requestInfo, respondToInfo
+  app/Http/Controllers/Admin/SettingsController.php      <- autoclose_waiting_days
+  app/Services/FormNotifier.php                          <- infoRequested(), 'replied'
+  config/school.php                                      <- settings default: autoclose_waiting_days = 7
+  routes/web.php                                         <- tickets.request-info, tickets.respond-info
+  resources/views/tickets/_actions.blade.php             <- 2 bagong form
+  resources/views/tickets/_badges.blade.php              <- badge na "SLA paused"
+  resources/views/components/due-badge.blade.php         <- "SLA paused"
+  resources/views/admin/settings.blade.php               <- field para sa auto-close days
+  docs/OPEN_QUESTIONS.md                                 <- rows 27-30
+  tests/Feature/TicketInfoRequestTest.php                <- BAGO
+  APPLY-PHASE-9.txt
+
+ANG MGA RULE
+  Request info    Staff na may request_info (Maintenance Admin). Mula sa Submitted, Pending Authorization, Approved, Assigned,
+                  In Progress, Reopened. Kailangan ng tanong. Nagiging Waiting for User; ang pinanggalingang status ay nasa history.
+  SLA pause       Habang Waiting for User: hindi Overdue (hindi nabibilang, may badge na "SLA paused"). Paglabas sa Waiting,
+                  ang due_at ay umuusad ng eksaktong haba ng paghihintay.
+  Sagot           Ang requester lang ng ticket, kailangan ng sagot. Bumabalik ang ticket sa PINANGGALINGAN nitong status
+                  (In Progress kung doon tinanong). Hindi laging In Progress: kung Submitted pa lang nang tinanong, babalik sa Submitted
+                  para hindi malusutan ang authorization.
+  Auto-close      tickets:autoclose (bawat oras). Waiting for User ng autoclose_waiting_days (default 7, /admin/settings, 0 = patay)
+                  = nagiging CANCELLED na may history line na "Auto-closed: no reply ..." (walang user). Bilang ay mula sa HULING tanong,
+                  kaya ang sagot at bagong tanong ay nagsisimula ng bagong bilang.
+                  Cancelled, hindi Closed: walang Waiting -> Closed sa status table, at ang Closed ay nangangailangan ng authorization
+                  (hindi pa approved ang ticket na tinanong sa Submitted). Kung gusto mo talaga ng Closed, sabihin mo.
+
+Rollback: git checkout -- .   (walang database na babalikan)

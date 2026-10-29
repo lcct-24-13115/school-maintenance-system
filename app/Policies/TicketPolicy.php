@@ -107,6 +107,18 @@ class TicketPolicy
         return $this->ownTicket($user, $ticket);
     }
 
+    /** Phase 9: ask the requester for information (request_info = Maintenance Admin). The status rule is in TicketWorkflow. */
+    public function requestInfo(User $user, MaintenanceRequest $ticket): bool
+    {
+        return $this->can($user, $ticket, 'request_info');
+    }
+
+    /** Phase 9: answer a question about YOUR OWN ticket. */
+    public function respondToInfo(User $user, MaintenanceRequest $ticket): bool
+    {
+        return $this->ownTicket($user, $ticket);
+    }
+
     public function assign(User $user, MaintenanceRequest $ticket): bool
     {
         return $this->can($user, $ticket, 'assign');

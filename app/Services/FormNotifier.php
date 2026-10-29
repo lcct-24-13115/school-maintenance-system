@@ -66,6 +66,12 @@ class FormNotifier
         self::send(collect([$form->requester]), $form, $event, $actor, $text);
     }
 
+    /** Phase 9: staff asked the requester for information. Only the requester is alerted. */
+    public static function infoRequested(MaintenanceRequest $ticket, User $actor): void
+    {
+        self::send(collect([$ticket->requester]), $ticket, 'info_requested', $actor, 'needs more information about your ticket');
+    }
+
     /**
      * Phase 8: the requester cancelled, reopened or confirmed (closed) their own ticket.
      * The assignee and the maintenance staff are alerted (never the actor, see send()).
@@ -75,6 +81,7 @@ class FormNotifier
         $text = match ($event) {
             'cancelled' => 'cancelled their ticket',
             'reopened' => 'reopened their ticket',
+            'replied' => 'answered your question on their ticket',
             default => 'confirmed their ticket is resolved',
         };
 

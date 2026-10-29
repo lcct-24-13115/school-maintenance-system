@@ -22,7 +22,8 @@
     ];
 
     // "Due in ..." / "Overdue by ...": only for tickets that are still pending
-    $showDue = $ticket->due_at !== null && $ticket->status->isPending();
+    $paused = $ticket->status === \App\Enums\TicketStatus::WaitingForUser;   // Phase 9: SLA clock paused
+    $showDue = $ticket->due_at !== null && $ticket->status->isPending() && ! $paused;
     $isOverdue = $showDue && $ticket->due_at->isPast();
     $dueSpan = $showDue ? $ticket->due_at->diffForHumans(null, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2) : '';
 @endphp
@@ -32,6 +33,9 @@
 @endif
 @if ($ticket->is_confidential)
     <span class="badge st-closed" style="font-weight:800"><i class="fa-solid fa-lock"></i> Confidential</span>
+@endif
+@if ($paused)
+    <span class="badge st-closed" title="The target time stops while we wait for the requester"><i class="fa-solid fa-pause"></i> SLA paused</span>
 @endif
 @if ($showDue)
     <span class="badge {{ $isOverdue ? 'pr-urgent' : 'st-open' }}" title="Target: {{ $ticket->due_at->format('M j, Y g:i A') }}">

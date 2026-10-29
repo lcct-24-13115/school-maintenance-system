@@ -14,7 +14,7 @@ use Illuminate\View\View;
 class SettingsController extends Controller
 {
     /** setting key => label shown on the page */
-    public const KEYS = ['sla_hours_routine', 'sla_hours_emergency', 'reopen_window_days'];
+    public const KEYS = ['sla_hours_routine', 'sla_hours_emergency', 'reopen_window_days', 'autoclose_waiting_days'];
 
     public function edit(Request $request): View
     {
@@ -33,6 +33,7 @@ class SettingsController extends Controller
             'sla_hours_routine' => ['required', 'integer', 'min:1', 'max:8760'],
             'sla_hours_emergency' => ['required', 'integer', 'min:1', 'max:8760'],
             'reopen_window_days' => ['required', 'integer', 'min:0', 'max:365'],
+            'autoclose_waiting_days' => ['nullable', 'integer', 'min:0', 'max:365'],   // Phase 9; left alone when the field is missing
             'recalculate_open' => ['nullable', 'boolean'],
         ]);
 
@@ -40,7 +41,7 @@ class SettingsController extends Controller
         $changes = [];
         foreach (self::KEYS as $key) {
             $old = Setting::int($key);
-            $new = (int) $data[$key];
+            $new = (int) ($data[$key] ?? $old);
 
             if ($old !== $new) {
                 $changes[$key] = [$old, $new];
@@ -48,7 +49,7 @@ class SettingsController extends Controller
         }
 
         foreach (self::KEYS as $key) {
-            Setting::put($key, $data[$key]);
+            Setting::put($key, $data[$key] ?? Setting::int($key));
         }
 
         if ($changes !== []) {
