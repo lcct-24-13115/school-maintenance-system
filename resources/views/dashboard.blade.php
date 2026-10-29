@@ -1,17 +1,18 @@
+{{-- Phase 4 (design): generic dashboard. /dashboard normally redirects to the role dashboard; this is the fallback page. --}}
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Dashboard') }}
-        </h2>
-    </x-slot>
+    <x-slot name="header">{{ __('Dashboard') }}</x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    {{ __("You're logged in!") }}
+    <section class="hero" style="--hero:url('{{ asset('images/campus.jpg') }}')">
+        <div class="hero-in">
+            <div class="hero-txt">
+                <span class="hero-eye">LCCT Maintenance</span>
+                <h2>{{ __("You're logged in!") }}</h2>
+                <p>Welcome, <b>{{ auth()->user()->name }}</b>. Go to your dashboard to see what needs your attention.</p>
+                <div class="hero-act">
+                    <a href="{{ route(auth()->user()->dashboardRoute()) }}" class="btn btn-primary"><i class="fa-solid fa-gauge-high"></i> Open my dashboard</a>
+                    <a href="{{ route('tickets.index') }}" class="btn"><i class="fa-solid fa-list-check"></i> View tickets</a>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 </x-app-layout>

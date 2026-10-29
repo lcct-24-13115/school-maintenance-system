@@ -2,21 +2,22 @@
 
 @php
     $has = fn (string $action) => in_array($action, $actions, true);
-    $input = 'mt-1 w-full rounded-lg border-gray-300 text-base';
-    $btn = 'min-h-[48px] w-full rounded-xl px-6 py-3 text-base font-bold text-white sm:w-auto';
+    // one coloured box per action: border colour, background
+    $box = fn (string $border, string $bg = '#fff') => "border:1.5px solid {$border};background:{$bg};border-radius:18px;padding:16px 18px;margin-bottom:14px";
+    $area = 'min-height:84px';
 @endphp
 
-{{-- Action panel (Phase 4A). Each action shows ONLY when the status allows it AND the user has the capability;
+{{-- Action panel (Phase 4A logic, Phase 4 design). Each action shows ONLY when the status allows it AND the user has the capability;
      the controllers check both again. Errors go to one bag per form (approve, disapprove, assign, flag, clear, note). --}}
-<section class="rounded-xl bg-white p-4 shadow-sm" id="actions">
-    <h3 class="mb-1 text-lg font-bold text-gray-900">Actions</h3>
+<section class="card" id="actions">
+    <div class="card-h"><h3>Actions</h3></div>
 
     @if (session('error'))
-        <div class="mb-3 rounded-lg bg-red-100 p-3 font-semibold text-red-800" role="alert">{{ session('error') }}</div>
+        <div class="alert err" role="alert"><i class="fa-solid fa-circle-exclamation"></i><div>{{ session('error') }}</div></div>
     @endif
 
     @if ($actions === [])
-        <p class="text-sm text-gray-500">
+        <p class="hint" style="margin:0">
             @if ($ticket->status->isTerminal())
                 This ticket is {{ $ticket->status->label() }}. No further actions are possible.
             @else
@@ -25,65 +26,65 @@
         </p>
     @endif
 
-    <div class="space-y-4">
+    <div>
 
         {{-- Admin: Submitted -> Pending Authorization --}}
         @if ($has(A::SEND_FOR_AUTHORIZATION))
-            <form method="POST" action="{{ route('tickets.send-for-authorization', $ticket) }}" class="rounded-lg border border-gray-200 p-3">
+            <form method="POST" action="{{ route('tickets.send-for-authorization', $ticket) }}" style="{{ $box('#f1d78f', 'var(--amber-dim)') }}">
                 @csrf
-                <div class="mb-2 text-sm text-gray-600">Put this ticket in the authorizer's queue.</div>
-                <button class="{{ $btn }} bg-yellow-600 hover:bg-yellow-700">Send for authorization</button>
+                <div class="hint" style="margin:0 0 10px;color:var(--text-2)">Put this ticket in the authorizer's queue.</div>
+                <button class="btn btn-primary" style="background:var(--gold);border-color:var(--gold);color:var(--navy)"><i class="fa-solid fa-paper-plane"></i> Send for authorization</button>
             </form>
         @endif
 
         {{-- Authorizer: Approve / Disapprove --}}
         @if ($has(A::APPROVE))
-            <form method="POST" action="{{ route('tickets.approve', $ticket) }}" enctype="multipart/form-data" class="space-y-3 rounded-lg border border-green-200 bg-green-50 p-3">
+            <form method="POST" action="{{ route('tickets.approve', $ticket) }}" enctype="multipart/form-data" style="{{ $box('#bfe6cc', 'var(--green-dim)') }}">
                 @csrf
-                <div class="font-bold text-green-900">Approve</div>
-                <div>
-                    <label for="remarks" class="block text-sm font-semibold text-gray-700">Remarks (optional)</label>
-                    <textarea id="remarks" name="remarks" rows="2" class="{{ $input }}">{{ old('remarks') }}</textarea>
-                    @if ($errors->approve->has('remarks'))<p class="mt-1 text-sm text-red-600">{{ $errors->approve->first('remarks') }}</p>@endif
+                <div class="lbl" style="font-size:16px;color:#0f6a31"><i class="fa-solid fa-circle-check"></i> Approve</div>
+                <div class="field">
+                    <label for="remarks" class="lbl">Remarks (optional)</label>
+                    <textarea id="remarks" name="remarks" rows="2" style="{{ $area }}">{{ old('remarks') }}</textarea>
+                    @if ($errors->approve->has('remarks'))<p class="field-err">{{ $errors->approve->first('remarks') }}</p>@endif
                 </div>
-                <div>
-                    <div class="text-sm font-semibold text-gray-700">Signed file (optional)</div>
+                <div class="field">
+                    <div class="lbl">Signed file (optional)</div>
                     <x-file-picker name="files" />
-                    @foreach ($errors->approve->get('files') as $message)<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@endforeach
+                    @foreach ($errors->approve->get('files') as $message)<p class="field-err">{{ $message }}</p>@endforeach
                     @foreach ($errors->approve->get('files.*') as $messages)
-                        @foreach ((array) $messages as $message)<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@endforeach
+                        @foreach ((array) $messages as $message)<p class="field-err">{{ $message }}</p>@endforeach
                     @endforeach
                 </div>
-                <p class="text-xs text-gray-600">The app records who authorized and when. It does not replace the official signatures: keep the signed paper or scan on file.</p>
-                <button class="{{ $btn }} bg-green-600 hover:bg-green-700">Approve</button>
+                <p class="hint" style="margin:0 0 12px">The app records who authorized and when. It does not replace the official signatures: keep the signed paper or scan on file.</p>
+                <button class="btn btn-primary" style="background:var(--green);border-color:var(--green)">Approve</button>
             </form>
         @endif
 
         @if ($has(A::DISAPPROVE))
-            <form method="POST" action="{{ route('tickets.disapprove', $ticket) }}" class="space-y-3 rounded-lg border border-red-200 bg-red-50 p-3">
+            <form method="POST" action="{{ route('tickets.disapprove', $ticket) }}" style="{{ $box('#f3c9c5', 'var(--red-dim)') }}">
                 @csrf
-                <div class="font-bold text-red-900">Disapprove</div>
-                <div>
-                    <label for="reason" class="block text-sm font-semibold text-gray-700">Reason (required)</label>
-                    <textarea id="reason" name="reason" rows="2" required class="{{ $input }}">{{ old('reason') }}</textarea>
-                    @if ($errors->disapprove->has('reason'))<p class="mt-1 text-sm text-red-600">{{ $errors->disapprove->first('reason') }}</p>@endif
+                <div class="lbl" style="font-size:16px;color:#9d2820"><i class="fa-solid fa-circle-xmark"></i> Disapprove</div>
+                <div class="field">
+                    <label for="reason" class="lbl">Reason (required)</label>
+                    <textarea id="reason" name="reason" rows="2" required style="{{ $area }}">{{ old('reason') }}</textarea>
+                    @if ($errors->disapprove->has('reason'))<p class="field-err">{{ $errors->disapprove->first('reason') }}</p>@endif
                 </div>
-                <button class="{{ $btn }} bg-red-600 hover:bg-red-700">Disapprove</button>
+                <button class="btn btn-danger">Disapprove</button>
             </form>
         @endif
 
         {{-- Admin: Assign / Reassign --}}
         @if ($has(A::ASSIGN) || $has(A::REASSIGN))
             @php $reassign = $has(A::REASSIGN); @endphp
-            <form method="POST" action="{{ route('tickets.assign', $ticket) }}" class="space-y-3 rounded-lg border border-indigo-200 bg-indigo-50 p-3">
+            <form method="POST" action="{{ route('tickets.assign', $ticket) }}" style="{{ $box('#bcd5ee', 'var(--sky)') }}">
                 @csrf
-                <div class="font-bold text-indigo-900">{{ $reassign ? 'Reassign' : 'Assign' }}</div>
+                <div class="lbl" style="font-size:16px"><i class="fa-solid fa-user-gear"></i> {{ $reassign ? 'Reassign' : 'Assign' }}</div>
                 @if ($reassign)
-                    <div class="text-sm text-gray-700">Currently assigned to <strong>{{ $ticket->assignee?->name }}</strong>.</div>
+                    <div class="hint" style="margin:0 0 10px;color:var(--text-2)">Currently assigned to <strong>{{ $ticket->assignee?->name }}</strong>.</div>
                 @endif
-                <div>
-                    <label for="assignee_id" class="block text-sm font-semibold text-gray-700">Maintenance staff</label>
-                    <select id="assignee_id" name="assignee_id" required class="{{ $input }}">
+                <div class="field">
+                    <label for="assignee_id" class="lbl">Maintenance staff</label>
+                    <select id="assignee_id" name="assignee_id" required>
                         <option value="">Choose staff…</option>
                         @foreach ($staff as $member)
                             <option value="{{ $member->id }}" @selected((int) old('assignee_id') === $member->id)>
@@ -91,56 +92,56 @@
                             </option>
                         @endforeach
                     </select>
-                    @if ($errors->assign->has('assignee_id'))<p class="mt-1 text-sm text-red-600">{{ $errors->assign->first('assignee_id') }}</p>@endif
+                    @if ($errors->assign->has('assignee_id'))<p class="field-err">{{ $errors->assign->first('assignee_id') }}</p>@endif
                 </div>
-                <div>
-                    <label for="assign_note" class="block text-sm font-semibold text-gray-700">Note {{ $reassign ? '(required: why is it being reassigned?)' : '(optional)' }}</label>
-                    <textarea id="assign_note" name="assign_note" rows="2" @required($reassign) class="{{ $input }}">{{ old('assign_note') }}</textarea>
-                    @if ($errors->assign->has('assign_note'))<p class="mt-1 text-sm text-red-600">{{ $errors->assign->first('assign_note') }}</p>@endif
+                <div class="field">
+                    <label for="assign_note" class="lbl">Note {{ $reassign ? '(required: why is it being reassigned?)' : '(optional)' }}</label>
+                    <textarea id="assign_note" name="assign_note" rows="2" @required($reassign) style="{{ $area }}">{{ old('assign_note') }}</textarea>
+                    @if ($errors->assign->has('assign_note'))<p class="field-err">{{ $errors->assign->first('assign_note') }}</p>@endif
                 </div>
-                <button class="{{ $btn }} bg-indigo-600 hover:bg-indigo-700">{{ $reassign ? 'Reassign' : 'Assign' }}</button>
+                <button class="btn btn-primary">{{ $reassign ? 'Reassign' : 'Assign' }}</button>
             </form>
         @endif
 
         {{-- Emergency flag --}}
         @if ($has(A::FLAG_EMERGENCY))
-            <form method="POST" action="{{ route('tickets.emergency.flag', $ticket) }}" class="space-y-3 rounded-lg border border-red-200 p-3">
+            <form method="POST" action="{{ route('tickets.emergency.flag', $ticket) }}" style="{{ $box('#f3c9c5') }}">
                 @csrf
-                <div class="font-bold text-red-800">🚨 Flag emergency</div>
-                <div>
-                    <label for="emergency_reason" class="block text-sm font-semibold text-gray-700">Reason (required)</label>
-                    <textarea id="emergency_reason" name="emergency_reason" rows="2" required class="{{ $input }}">{{ old('emergency_reason') }}</textarea>
-                    @if ($errors->flag->has('emergency_reason'))<p class="mt-1 text-sm text-red-600">{{ $errors->flag->first('emergency_reason') }}</p>@endif
+                <div class="lbl" style="font-size:16px;color:var(--red)"><i class="fa-solid fa-triangle-exclamation"></i> Flag emergency</div>
+                <div class="field">
+                    <label for="emergency_reason" class="lbl">Reason (required)</label>
+                    <textarea id="emergency_reason" name="emergency_reason" rows="2" required style="{{ $area }}">{{ old('emergency_reason') }}</textarea>
+                    @if ($errors->flag->has('emergency_reason'))<p class="field-err">{{ $errors->flag->first('emergency_reason') }}</p>@endif
                 </div>
-                <button class="{{ $btn }} bg-red-700 hover:bg-red-800">Flag emergency</button>
+                <button class="btn btn-danger">Flag emergency</button>
             </form>
         @endif
 
         @if ($has(A::CLEAR_EMERGENCY))
-            <form method="POST" action="{{ route('tickets.emergency.clear', $ticket) }}" class="space-y-3 rounded-lg border border-gray-300 p-3">
+            <form method="POST" action="{{ route('tickets.emergency.clear', $ticket) }}" style="{{ $box('var(--line)') }}">
                 @csrf
-                <div class="font-bold text-gray-800">Clear emergency</div>
-                <div>
-                    <label for="clear_note" class="block text-sm font-semibold text-gray-700">Note (optional)</label>
-                    <textarea id="clear_note" name="clear_note" rows="2" class="{{ $input }}">{{ old('clear_note') }}</textarea>
-                    @if ($errors->clear->has('clear_note'))<p class="mt-1 text-sm text-red-600">{{ $errors->clear->first('clear_note') }}</p>@endif
+                <div class="lbl" style="font-size:16px">Clear emergency</div>
+                <div class="field">
+                    <label for="clear_note" class="lbl">Note (optional)</label>
+                    <textarea id="clear_note" name="clear_note" rows="2" style="{{ $area }}">{{ old('clear_note') }}</textarea>
+                    @if ($errors->clear->has('clear_note'))<p class="field-err">{{ $errors->clear->first('clear_note') }}</p>@endif
                 </div>
-                <p class="text-xs text-gray-600">The ticket goes back to its original place in the queue (by the time it was submitted).</p>
-                <button class="{{ $btn }} bg-gray-700 hover:bg-gray-800">Clear emergency</button>
+                <p class="hint" style="margin:0 0 12px">The ticket goes back to its original place in the queue (by the time it was submitted).</p>
+                <button class="btn">Clear emergency</button>
             </form>
         @endif
 
         {{-- Anyone involved: add a note --}}
         @if ($has(A::ADD_NOTE))
-            <form method="POST" action="{{ route('tickets.notes.store', $ticket) }}" class="space-y-3 rounded-lg border border-gray-200 p-3">
+            <form method="POST" action="{{ route('tickets.notes.store', $ticket) }}" style="{{ $box('var(--line)') }}">
                 @csrf
-                <div class="font-bold text-gray-800">Add note</div>
-                <div>
-                    <label for="note" class="sr-only">Note</label>
-                    <textarea id="note" name="note" rows="2" required placeholder="Write a note for the history" class="{{ $input }}">{{ old('note') }}</textarea>
-                    @if ($errors->note->has('note'))<p class="mt-1 text-sm text-red-600">{{ $errors->note->first('note') }}</p>@endif
+                <div class="lbl" style="font-size:16px"><i class="fa-regular fa-note-sticky"></i> Add note</div>
+                <div class="field">
+                    <label for="note" class="lbl">Note for the history</label>
+                    <textarea id="note" name="note" rows="2" required placeholder="Write a note for the history" style="{{ $area }}">{{ old('note') }}</textarea>
+                    @if ($errors->note->has('note'))<p class="field-err">{{ $errors->note->first('note') }}</p>@endif
                 </div>
-                <button class="{{ $btn }} bg-blue-600 hover:bg-blue-700">Add note</button>
+                <button class="btn btn-primary">Add note</button>
             </form>
         @endif
     </div>

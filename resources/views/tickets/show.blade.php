@@ -11,170 +11,199 @@
         RequestStatusLog::ACTION_NOTE => 'Note',
         RequestStatusLog::ACTION_ATTACHMENT => 'Attachment',
     ];
+    // long free text: keep the line breaks the person typed
+    $text = 'white-space:pre-line;word-break:break-word';
+    $wide = 'grid-column:1/-1';
 @endphp
 
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex flex-wrap items-center gap-2">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ $ticket->ticket_no }}</h2>
-            <x-status-badge :status="$ticket->status" />
-            <x-ticket-badges :ticket="$ticket" />
-        </div>
-    </x-slot>
+    <x-slot name="header">{{ $ticket->ticket_no }}</x-slot>
 
-    <div class="py-4">
-        <div class="max-w-5xl mx-auto space-y-4 px-3 sm:px-6 lg:px-8">
+    <div style="max-width:1000px">
 
-            <a href="{{ route('tickets.index') }}" class="inline-flex min-h-[44px] items-center text-sm font-semibold text-blue-700 hover:underline">&larr; Back to tickets</a>
+        <p style="margin-bottom:16px">
+            <a href="{{ route('tickets.index') }}" class="btn btn-sm"><i class="fa-solid fa-arrow-left"></i> Back to tickets</a>
+        </p>
 
-            @if (session('status'))
-                <div class="rounded-xl bg-green-100 p-4 font-semibold text-green-800">{{ session('status') }}</div>
-            @endif
+        @if (session('status'))
+            <div class="alert ok"><i class="fa-solid fa-circle-check"></i><div>{{ session('status') }}</div></div>
+        @endif
 
-            @if ($ticket->is_emergency)
-                <div class="rounded-xl bg-red-50 p-4 text-red-900">
-                    <div class="font-extrabold">🚨 Emergency</div>
-                    <div class="break-words">{{ $ticket->emergency_reason }}</div>
-                    <div class="mt-1 text-sm">Flagged by {{ $ticket->emergencyFlagger?->name ?? '—' }} · {{ $fmt($ticket->emergency_flagged_at) }}</div>
+        @if ($ticket->is_emergency)
+            <div class="alert err">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <div>
+                    <b>Emergency</b>
+                    <div style="word-break:break-word">{{ $ticket->emergency_reason }}</div>
+                    <div style="font-size:12.5px;margin-top:2px">Flagged by {{ $ticket->emergencyFlagger?->name ?? '—' }} · {{ $fmt($ticket->emergency_flagged_at) }}</div>
+                </div>
+            </div>
+        @endif
+
+        {{-- Summary + tracker --}}
+        <section class="card">
+            <div class="tk-top">
+                <span class="mono" style="font-weight:800;font-size:14px">{{ $ticket->ticket_no }}</span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">@include('tickets._badges', ['ticket' => $ticket])</div>
+
+            <h3 style="font-family:var(--font-display);font-size:26px;font-weight:600;color:var(--navy);line-height:1.2;margin-top:12px;word-break:break-word">
+                <i class="fa-solid fa-location-dot" style="color:var(--blue);font-size:20px"></i> {{ $ticket->location }}
+            </h3>
+            <div class="tk-sub" style="font-size:14px">{{ $ticket->category?->name }}@if ($ticket->department) · {{ $ticket->department->name }}@endif</div>
+
+            @include('tickets._tracker', ['ticket' => $ticket, 'full' => true])
+
+            @php $latest = $ticket->statusLogs->sortByDesc('created_at')->first(); @endphp
+            @if ($latest)
+                <div class="tk-last" style="margin-top:12px">
+                    <i class="fa-regular fa-clock"></i>
+                    <span><b>Last update</b>{{ $actionLabels[$latest->action] ?? ucfirst(str_replace('_', ' ', $latest->action)) }} · {{ $fmt($latest->created_at) }}</span>
                 </div>
             @endif
+        </section>
 
-            {{-- Ticket details --}}
-            <section class="rounded-xl bg-white p-4 shadow-sm">
-                <h3 class="mb-3 text-lg font-bold text-gray-900">Details</h3>
-                <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Location</dt><dd class="break-words">{{ $ticket->location }}</dd></div>
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Category</dt><dd>{{ $ticket->category?->name ?? '—' }}</dd></div>
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Maintenance type</dt><dd>{{ ucfirst((string) $ticket->maintenance_type) }}</dd></div>
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Request type</dt><dd>{{ $ticket->request_type ? ucfirst($ticket->request_type) : '—' }}</dd></div>
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Department</dt><dd>{{ $ticket->department?->name ?? '—' }}</dd></div>
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Date needed</dt><dd>{{ $ticket->needed_by?->format('M j, Y') ?? '—' }}</dd></div>
-                    <div class="sm:col-span-2"><dt class="text-xs font-bold uppercase text-gray-500">Description</dt><dd class="whitespace-pre-line break-words">{{ $ticket->description }}</dd></div>
-                    <div class="sm:col-span-2"><dt class="text-xs font-bold uppercase text-gray-500">Reason</dt><dd class="whitespace-pre-line break-words">{{ $ticket->reason ?: '—' }}</dd></div>
-                    @if ($ticket->problems_encountered)
-                        <div class="sm:col-span-2"><dt class="text-xs font-bold uppercase text-gray-500">Problems encountered</dt><dd class="whitespace-pre-line break-words">{{ $ticket->problems_encountered }}</dd></div>
-                    @endif
-                    @if ($ticket->recommendations)
-                        <div class="sm:col-span-2"><dt class="text-xs font-bold uppercase text-gray-500">Recommendations</dt><dd class="whitespace-pre-line break-words">{{ $ticket->recommendations }}</dd></div>
-                    @endif
-                </dl>
+        {{-- People + Dates side by side (stack on phones) --}}
+        <div class="pf-grid" style="margin-bottom:20px">
+            <section class="card">
+                <h3 class="pf-h" style="font-family:var(--font-display);font-size:18px;color:var(--navy);margin-bottom:10px">People</h3>
+                <div class="pf-row"><span class="k">Requester</span><span class="mono">{{ $ticket->requester->name }}@if ($ticket->requester->department?->name) · {{ $ticket->requester->department->name }}@endif</span></div>
+                <div class="pf-row"><span class="k">Assigned to</span><span class="mono">{{ $ticket->assignee?->name ?? 'Not assigned yet' }}</span></div>
+                <div class="pf-row"><span class="k">Emergency flagged by</span><span class="mono">{{ $ticket->emergencyFlagger?->name ?? '—' }}</span></div>
+                <div class="pf-row">
+                    <span class="k">Authorized by</span>
+                    <span class="mono">{{ $ticket->president?->name ?? '—' }}@if ($ticket->president_remarks)<div class="sub" style="color:var(--text-3)">{{ $ticket->president_remarks }}</div>@endif</span>
+                </div>
             </section>
 
-            {{-- People --}}
-            <section class="rounded-xl bg-white p-4 shadow-sm">
-                <h3 class="mb-3 text-lg font-bold text-gray-900">People</h3>
-                <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Requester</dt><dd>{{ $ticket->requester->name }}<span class="text-gray-500"> · {{ $ticket->requester->department?->name }}</span></dd></div>
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Assigned to</dt><dd>{{ $ticket->assignee?->name ?? 'Not assigned yet' }}</dd></div>
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Emergency flagged by</dt><dd>{{ $ticket->emergencyFlagger?->name ?? '—' }}</dd></div>
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Authorized by</dt><dd>{{ $ticket->president?->name ?? '—' }}@if ($ticket->president_remarks)<div class="text-sm text-gray-500">{{ $ticket->president_remarks }}</div>@endif</dd></div>
-                </dl>
-            </section>
-
-            {{-- Timestamps --}}
-            <section class="rounded-xl bg-white p-4 shadow-sm">
-                <h3 class="mb-3 text-lg font-bold text-gray-900">Dates</h3>
-                <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Submitted</dt><dd>{{ $fmt($ticket->submitted_at) }}</dd></div>
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Authorized</dt><dd>{{ $fmt($ticket->president_approved_at) }}</dd></div>
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Assigned</dt><dd>{{ $fmt($ticket->assigned_at) }}</dd></div>
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Work completed</dt><dd>{{ $fmt($ticket->completed_at) }}</dd></div>
-                    <div><dt class="text-xs font-bold uppercase text-gray-500">Closed</dt><dd>{{ $fmt($ticket->closed_at) }}</dd></div>
-                </dl>
-            </section>
-
-            {{-- Items --}}
-            @if ($ticket->items->isNotEmpty())
-                <section class="rounded-xl bg-white p-4 shadow-sm">
-                    <h3 class="mb-3 text-lg font-bold text-gray-900">Items</h3>
-                    <ul class="divide-y divide-gray-100">
-                        @foreach ($ticket->items as $item)
-                            <li class="py-2 break-words">{{ $item->item_name }} <span class="text-gray-500">× {{ $item->quantity }} {{ $item->unit }}</span>@if ($item->specification)<div class="text-sm text-gray-500">{{ $item->specification }}</div>@endif</li>
-                        @endforeach
-                    </ul>
-                </section>
-            @endif
-
-            {{-- Attachments: opened only through the authorized route (private storage) --}}
-            <section class="rounded-xl bg-white p-4 shadow-sm" id="attachments">
-                <h3 class="mb-3 text-lg font-bold text-gray-900">Attachments <span class="text-sm font-normal text-gray-500">({{ $ticket->attachments->count() }})</span></h3>
-
-                @forelse ($ticket->attachments as $file)
-                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 py-3 last:border-0">
-                        <div class="min-w-0 flex-1">
-                            <a href="{{ $file->url() }}" @if ($file->isInline()) target="_blank" rel="noopener" @endif class="break-all font-semibold text-blue-700 hover:underline">
-                                <span aria-hidden="true">{{ $file->icon() }}</span> {{ $file->original_name }}
-                            </a>
-                            <div class="text-xs text-gray-500">
-                                {{ $file->sizeForHumans() }} · {{ $file->uploader?->name ?? 'unknown' }} · {{ $file->created_at?->format('M j, Y g:i A') }}
-                                @unless ($file->isRequestFile())
-                                    <span class="ms-1 rounded bg-indigo-100 px-1.5 py-0.5 font-semibold text-indigo-800">{{ $file->kindLabel() }}</span>
-                                @endunless
-                            </div>
-                        </div>
-                        <a href="{{ $file->downloadUrl() }}" class="inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm font-bold text-gray-700 hover:bg-gray-50">Download</a>
-                    </div>
-                @empty
-                    <p class="text-gray-500">No attachments.</p>
-                @endforelse
-
-                @can('addAttachment', $ticket)
-                    <form method="POST" action="{{ route('tickets.attachments.store', $ticket) }}" enctype="multipart/form-data" class="mt-4 space-y-3 border-t border-gray-100 pt-4">
-                        @csrf
-                        <div class="text-base font-semibold text-gray-800">Add files</div>
-
-                        <x-file-picker name="files" />
-
-                        @if (auth()->user()->can_do('work'))
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-700">What are these files?</label>
-                                <select name="kind" class="mt-1 w-full rounded-lg border-gray-300 py-3 text-base sm:w-auto">
-                                    @foreach (\App\Models\RequestAttachment::kindLabels() as $value => $label)
-                                        <option value="{{ $value }}" @selected(old('kind') === $value)>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                                @error('kind')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                            </div>
-                        @endif
-
-                        @error('files')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
-                        @foreach ($errors->get('files.*') as $messages)
-                            @foreach ((array) $messages as $message)
-                                <p class="text-sm text-red-600">{{ $message }}</p>
-                            @endforeach
-                        @endforeach
-
-                        <button class="min-h-[48px] w-full rounded-xl bg-blue-600 px-6 py-3 text-base font-bold text-white hover:bg-blue-700 sm:w-auto">Upload</button>
-                    </form>
-                @endcan
-            </section>
-
-            @include('tickets._actions')
-
-            {{-- Full history --}}
-            <section class="rounded-xl bg-white p-4 shadow-sm">
-                <h3 class="mb-3 text-lg font-bold text-gray-900">History</h3>
-                <ol class="space-y-4 border-s-2 border-gray-200 ps-4">
-                    @forelse ($ticket->statusLogs as $log)
-                        <li class="relative">
-                            <span class="absolute -start-[1.4rem] top-1.5 h-3 w-3 rounded-full bg-blue-600"></span>
-                            <div class="text-xs text-gray-500">{{ $fmt($log->created_at) }} · {{ $log->user?->name ?? 'System' }}</div>
-                            <div class="font-semibold text-gray-900">
-                                {{ $actionLabels[$log->action] ?? ucfirst(str_replace('_', ' ', $log->action)) }}
-                                @if ($log->to_status)
-                                    <span class="font-normal text-gray-600">:
-                                        @if ($log->from_status){{ \App\Enums\TicketStatus::tryFrom($log->from_status)?->label() }} &rarr; @endif{{ \App\Enums\TicketStatus::tryFrom($log->to_status)?->label() }}</span>
-                                @endif
-                            </div>
-                            @if ($log->note)
-                                <div class="break-words text-sm text-gray-700">{{ $log->note }}</div>
-                            @endif
-                        </li>
-                    @empty
-                        <li class="text-gray-500">No history recorded.</li>
-                    @endforelse
-                </ol>
+            <section class="card">
+                <h3 class="pf-h" style="font-family:var(--font-display);font-size:18px;color:var(--navy);margin-bottom:10px">Dates</h3>
+                <div class="pf-row"><span class="k">Submitted</span><span class="mono">{{ $fmt($ticket->submitted_at) }}</span></div>
+                <div class="pf-row"><span class="k">Authorized</span><span class="mono">{{ $fmt($ticket->president_approved_at) }}</span></div>
+                <div class="pf-row"><span class="k">Assigned</span><span class="mono">{{ $fmt($ticket->assigned_at) }}</span></div>
+                <div class="pf-row"><span class="k">Work completed</span><span class="mono">{{ $fmt($ticket->completed_at) }}</span></div>
+                <div class="pf-row"><span class="k">Closed</span><span class="mono">{{ $fmt($ticket->closed_at) }}</span></div>
             </section>
         </div>
+
+        {{-- Ticket details --}}
+        <section class="card">
+            <div class="card-h"><h3>Details</h3></div>
+            <div class="kv">
+                <div><div class="k">Location</div><div style="word-break:break-word">{{ $ticket->location }}</div></div>
+                <div><div class="k">Category</div><div>{{ $ticket->category?->name ?? '—' }}</div></div>
+                <div><div class="k">Maintenance type</div><div>{{ ucfirst((string) $ticket->maintenance_type) }}</div></div>
+                <div><div class="k">Request type</div><div>{{ $ticket->request_type ? ucfirst($ticket->request_type) : '—' }}</div></div>
+                <div><div class="k">Department</div><div>{{ $ticket->department?->name ?? '—' }}</div></div>
+                <div><div class="k">Date needed</div><div>{{ $ticket->needed_by?->format('M j, Y') ?? '—' }}</div></div>
+                <div style="{{ $wide }}"><div class="k">Description</div><div style="{{ $text }}">{{ $ticket->description }}</div></div>
+                <div style="{{ $wide }}"><div class="k">Reason</div><div style="{{ $text }}">{{ $ticket->reason ?: '—' }}</div></div>
+                @if ($ticket->problems_encountered)
+                    <div style="{{ $wide }}"><div class="k">Problems encountered</div><div style="{{ $text }}">{{ $ticket->problems_encountered }}</div></div>
+                @endif
+                @if ($ticket->recommendations)
+                    <div style="{{ $wide }}"><div class="k">Recommendations</div><div style="{{ $text }}">{{ $ticket->recommendations }}</div></div>
+                @endif
+            </div>
+        </section>
+
+        {{-- Items --}}
+        @if ($ticket->items->isNotEmpty())
+            <section class="card">
+                <div class="card-h"><h3>Items</h3></div>
+                <div class="table-wrap">
+                    <table class="stack">
+                        <thead><tr><th>Item</th><th>Quantity</th><th>Unit</th></tr></thead>
+                        <tbody>
+                            @foreach ($ticket->items as $item)
+                                <tr>
+                                    <td data-label="Item" style="word-break:break-word">{{ $item->item_name }}@if ($item->specification)<div class="sub">{{ $item->specification }}</div>@endif</td>
+                                    <td data-label="Quantity" class="nums">× {{ $item->quantity }}</td>
+                                    <td data-label="Unit">{{ $item->unit }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endif
+
+        {{-- Attachments: opened only through the authorized route (private storage) --}}
+        <section class="card" id="attachments">
+            <div class="card-h"><h3>Attachments <span class="hint" style="font-family:var(--font-body);font-weight:400">({{ $ticket->attachments->count() }})</span></h3></div>
+
+            @forelse ($ticket->attachments as $file)
+                <div class="pf-row" style="flex-wrap:wrap">
+                    <div style="min-width:0;flex:1">
+                        <a href="{{ $file->url() }}" @if ($file->isInline()) target="_blank" rel="noopener" @endif style="word-break:break-all">
+                            <span aria-hidden="true">{{ $file->icon() }}</span> {{ $file->original_name }}
+                        </a>
+                        <div class="sub" style="font-size:12.5px;color:var(--text-3)">
+                            {{ $file->sizeForHumans() }} · {{ $file->uploader?->name ?? 'unknown' }} · {{ $file->created_at?->format('M j, Y g:i A') }}
+                            @unless ($file->isRequestFile())
+                                <span class="badge pr-normal" style="margin-left:4px">{{ $file->kindLabel() }}</span>
+                            @endunless
+                        </div>
+                    </div>
+                    <a href="{{ $file->downloadUrl() }}" class="btn btn-sm"><i class="fa-solid fa-download"></i> Download</a>
+                </div>
+            @empty
+                <div class="empty" style="padding:22px 16px"><i class="fa-solid fa-paperclip"></i>No attachments.</div>
+            @endforelse
+
+            @can('addAttachment', $ticket)
+                <form method="POST" action="{{ route('tickets.attachments.store', $ticket) }}" enctype="multipart/form-data"
+                      style="margin-top:18px;padding-top:18px;border-top:1px solid var(--line)">
+                    @csrf
+                    <div class="lbl" style="font-size:15px">Add files</div>
+
+                    <x-file-picker name="files" />
+
+                    @if (auth()->user()->can_do('work'))
+                        <div class="field" style="margin-top:14px">
+                            <label class="lbl" for="attachment-kind">What are these files?</label>
+                            <select id="attachment-kind" name="kind">
+                                @foreach (\App\Models\RequestAttachment::kindLabels() as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('kind') === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            @error('kind')<p class="field-err">{{ $message }}</p>@enderror
+                        </div>
+                    @endif
+
+                    @error('files')<p class="field-err">{{ $message }}</p>@enderror
+                    @foreach ($errors->get('files.*') as $messages)
+                        @foreach ((array) $messages as $message)
+                            <p class="field-err">{{ $message }}</p>
+                        @endforeach
+                    @endforeach
+
+                    <button class="btn btn-primary" style="margin-top:14px"><i class="fa-solid fa-upload"></i> Upload</button>
+                </form>
+            @endcan
+        </section>
+
+        @include('tickets._actions')
+
+        {{-- Full history --}}
+        <section class="card">
+            <div class="card-h"><h3>History</h3></div>
+            <div class="thread" style="margin-bottom:0">
+                @forelse ($ticket->statusLogs as $log)
+                    <div class="msg">
+                        <div class="meta">
+                            <b>{{ $actionLabels[$log->action] ?? ucfirst(str_replace('_', ' ', $log->action)) }}@if ($log->to_status) <span style="font-weight:600;color:var(--text-2)">:
+                                @if ($log->from_status){{ \App\Enums\TicketStatus::tryFrom($log->from_status)?->label() }} &rarr; @endif{{ \App\Enums\TicketStatus::tryFrom($log->to_status)?->label() }}</span>@endif</b>
+                            <span>· {{ $fmt($log->created_at) }} · {{ $log->user?->name ?? 'System' }}</span>
+                        </div>
+                        @if ($log->note)
+                            <div class="body">{{ $log->note }}</div>
+                        @endif
+                    </div>
+                @empty
+                    <div class="empty" style="padding:22px 16px"><i class="fa-regular fa-clock"></i>No history recorded.</div>
+                @endforelse
+            </div>
+        </section>
     </div>
 </x-app-layout>

@@ -1,0 +1,16 @@
+PHASE 4 - Dashboards + Tickets (list, detail, action panel)
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 4 UI"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase4-patch.zip" -DestinationPath . -Force
+  php artisan view:clear
+  php artisan test --filter=TicketAccessTest
+  php artisan test --filter=TicketActionsTest
+
+Kapag hindi gumana ang Expand-Archive:
+  tar -xf "$env:USERPROFILE\Downloads\phase4-patch.zip" -C .
+
+Ino-overwrite (5): resources/views/dashboard.blade.php, dashboards/role.blade.php,
+                   tickets/index.blade.php, tickets/show.blade.php, tickets/_actions.blade.php
+Bago (2):          resources/views/tickets/_badges.blade.php, tickets/_tracker.blade.php
+Hindi ginalaw: controllers, routes, database, components, style.css
