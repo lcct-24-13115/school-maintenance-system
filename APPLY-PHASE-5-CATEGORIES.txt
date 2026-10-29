@@ -1,0 +1,45 @@
+PHASE 5 - Categories admin (CRUD, hide/show, reorder, lock, delete -> Other)
+============================================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 5 categories"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase5-categories-patch.zip" -DestinationPath . -Force
+  php artisan migrate
+  php artisan view:clear
+  php artisan route:clear
+  php artisan config:clear
+  php artisan test --filter=CategoryAdminTest
+  php artisan test
+
+Kapag hindi gumana ang Expand-Archive:
+  tar -xf "$env:USERPROFILE\Downloads\phase5-categories-patch.zip" -C .
+
+Kailangan: naka-apply na ang Phase 4 (avatar) - ino-overwrite ng patch na ito ang routes/web.php at navigation.
+
+Bago (3):  database/migrations/2026_10_29_000003_add_ordering_to_categories_table.php
+           app/Http/Controllers/Admin/CategoryController.php
+           resources/views/admin/categories.blade.php
+           tests/Feature/CategoryAdminTest.php
+Ino-overwrite (9): app/Models/Category.php, app/Services/AuditLogger.php,
+           app/Http/Controllers/RepairRequestController.php,
+           app/Http/Requests/Forms/StoreRepairRequestRequest.php,
+           config/permissions.php, database/seeders/CategorySeeder.php,
+           resources/views/layouts/navigation.blade.php, resources/views/repairs/create.blade.php,
+           routes/web.php
+
+Paano gumagana
+  - Sidebar > Administration > Categories (/admin/categories). Capability: manage_categories
+    (Maintenance Admin lang; baguhin sa config/permissions.php).
+  - Add / Edit / Hide-Show / Up-Down (reorder sa loob ng type) / Delete.
+  - HIDDEN: hindi na lumalabas sa repair form at tinatanggihan din ng server kahit i-post ang ID.
+    Ang lumang tickets ay nagpapakita pa rin ng category nila.
+  - LOCKED: hindi pwedeng i-delete, i-rename o palitan ng type.
+  - DELETE: lilipat ang mga ticket (at inventory) sa "Other" ng PAREHONG type. May 1 "Other" kada type
+    (Materials / Equipment / Supplies) para hindi masira ang rule na "ang typed ticket ay gumagamit
+    ng category ng type niya". Kusa itong ginagawa ng migration (kung may laman na ang categories),
+    ng CategorySeeder, o sa unang delete.
+  - Hindi pwedeng palitan ang type ng category na ginagamit na ng ticket.
+  - Naka-log sa Audit log (action: category_changed).
+  - Ang lumang "is_active" column ay hindi na ginagamit; "is_hidden" na ang pamalit (kinopya ng migration).
+
+Rollback: php artisan migrate:rollback --step=1, tapos ibalik ang backup / git checkout -- .

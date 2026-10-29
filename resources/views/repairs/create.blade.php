@@ -50,7 +50,7 @@
                     <select id="category_id" name="category_id" x-ref="category">
                         <option value="">— Choose one —</option>
                         @foreach ($categories as $c)
-                            <option value="{{ $c->id }}" data-type="{{ $c->type }}" @selected(old('category_id') == $c->id)>{{ $c->name }}</option>
+                            <option value="{{ $c->id }}" data-type="{{ $c->type }}" @selected(old('category_id') == $c->id)>{{ $c->name }}@if ($c->is_locked && $c->name === \App\Models\Category::OTHER) ({{ $requestTypes[$c->type] ?? ucfirst($c->type) }})@endif</option>
                         @endforeach
                     </select>
                     @error('category_id')<p class="field-err">{{ $message }}</p>@enderror

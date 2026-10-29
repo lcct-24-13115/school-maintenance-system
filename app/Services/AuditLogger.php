@@ -45,6 +45,8 @@ class AuditLogger
 
     public const SETTINGS_UPDATED = 'settings_updated';
 
+    public const CATEGORY_CHANGED = 'category_changed';
+
     public const TICKET_STATUS = 'ticket_status';
 
     public const TICKET_ASSIGNED = 'ticket_assigned';
@@ -70,7 +72,7 @@ class AuditLogger
         return [
             self::LOGIN, self::LOGOUT, self::LOGIN_FAILED, self::REGISTERED, self::PASSWORD_RESET,
             self::USER_CREATED, self::USER_UPDATED, self::USER_DEACTIVATED, self::USER_REACTIVATED, self::ROLE_CHANGED,
-            self::SETTINGS_UPDATED,
+            self::SETTINGS_UPDATED, self::CATEGORY_CHANGED,
             self::TICKET_STATUS, self::TICKET_ASSIGNED, self::TICKET_REASSIGNED,
             self::ATTACHMENT_UPLOADED, self::ATTACHMENT_DOWNLOADED,
             self::EXPORT,

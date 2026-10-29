@@ -24,6 +24,7 @@
 |                      Both only ever cover the tickets the user may see (confidential: view_confidential).
 |   manage_users       manage user accounts (later phase)
 |   manage_settings    edit /admin/settings: SLA hours, reopen window (Merge Phase M1)
+|   manage_categories  open /admin/categories: add, edit, hide, reorder and delete categories (Phase 5)
 |   cancel_own         cancel YOUR OWN ticket, before it is Assigned (Merge Phase M2). Every role has it.
 |   reopen_own         reopen YOUR OWN Work Completed / Closed ticket inside reopen_window_days (M2). Every role has it.
 |   request_info       ask the requester for information: ticket goes to Waiting for User (M2)
@@ -40,7 +41,7 @@ return [
     // maintenance_admin is the proposal's "Admin".
     'maintenance_admin' => [
         'view_all_tickets', 'view_confidential', 'flag_emergency', 'clear_emergency',
-        'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users', 'manage_settings',
+        'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users', 'manage_settings', 'manage_categories',
         'cancel_own', 'reopen_own', 'request_info', 'escalate', 'view_audit_logs',
     ],
 

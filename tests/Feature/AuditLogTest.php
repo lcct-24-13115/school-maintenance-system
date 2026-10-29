@@ -159,6 +159,9 @@ class AuditLogTest extends TestCase
 
     public function test_no_audit_row_ever_contains_a_password(): void
     {
+        // Phase 2 closed public registration by default; this test needs it open to register a user.
+        config(['school.allow_public_registration' => true]);
+
         $registerPassword = 'Sup3r-Secret-Pw!9';
         $loginPassword = 'Wr0ng-Secret-Pw!7';
         $resetPassword = 'N3w-Secret-Pw!42';

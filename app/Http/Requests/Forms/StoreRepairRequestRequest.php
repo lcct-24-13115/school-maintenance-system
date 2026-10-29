@@ -61,7 +61,7 @@ class StoreRepairRequestRequest extends FormRequest
             'request_type' => ['nullable', Rule::in([Category::TYPE_MATERIALS, Category::TYPE_EQUIPMENT, Category::TYPE_SUPPLIES])],
             // When a request type is chosen the category must be of that type (the model enforces it too).
             'category_id' => ['required', Rule::exists('categories', 'id')->where(function ($query) use ($type) {
-                $query->where('is_active', true);
+                $query->where('is_hidden', false);
                 if ($type) {
                     $query->where('type', $type);
                 }

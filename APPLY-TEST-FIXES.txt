@@ -1,0 +1,6 @@
+TEST FIXES (2 lumang tests, walang kinalaman sa Phase 4/5)
+
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\test-fixes-patch.zip" -DestinationPath . -Force
+  php artisan test
+
+Ino-overwrite: tests/Feature/AuditLogTest.php, tests/Feature/ReportTest.php

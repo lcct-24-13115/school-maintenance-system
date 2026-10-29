@@ -16,9 +16,15 @@ class CategorySeeder extends Seeder
         ];
 
         foreach ($categories as $type => $names) {
-            foreach ($names as $name) {
-                Category::updateOrCreate(['name' => $name, 'type' => $type]);
+            foreach ($names as $i => $name) {
+                // firstOrCreate: re-seeding never undoes what an admin changed (order, hidden, lock)
+                Category::firstOrCreate(['name' => $name, 'type' => $type], ['sort_order' => $i + 1]);
             }
+        }
+
+        // The locked catch-all of each type. Created last, so it never becomes the "first" category.
+        foreach (array_keys($categories) as $type) {
+            Category::otherFor($type);
         }
     }
 }

@@ -37,7 +37,7 @@
             <i class="fa-solid fa-bell"></i> Notifications
         </a>
 
-        @if ($u->can_do('view_analytics') || $u->can_do('manage_settings') || $u->can_do('view_audit_logs'))
+        @if ($u->can_do('view_analytics') || $u->can_do('manage_settings') || $u->can_do('manage_categories') || $u->can_do('view_audit_logs'))
             <div class="nav-sec">Administration</div>
         @endif
 
@@ -50,6 +50,12 @@
         @if ($u->can_do('manage_settings'))
             <a href="{{ route('admin.settings.edit') }}" class="{{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-gear"></i> Settings
+            </a>
+        @endif
+
+        @if ($u->can_do('manage_categories'))
+            <a href="{{ route('admin.categories.index') }}" class="{{ request()->routeIs('admin.categories.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-tags"></i> Categories
             </a>
         @endif
 

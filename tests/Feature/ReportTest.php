@@ -394,7 +394,8 @@ class ReportTest extends TestCase
         foreach (['status', 'category', 'monthly', 'department'] as $key) {
             $response->assertSee('id="chart-'.$key.'"', false);
         }
-        foreach (['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com', 'chart.umd'] as $cdn) {
+        // Font Awesome comes from cdnjs (LCCT layout), so only a CHART library from a CDN counts as a failure.
+        foreach (['cdn.jsdelivr.net', 'unpkg.com', 'chart.umd', 'cdnjs.cloudflare.com/ajax/libs/Chart.js', 'cdnjs.cloudflare.com/ajax/libs/chart.js'] as $cdn) {
             $response->assertDontSee($cdn);
         }
 
