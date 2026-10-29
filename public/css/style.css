@@ -516,3 +516,21 @@ td.lu{white-space:nowrap}
 .auth-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px}
 .auth-card form{margin:0}
 button.tile-opt{font-family:inherit}
+
+/* ══════════ PHASE 3 ADDITIONS (app shell + shared components) ══════════ */
+.topbar-head{flex:1;min-width:0}
+.topbar-head h2{font-family:var(--font-display);font-size:30px;font-weight:600;letter-spacing:-.02em;color:var(--navy);line-height:1.15}
+.topbar .spacer{flex:0}
+.sb-scrim{position:fixed;inset:0;background:rgba(20,38,66,.45);z-index:15}
+@media(min-width:901px){.sb-scrim{display:none!important}}
+@media(max-width:900px){.topbar-head h2{font-size:24px}}
+@media(max-width:575.98px){.topbar-head h2{font-size:21px}}
+a.bell-btn,a.bell-btn:hover{text-decoration:none}
+.bell-n.hidden{display:none}
+.tb-user .who{background:none;border:0}
+.sidebar .nav::-webkit-scrollbar{width:6px}.sidebar .nav::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
+/* extra status colours used by the 8 ticket statuses */
+.st-assigned{color:#17708f;background:#e3f4fa;border-color:#b9e0ee}
+.badge-solid-red{color:#fff;background:var(--red);border-color:var(--red);text-transform:uppercase;letter-spacing:.03em}
+.badge-solid-dark{color:#fff;background:var(--navy);border-color:var(--navy);text-transform:uppercase;letter-spacing:.03em}
+.badge-row{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}

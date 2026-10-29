@@ -8,8 +8,9 @@
 @endphp
 
 @if ($show)
-    <span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-bold {{ $overdue ? 'bg-red-100 text-red-800' : 'bg-sky-100 text-sky-800' }}"
+    <span class="badge {{ $overdue ? 'st-escalated' : 'st-open' }}"
           title="Target: {{ $ticket->due_at->format('M j, Y g:i A') }}">
-        {{ $overdue ? '⏰ Overdue by '.$span : '🕒 Due in '.$span }}
+        <i class="fa-solid {{ $overdue ? 'fa-clock' : 'fa-hourglass-half' }}"></i>
+        {{ $overdue ? 'Overdue by '.$span : 'Due in '.$span }}
     </span>
 @endif
