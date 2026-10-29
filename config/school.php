@@ -29,7 +29,19 @@ return [
     |                                  (the LCCT Ticketing rule)
     | CONFIRM WITH CLIENT: do requesters here include staff/teachers? If yes keep 'domain'.
     */
+    /*
+    | Phase 3: sign-in lock. After max_attempts wrong passwords (same email + same device) sign-in is locked for lock_minutes.
+    | CONFIRM WITH CLIENT: 5 attempts / 15 minutes is the LCCT Ticketing rule.
+    */
+    'login' => [
+        'max_attempts' => (int) env('LOGIN_MAX_ATTEMPTS', 5),
+        'lock_minutes' => (int) env('LOGIN_LOCK_MINUTES', 15),
+    ],
+
     'registration' => [
+        // Phase 3: true = an account whose email is not verified yet can only see the "verify your email" page.
+        // Turn it on after Phase 1 email really works (php artisan mail:test). Seeded and admin-made accounts: set email_verified_at.
+        'require_verification' => (bool) env('REQUIRE_EMAIL_VERIFICATION', false),
         'email_domain' => env('SCHOOL_EMAIL_DOMAIN', 'lcctanauan.edu.ph'),
         'email_format' => env('SCHOOL_EMAIL_FORMAT', 'domain'),
     ],

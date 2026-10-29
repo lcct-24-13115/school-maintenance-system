@@ -92,11 +92,19 @@ return [
     |
     */
 
+    /*
+    | Phase 3: how long the emailed "verify your email" link works, in minutes (Laravel reads auth.verification.expire).
+    | 1440 = 24 hours, same as LCCT Ticketing.
+    */
+    'verification' => [
+        'expire' => (int) env('VERIFY_EMAIL_MINUTES', 1440),
+    ],
+
     'passwords' => [
         'users' => [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
-            'expire' => 60,
+            'expire' => (int) env('PASSWORD_RESET_MINUTES', 60),   // Phase 3: reset link lifetime (minutes)
             'throttle' => 60,
         ],
     ],

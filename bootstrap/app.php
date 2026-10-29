@@ -17,8 +17,18 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Phase 2: an account with a temporary password may only reach the "choose a new password" page.
         $middleware->appendToGroup('web', \App\Http\Middleware\EnsurePasswordChanged::class);
+
+        // Phase 3: optional "verify your email first" (config school.registration.require_verification).
+        $middleware->appendToGroup('web', \App\Http\Middleware\RequireVerifiedEmail::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Phase 3: an old or tampered verification link shows a friendly page instead of a bare 403.
+        $exceptions->render(function (\Illuminate\Routing\Exceptions\InvalidSignatureException $e, Request $request) {
+            if ($request->routeIs('verification.verify')) {
+                return redirect()->route('verification.notice')->with('status', 'verification-link-expired');
+            }
+        });
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
