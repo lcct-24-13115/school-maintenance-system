@@ -16,7 +16,23 @@ return [
 
     // Public self-registration at /register (always creates a Requester). Set false to turn it off.
     // CONFIRM WITH CLIENT: should the school allow anyone to self-register in production?
-    'allow_public_registration' => env('ALLOW_PUBLIC_REGISTRATION', true),
+    // Phase 2: the controller now really reads this switch. Default is CLOSED (registration was already closed by
+    // the no-register patch). Turn on with ALLOW_PUBLIC_REGISTRATION=true in .env.
+    'allow_public_registration' => env('ALLOW_PUBLIC_REGISTRATION', false),
+
+    /*
+    | Phase 2: which emails may register (App\Rules\SchoolEmail).
+    |
+    |  email_domain   only addresses ending in @this-domain. Empty = any domain.
+    |  email_format   'domain'         any name@domain (teachers, staff and students)
+    |                 'student_number' only studentnumber@domain, digits with optional hyphens, e.g. 24-12803@lcctanauan.edu.ph
+    |                                  (the LCCT Ticketing rule)
+    | CONFIRM WITH CLIENT: do requesters here include staff/teachers? If yes keep 'domain'.
+    */
+    'registration' => [
+        'email_domain' => env('SCHOOL_EMAIL_DOMAIN', 'lcctanauan.edu.ph'),
+        'email_format' => env('SCHOOL_EMAIL_FORMAT', 'domain'),
+    ],
 
     // Roles whose members also see the (non-confidential) tickets of their own department.
     // CONFIRM WITH CLIENT

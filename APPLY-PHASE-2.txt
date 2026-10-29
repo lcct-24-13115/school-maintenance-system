@@ -1,0 +1,49 @@
+PHASE 2 - Account rules: school email rule + forced password change
+
+PREREQUISITE: naka-apply na ang Phase 1 (para sa .env.example at email).
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 2"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase2update.zip" -DestinationPath . -Force
+  php artisan migrate
+  php artisan config:clear
+  php artisan route:clear
+  php artisan test --filter=ForcePasswordChangeTest
+  php artisan test --filter=RegistrationTest
+
+Kapag hindi gumana ang Expand-Archive:
+  tar -xf "$env:USERPROFILE\Downloads\phase2update.zip" -C .
+
+MAY BAGONG MIGRATION: 2026_10_29_000001 (dagdag na 2 column sa users: must_change_password, password_changed_at).
+Hindi nito binubura ang data. HUWAG mag-"migrate:fresh" sa live site.
+
+PAANO SUBUKAN ANG FORCED PASSWORD CHANGE (hanggang magawa ang user admin page sa Phase 6):
+  php artisan tinker
+  >>> App\Models\User::where('email','requester@lcctanauan.edu.ph')->first()->forceFill(['must_change_password'=>true])->save();
+  Mag-login bilang requester@ (password: password). Dadalhin ka sa "Choose a new password" page.
+  Hindi ka makakapasok sa ibang page hangga't hindi nagpapalit (logout lang ang gumagana).
+  Hindi puwedeng pareho ang bagong password sa temporary.
+
+REGISTRATION:
+  Sarado pa rin ito (404) gaya ng dati. Dati hardcoded ang pagsasara; ngayon ay config na:
+    .env:  ALLOW_PUBLIC_REGISTRATION=true     (para buksan ang /register)
+           SCHOOL_EMAIL_DOMAIN=lcctanauan.edu.ph
+           SCHOOL_EMAIL_FORMAT=domain          (kahit anong name@domain)
+                         o   student_number    (24-12803@lcctanauan.edu.ph lang, gaya ng LCCT Ticketing)
+  Kapag binuksan mo, may link na "Register" na kailangan mo pang ibalik sa login page (tinanggal ng no-register patch).
+  TANONG PARA SA IYO: requesters ba dito ay mga teacher/staff din? Kung oo, iwan sa "domain".
+
+Bago (6):  app/Rules/SchoolEmail.php, app/Http/Middleware/EnsurePasswordChanged.php,
+           app/Http/Controllers/Auth/ForcePasswordChangeController.php,
+           resources/views/auth/force-password.blade.php,
+           database/migrations/2026_10_29_000001_add_password_rules_to_users_table.php,
+           tests/Feature/Auth/ForcePasswordChangeTest.php
+Ino-overwrite (9): bootstrap/app.php (1 linya: middleware), routes/auth.php (2 route), config/school.php (registration block),
+           RegisteredUserController, PasswordController, NewPasswordController, .env.example,
+           tests/Feature/Auth/RegistrationTest.php, tests/Feature/TicketAccessTest.php (1 test lang ang inayos)
+Hindi ginalaw: User model, ibang controllers, views, CSS, ibang routes
+
+Kung may sarili kang pagbabago sa bootstrap/app.php, routes/auth.php o config/school.php, ihambing muna gamit ang
+"git diff" matapos mag-apply; kaunti lang ang idinagdag sa bawat isa.
+
+Rollback: php artisan migrate:rollback --step=1, tapos ibalik ang backup o "git checkout -- ." at burahin ang 6 bagong file.

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
+use App\Rules\SchoolEmail;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,21 +16,22 @@ use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
 {
-    // Public registration is closed: accounts are created by an admin. Both routes answer 404.
+    // Public registration is CLOSED unless ALLOW_PUBLIC_REGISTRATION=true (config/school.php). Closed = both routes answer 404.
     public function create(): View
     {
-        abort(404);
+        abort_unless(config('school.allow_public_registration'), 404);
 
         return view('auth.register', ['departments' => Department::orderBy('name')->get()]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        abort(404);
+        abort_unless(config('school.allow_public_registration'), 404);
 
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            // Phase 2: only the school's own email addresses (see App\Rules\SchoolEmail).
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class, new SchoolEmail],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'department_id' => ['nullable', 'exists:departments,id'],
         ]);

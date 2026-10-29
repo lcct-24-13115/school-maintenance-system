@@ -552,6 +552,7 @@ class TicketAccessTest extends TestCase
 
     public function test_public_registration_can_be_turned_off(): void
     {
+        config(['school.allow_public_registration' => true]);   // Phase 2: closed by default now, so open it first
         $this->get('/register')->assertOk();
 
         config(['school.allow_public_registration' => false]);
