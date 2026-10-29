@@ -1,30 +1,37 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="csrf-token" content="{{ csrf_token() }}">
+<head>
+    @include('partials.head')
+    <title>{{ config('app.name', 'LCCT') }} - Maintenance Ticketing System</title>
+</head>
+<body class="auth-body">
+    <div class="stage">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
-
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
-
-        <!-- Scripts -->
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    </head>
-    <body class="font-sans text-gray-900 antialiased">
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
+        {{-- Phones: campus photo on top with brand (desktop hides this) --}}
+        <div class="hero-m">
+            <img src="{{ asset('images/lcct-logo.png') }}" alt="LCCT seal">
             <div>
-                <a href="/">
-                    <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
-                </a>
-            </div>
-
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg">
-                {{ $slot }}
+                <div class="brand">LCCT <span>Maintenance</span></div>
+                <small>La Consolacion College Tanauan</small>
             </div>
         </div>
-    </body>
+
+        <main class="auth-card {{ $attributes->has('wide') ? 'wide' : '' }}">
+            <div class="auth-logo"><img src="{{ asset('images/lcct-logo.png') }}" alt="La Consolacion College Tanauan seal"></div>
+            <div class="auth-brand">
+                <div class="brand">LCCT <span>Maintenance</span></div>
+                <small>La Consolacion College Tanauan</small>
+            </div>
+
+            {{ $slot }}
+        </main>
+
+        <div class="auth-credit">
+            <img src="{{ asset('images/intel-logo.png') }}" alt="INTEL">
+            <span>Developed by <b>INTEL</b></span>
+        </div>
+    </div>
+
+    @stack('scripts')
+</body>
 </html>

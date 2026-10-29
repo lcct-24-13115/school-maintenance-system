@@ -1,0 +1,11 @@
+PHASE 2 - Auth pages (login, register, forgot, reset, verify, confirm, welcome)
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase2-patch.zip" -DestinationPath . -Force
+  php artisan view:clear
+  php artisan serve
+
+Tapos buksan: http://127.0.0.1:8000  (dapat dumiretso sa bagong login)
+
+Ino-overwrite nito: public/css/style.css, resources/views/layouts/guest.blade.php,
+resources/views/auth/*.blade.php (6 files), resources/views/welcome.blade.php
