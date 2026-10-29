@@ -1,157 +1,175 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Request for Repairs &amp; Improvement <span class="text-gray-400">(FO-08)</span></h2>
-    </x-slot>
+@php
+    // <input type="number"> is not covered by the global input rule in style.css, so give it the same look here
+    $numInput = 'width:100%;height:46px;padding:0 15px;font-size:15px;border-radius:14px;border:1.5px solid var(--line);background:#f6f9fd;color:var(--text)';
+    $vh = 'position:absolute;opacity:0;width:1px;height:1px;pointer-events:none';
+@endphp
 
-    <div class="py-6" x-data="repairForm({
+<x-app-layout>
+    <x-slot name="header">Request for Repairs &amp; Improvement (FO-08)</x-slot>
+
+    <div x-data="repairForm({
             priority: @js(old('priority', 'first_come_first_served')),
             requestType: @js((string) old('request_type', '')),
             items: @js(array_values((array) old('items', []))),
         })">
-        <div class="max-w-2xl mx-auto px-4 sm:px-6">
-            <p class="mb-4 rounded-lg bg-yellow-100 p-3 text-sm font-semibold text-yellow-900">
-                Request must be made 5 working days in advance.
-            </p>
 
-            @error('form')<p class="mb-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-700">{{ $message }}</p>@enderror
+        <div class="alert warn"><i class="fa-solid fa-calendar-check"></i><div>Request must be made 5 working days in advance.</div></div>
 
-            <form method="POST" action="{{ route('repairs.store') }}" enctype="multipart/form-data" class="space-y-5 rounded-xl bg-white p-5 shadow-sm">
+        @error('form')<div class="alert err" role="alert"><i class="fa-solid fa-circle-exclamation"></i><div>{{ $message }}</div></div>@enderror
+
+        <div class="two-col">
+            <form method="POST" action="{{ route('repairs.store') }}" enctype="multipart/form-data" class="card">
                 @csrf
 
-                <div>
-                    <label class="block text-base font-semibold text-gray-800">From: (Department/Office)</label>
-                    <select name="department_id" class="mt-1 w-full rounded-lg border-gray-300 py-3 text-base">
-                        @foreach ($departments as $d)
-                            <option value="{{ $d->id }}" @selected(old('department_id', $defaultDepartment) == $d->id)>{{ $d->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('department_id')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                </div>
+                <div class="row2">
+                    <div class="field">
+                        <label class="lbl" for="department_id">From: (Department/Office)</label>
+                        <select id="department_id" name="department_id">
+                            @foreach ($departments as $d)
+                                <option value="{{ $d->id }}" @selected(old('department_id', $defaultDepartment) == $d->id)>{{ $d->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('department_id')<p class="field-err">{{ $message }}</p>@enderror
+                    </div>
 
-                <div>
-                    <label class="block text-base font-semibold text-gray-800">Request type <span class="font-normal text-gray-500">(optional)</span></label>
-                    <select name="request_type" x-model="requestType" class="mt-1 w-full rounded-lg border-gray-300 py-3 text-base">
-                        <option value="">None (a repair or service)</option>
-                        @foreach ($requestTypes as $value => $label)
-                            <option value="{{ $value }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    <p class="mt-1 text-xs text-gray-500">Choose one only if you are asking for materials, equipment or supplies. The category list below will match it.</p>
-                    @error('request_type')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                    <div class="field">
+                        <label class="lbl" for="request_type">Request type <span class="hint" style="display:inline">(optional)</span></label>
+                        <select id="request_type" name="request_type" x-model="requestType">
+                            <option value="">None (a repair or service)</option>
+                            @foreach ($requestTypes as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('request_type')<p class="field-err">{{ $message }}</p>@enderror
+                    </div>
                 </div>
+                <p class="hint" style="margin:-6px 0 14px">Choose a request type only if you are asking for materials, equipment or supplies. The category list below will match it.</p>
 
-                <div>
-                    <label class="block text-base font-semibold text-gray-800">Maintenance category</label>
-                    <select name="category_id" x-ref="category" class="mt-1 w-full rounded-lg border-gray-300 py-3 text-base">
+                <div class="field">
+                    <label class="lbl" for="category_id">Maintenance category</label>
+                    <select id="category_id" name="category_id" x-ref="category">
                         <option value="">— Choose one —</option>
                         @foreach ($categories as $c)
                             <option value="{{ $c->id }}" data-type="{{ $c->type }}" @selected(old('category_id') == $c->id)>{{ $c->name }}</option>
                         @endforeach
                     </select>
-                    @error('category_id')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                    @error('category_id')<p class="field-err">{{ $message }}</p>@enderror
                 </div>
 
                 {{-- Items: only when a request type is chosen. Rows sent without a type are ignored by the server. --}}
-                <div x-show="requestType !== ''" x-cloak class="space-y-3 rounded-xl border border-gray-200 p-4">
-                    <div class="text-base font-semibold text-gray-800">Items needed <span class="font-normal text-gray-500">(optional)</span></div>
+                <div x-show="requestType !== ''" style="display:none;border:1.5px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;background:var(--mist)">
+                    <div class="lbl" style="font-size:15px">Items needed <span class="hint" style="display:inline">(optional)</span></div>
 
                     <template x-for="(item, i) in items" :key="i">
-                        <div class="space-y-2 rounded-lg bg-gray-50 p-3">
-                            <input type="text" :name="'items[' + i + '][item_name]'" x-model="item.item_name" maxlength="255" placeholder="Item name" class="w-full rounded-lg border-gray-300 py-3 text-base">
-                            <div class="grid grid-cols-2 gap-2">
-                                <input type="number" inputmode="numeric" min="1" step="1" :name="'items[' + i + '][quantity]'" x-model="item.quantity" placeholder="Quantity" class="w-full rounded-lg border-gray-300 py-3 text-base">
-                                <input type="text" :name="'items[' + i + '][unit]'" x-model="item.unit" maxlength="50" placeholder="Unit (pc, box, set)" class="w-full rounded-lg border-gray-300 py-3 text-base">
+                        <div style="background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:10px">
+                            <input type="text" :name="'items[' + i + '][item_name]'" x-model="item.item_name" maxlength="255" placeholder="Item name" style="margin-bottom:8px">
+                            <div class="row2" style="margin-bottom:8px">
+                                <input type="number" inputmode="numeric" min="1" step="1" :name="'items[' + i + '][quantity]'" x-model="item.quantity" placeholder="Quantity" style="{{ $numInput }}">
+                                <input type="text" :name="'items[' + i + '][unit]'" x-model="item.unit" maxlength="50" placeholder="Unit (pc, box, set)">
                             </div>
-                            <input type="text" :name="'items[' + i + '][specification]'" x-model="item.specification" maxlength="1000" placeholder="Specification (size, brand, model...)" class="w-full rounded-lg border-gray-300 py-3 text-base">
-                            <button type="button" @click="removeItem(i)" class="min-h-[44px] text-sm font-bold text-red-600">Remove this item</button>
+                            <input type="text" :name="'items[' + i + '][specification]'" x-model="item.specification" maxlength="1000" placeholder="Specification (size, brand, model...)">
+                            <button type="button" @click="removeItem(i)" class="btn btn-sm btn-danger" style="margin-top:10px"><i class="fa-solid fa-trash-can"></i> Remove this item</button>
                         </div>
                     </template>
 
                     <button type="button" @click="addItem()" x-show="items.length < {{ \App\Http\Requests\Forms\StoreRepairRequestRequest::MAX_ITEMS }}"
-                            class="min-h-[48px] w-full rounded-xl border-2 border-dashed border-blue-400 px-3 py-3 text-base font-bold text-blue-700">
-                        + Add an item
+                            class="btn" style="width:100%;border-style:dashed;border-color:var(--blue);color:var(--deep)">
+                        <i class="fa-solid fa-plus"></i> Add an item
                     </button>
 
                     @foreach ($errors->get('items*') as $messages)
                         @foreach ((array) $messages as $message)
-                            <p class="text-sm text-red-600">{{ $message }}</p>
+                            <p class="field-err">{{ $message }}</p>
                         @endforeach
                     @endforeach
                 </div>
 
-                <div>
-                    <label class="block text-base font-semibold text-gray-800">Where is it? (building / room)</label>
-                    <input name="location" value="{{ old('location') }}" class="mt-1 w-full rounded-lg border-gray-300 py-3 text-base" placeholder="e.g. Grade 5 Room 204">
-                    @error('location')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                <div class="field">
+                    <label class="lbl" for="location">Where is it? (building / room)</label>
+                    <input id="location" type="text" name="location" value="{{ old('location') }}" placeholder="e.g. Grade 5 Room 204">
+                    @error('location')<p class="field-err">{{ $message }}</p>@enderror
                 </div>
 
-                <div>
-                    <label class="block text-base font-semibold text-gray-800">Job Description</label>
-                    <textarea name="job_description" rows="3" class="mt-1 w-full rounded-lg border-gray-300 text-base" placeholder="What needs to be fixed or improved?">{{ old('job_description') }}</textarea>
-                    @error('job_description')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                <div class="field">
+                    <label class="lbl" for="job_description">Job Description</label>
+                    <textarea id="job_description" name="job_description" rows="3" placeholder="What needs to be fixed or improved?">{{ old('job_description') }}</textarea>
+                    @error('job_description')<p class="field-err">{{ $message }}</p>@enderror
                 </div>
 
-                <div>
-                    <label class="block text-base font-semibold text-gray-800">Reason for Request</label>
-                    <textarea name="reason" rows="3" class="mt-1 w-full rounded-lg border-gray-300 text-base">{{ old('reason') }}</textarea>
-                    @error('reason')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                <div class="field">
+                    <label class="lbl" for="reason">Reason for Request</label>
+                    <textarea id="reason" name="reason" rows="3">{{ old('reason') }}</textarea>
+                    @error('reason')<p class="field-err">{{ $message }}</p>@enderror
                 </div>
 
-                <fieldset>
-                    <legend class="text-base font-semibold text-gray-800">Priority</legend>
-                    <div class="mt-2 grid grid-cols-2 gap-3">
-                        <label class="cursor-pointer rounded-xl border-2 p-4 text-center font-bold" :class="priority === 'first_come_first_served' ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-gray-200 text-gray-600'">
-                            <input type="radio" name="priority" value="first_come_first_served" x-model="priority" class="sr-only">
-                            First Come<br>First Served
+                <fieldset class="field" style="border:0;padding:0;min-width:0">
+                    <legend class="lbl">Priority</legend>
+                    <div class="tile-grid two">
+                        <label class="tile-opt" :class="priority === 'first_come_first_served' ? 'active' : ''">
+                            <input type="radio" name="priority" value="first_come_first_served" x-model="priority" style="{{ $vh }}">
+                            <i class="fa-solid fa-list-ol"></i>
+                            <span>First Come First Served</span>
                         </label>
-                        <label class="cursor-pointer rounded-xl border-2 p-4 text-center font-bold" :class="priority === 'emergency' ? 'border-red-600 bg-red-50 text-red-700' : 'border-gray-200 text-gray-600'">
-                            <input type="radio" name="priority" value="emergency" x-model="priority" class="sr-only">
+                        <label class="tile-opt" :class="priority === 'emergency' ? 'active' : ''" :style="priority === 'emergency' ? 'border-color:var(--red)' : ''">
+                            <input type="radio" name="priority" value="emergency" x-model="priority" style="{{ $vh }}">
+                            <i class="fa-solid fa-triangle-exclamation" :style="priority === 'emergency' ? 'color:var(--red)' : ''"></i>
                             @if ($canFlag)
-                                🚨 Emergency
+                                <span>Emergency</span>
                             @else
-                                🚨 Ask for<br>emergency review
+                                <span>Ask for emergency review</span>
                             @endif
                         </label>
                     </div>
                     @unless ($canFlag)
-                        <p x-show="priority === 'emergency'" class="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-                            Your ticket will be filed as a routine request. Maintenance will see that you asked for an emergency review and your reason below.
-                        </p>
+                        <div class="alert warn" x-show="priority === 'emergency'" style="display:none;margin:12px 0 0">
+                            <i class="fa-solid fa-circle-info"></i>
+                            <div>Your ticket will be filed as a routine request. Maintenance will see that you asked for an emergency review and your reason below.</div>
+                        </div>
                     @endunless
-                    @error('priority')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                    @error('priority')<p class="field-err">{{ $message }}</p>@enderror
                 </fieldset>
 
-                <div x-show="priority !== 'emergency' || {{ $emergencyBypass ? 'false' : 'true' }}">
-                    <label class="block text-base font-semibold text-gray-800">Date needed</label>
-                    <input type="date" name="needed_by" value="{{ old('needed_by') }}" min="{{ $earliest->toDateString() }}" class="mt-1 w-full rounded-lg border-gray-300 py-3 text-base">
-                    <p class="mt-1 text-xs text-gray-500">Earliest allowed: {{ $earliest->format('M j, Y (l)') }}</p>
-                    @error('needed_by')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                <div class="field" x-show="priority !== 'emergency' || {{ $emergencyBypass ? 'false' : 'true' }}">
+                    <label class="lbl" for="needed_by">Date needed</label>
+                    <input id="needed_by" type="date" name="needed_by" value="{{ old('needed_by') }}" min="{{ $earliest->toDateString() }}">
+                    <p class="hint">Earliest allowed: {{ $earliest->format('M j, Y (l)') }}</p>
+                    @error('needed_by')<p class="field-err">{{ $message }}</p>@enderror
                 </div>
 
-                <div>
-                    <label class="block text-base font-semibold text-gray-800">Photos &amp; documents <span class="font-normal text-gray-500">(optional)</span></label>
+                <div class="field">
+                    <label class="lbl">Photos &amp; documents <span class="hint" style="display:inline">(optional)</span></label>
                     <x-file-picker name="files" />
                     @if ($errors->has('files') || $errors->has('files.*'))
-                        <p class="mt-2 text-sm text-gray-600">Your browser does not keep chosen files after an error, so please pick them again.</p>
+                        <p class="hint">Your browser does not keep chosen files after an error, so please pick them again.</p>
                     @endif
-                    @error('files')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                    @error('files')<p class="field-err">{{ $message }}</p>@enderror
                     @foreach ($errors->get('files.*') as $messages)
                         @foreach ((array) $messages as $message)
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            <p class="field-err">{{ $message }}</p>
                         @endforeach
                     @endforeach
                 </div>
 
-                <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 p-4">
-                    <input type="checkbox" name="is_confidential" value="1" @checked(old('is_confidential')) class="mt-1 h-6 w-6 rounded border-gray-300 text-blue-600">
+                <label class="check" style="display:flex;align-items:flex-start;gap:12px;border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:18px;background:var(--mist)">
+                    <input type="checkbox" name="is_confidential" value="1" @checked(old('is_confidential')) style="margin-top:4px">
                     <span>
-                        <span class="block text-base font-semibold text-gray-800">🔒 Mark as confidential</span>
-                        <span class="block text-sm text-gray-600">Only you, the School President, Maintenance Administrators and the staff member assigned to it can see this ticket and its files.</span>
+                        <span style="display:block;font-size:15px;font-weight:700;color:var(--navy)"><i class="fa-solid fa-lock"></i> Mark as confidential</span>
+                        <span style="display:block;font-size:13px;font-weight:400;color:var(--text-2)">Only you, the School President, Maintenance Administrators and the staff member assigned to it can see this ticket and its files.</span>
                     </span>
                 </label>
 
-                <button class="w-full rounded-xl bg-green-600 py-4 text-xl font-bold text-white hover:bg-green-700">SEND REQUEST</button>
+                <button class="btn btn-primary btn-block"><i class="fa-solid fa-paper-plane"></i> SEND REQUEST</button>
             </form>
+
+            {{-- What happens next --}}
+            <aside class="card" style="align-self:start">
+                <div class="card-h"><h3>What happens next</h3></div>
+                <div class="pf-row"><span class="k">1. Filed</span><span class="mono">You get a ticket number</span></div>
+                <div class="pf-row"><span class="k">2. Authorized</span><span class="mono">The School President approves</span></div>
+                <div class="pf-row"><span class="k">3. Assigned</span><span class="mono">Maintenance picks it up</span></div>
+                <div class="pf-row"><span class="k">4. Done</span><span class="mono">Work is completed and closed</span></div>
+                <p class="hint">You can follow every step on the ticket page.</p>
+            </aside>
         </div>
     </div>
 

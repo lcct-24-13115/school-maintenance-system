@@ -1,66 +1,68 @@
 @use('App\Enums\TicketStatus')
 
+{{-- Phase 5 (design): three columns of .tk-card. The whole card opens the ticket (the location link stretches over it);
+     the buttons sit above that link (.tk-foot .btn has z-index 2). Rules for which button shows are unchanged. --}}
 @php
     $columns = [
-        ['title' => '🆕 NEW', 'tasks' => $newTasks, 'color' => 'bg-blue-600'],
-        ['title' => '🔧 DOING', 'tasks' => $doingTasks, 'color' => 'bg-amber-500'],
-        ['title' => '✅ DONE (last 7 days)', 'tasks' => $doneTasks, 'color' => 'bg-green-600'],
+        ['title' => 'NEW', 'icon' => 'fa-inbox', 'tasks' => $newTasks, 'color' => 'var(--deep)'],
+        ['title' => 'DOING', 'icon' => 'fa-screwdriver-wrench', 'tasks' => $doingTasks, 'color' => '#b9780f'],
+        ['title' => 'DONE (last 7 days)', 'icon' => 'fa-circle-check', 'tasks' => $doneTasks, 'color' => 'var(--green)'],
     ];
 @endphp
 
-<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-items:start">
     @foreach ($columns as $col)
-        <section>
-            <h3 class="mb-3 rounded-lg {{ $col['color'] }} px-4 py-2 text-lg font-extrabold text-white">
-                {{ $col['title'] }} <span class="float-right">{{ $col['tasks']->count() }}</span>
+        <section style="min-width:0">
+            <h3 style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;padding:11px 18px;border-radius:16px;background:{{ $col['color'] }};color:#fff;font-family:var(--font-display);font-size:18px;font-weight:600">
+                <span><i class="fa-solid {{ $col['icon'] }}"></i> {{ $col['title'] }}</span>
+                <span class="nums">{{ $col['tasks']->count() }}</span>
             </h3>
 
-            <div class="space-y-4">
+            <div style="display:flex;flex-direction:column;gap:16px">
                 @forelse ($col['tasks'] as $r)
-                    <article class="overflow-hidden rounded-xl bg-white shadow {{ $r->isEmergency() && ! $r->status->isCompleted() ? 'ring-4 ring-red-500' : '' }}">
-                        @if ($r->isEmergency())
-                            <div class="bg-red-600 px-4 py-1 text-center text-sm font-extrabold uppercase tracking-widest text-white">🚨 Emergency</div>
-                        @endif
-                        @if ($r->is_confidential)
-                            <div class="bg-gray-800 px-4 py-1 text-center text-xs font-bold uppercase tracking-widest text-white">🔒 Confidential</div>
-                        @endif
+                    <article class="tk-card" @if ($r->isEmergency() && ! $r->status->isCompleted()) style="border-color:var(--red);box-shadow:0 0 0 3px rgba(200,55,45,.25)" @endif>
+                        <div class="tk-top">
+                            <span class="mono" style="font-weight:800">{{ $r->ticket_no }}</span>
+                            <span class="tk-sub">{{ $r->submitted_at->diffForHumans() }}</span>
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px">@include('tickets._badges', ['ticket' => $r])</div>
 
                         @if ($r->photoUrl())
-                            <a href="{{ $r->photoUrl() }}" target="_blank"><img src="{{ $r->photoUrl() }}" alt="Photo" class="h-44 w-full object-cover"></a>
+                            <a href="{{ $r->photoUrl() }}" target="_blank" style="position:relative;z-index:2;display:block;margin-top:6px">
+                                <img src="{{ $r->photoUrl() }}" alt="Photo" style="display:block;width:100%;height:170px;object-fit:cover;border-radius:14px">
+                            </a>
                         @endif
 
-                        <div class="space-y-1 p-4">
-                            <div class="text-2xl font-extrabold text-gray-900">📍 {{ $r->location }}</div>
-                            <div class="text-base text-gray-800">{{ $r->description }}</div>
-                            <div class="pt-1 text-base font-semibold text-gray-700">👤 {{ $r->requester->name }}</div>
-                            <div class="text-sm text-gray-500">{{ $r->department?->name }} · {{ $r->category?->name }}</div>
-                            <div class="text-sm text-gray-500">{{ $r->ticket_no }} · {{ $r->submitted_at->diffForHumans() }}</div>
-                            <div class="inline-block rounded bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-700">{{ $r->status->label() }}</div>
-                            @if ($r->assignee)
-                                <div class="text-sm font-semibold text-amber-700">Assigned to {{ $r->assignee->name }}</div>
+                        <a href="{{ route('tickets.show', $r) }}" class="tk-title" style="font-size:20px"><i class="fa-solid fa-location-dot" style="color:var(--blue)"></i> {{ $r->location }}</a>
+                        <div style="word-break:break-word">{{ $r->description }}</div>
+                        <div style="font-weight:700;color:var(--navy);margin-top:4px"><i class="fa-regular fa-user"></i> {{ $r->requester->name }}</div>
+                        <div class="tk-sub">{{ $r->department?->name }} · {{ $r->category?->name }}</div>
+                        @if ($r->assignee)
+                            <div style="font-size:13px;font-weight:700;color:var(--amber)">Assigned to {{ $r->assignee->name }}</div>
+                        @endif
+
+                        <div class="tk-foot">
+                            <a href="{{ route('tickets.show', $r) }}" class="btn btn-sm" style="width:100%">View details &amp; history</a>
+
+                            @if ($r->status === TicketStatus::Approved || ($r->status === TicketStatus::Assigned && (int) $r->assigned_to === (int) auth()->id()))
+                                <form method="POST" action="{{ route('maintenance.accept', $r) }}" style="width:100%">
+                                    @csrf
+                                    <button class="btn btn-primary" style="width:100%;height:58px;font-size:18px;letter-spacing:.04em">ACCEPT TASK</button>
+                                </form>
+                            @elseif ($r->status === TicketStatus::InProgress)
+                                <form method="POST" action="{{ route('maintenance.complete', $r) }}" style="width:100%">
+                                    @csrf
+                                    <button class="btn btn-primary" style="width:100%;height:58px;font-size:18px;letter-spacing:.04em;background:var(--green);border-color:var(--green)">MARK COMPLETED</button>
+                                </form>
+                            @elseif (in_array($r->status, [TicketStatus::Submitted, TicketStatus::PendingAuthorization], true))
+                                <div class="hint" style="width:100%;margin:0;text-align:center;font-weight:700"><i class="fa-regular fa-hourglass-half"></i> Waiting for authorization</div>
+                            @elseif ($r->status === TicketStatus::Assigned)
+                                <div class="hint" style="width:100%;margin:0;text-align:center;font-weight:700">Assigned to {{ $r->assignee?->name }}</div>
                             @endif
                         </div>
-
-                        <a href="{{ route('tickets.show', $r) }}" class="flex min-h-[44px] items-center justify-center border-t border-gray-100 text-sm font-bold text-blue-700 hover:bg-blue-50">View details &amp; history</a>
-
-                        @if ($r->status === TicketStatus::Approved || ($r->status === TicketStatus::Assigned && (int) $r->assigned_to === (int) auth()->id()))
-                            <form method="POST" action="{{ route('maintenance.accept', $r) }}">
-                                @csrf
-                                <button class="w-full bg-blue-600 py-5 text-2xl font-extrabold text-white active:bg-blue-800">ACCEPT TASK</button>
-                            </form>
-                        @elseif ($r->status === TicketStatus::InProgress)
-                            <form method="POST" action="{{ route('maintenance.complete', $r) }}">
-                                @csrf
-                                <button class="w-full bg-green-600 py-5 text-2xl font-extrabold text-white active:bg-green-800">MARK COMPLETED</button>
-                            </form>
-                        @elseif (in_array($r->status, [TicketStatus::Submitted, TicketStatus::PendingAuthorization], true))
-                            <div class="bg-gray-100 py-4 text-center text-base font-bold text-gray-500">⏳ Waiting for authorization</div>
-                        @elseif ($r->status === TicketStatus::Assigned)
-                            <div class="bg-gray-100 py-4 text-center text-base font-bold text-gray-500">Assigned to {{ $r->assignee?->name }}</div>
-                        @endif
                     </article>
                 @empty
-                    <p class="rounded-lg bg-white p-6 text-center text-gray-400">Nothing here 👍</p>
+                    <div class="card" style="margin:0"><div class="empty" style="padding:26px 16px"><i class="fa-regular fa-face-smile"></i>Nothing here</div></div>
                 @endforelse
             </div>
         </section>

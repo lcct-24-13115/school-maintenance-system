@@ -5,47 +5,55 @@
     "Take photo" opens the camera on phones; "Choose files" opens the gallery / file manager (several at once).
     Both add to ONE list; the hidden real input (name="files[]") is filled from that list on every change.
     Limits come from config/school.php -> attachments (the server checks everything again).
+    Phase 5 (design): LCCT classes (.btn, .row2, .alert, .pf-row). The script below is unchanged.
 --}}
 @php
     $max = \App\Services\AttachmentService::maxFiles();
     $maxBytes = \App\Services\AttachmentService::maxBytes();
+    // the two helper inputs stay in the page (so .click() works) but out of sight
+    $vh = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;padding:0;opacity:0';
 @endphp
 
-<div x-data="filePicker({ max: {{ $max }}, maxBytes: {{ $maxBytes }}, maxLabel: @js(\App\Services\AttachmentService::maxSizeLabel()) })" {{ $attributes->merge(['class' => 'mt-1']) }}>
-    <input type="file" x-ref="final" name="{{ $name }}[]" multiple class="hidden" tabindex="-1" aria-hidden="true">
-    <input type="file" x-ref="pick" multiple accept="{{ \App\Services\AttachmentService::accept() }}" class="sr-only" tabindex="-1" @change="add($event)">
-    <input type="file" x-ref="camera" accept="image/*" capture="environment" class="sr-only" tabindex="-1" @change="add($event)">
+<div x-data="filePicker({ max: {{ $max }}, maxBytes: {{ $maxBytes }}, maxLabel: @js(\App\Services\AttachmentService::maxSizeLabel()) })" {{ $attributes->merge(['style' => 'margin-top:6px']) }}>
+    <input type="file" x-ref="final" name="{{ $name }}[]" multiple style="display:none" tabindex="-1" aria-hidden="true">
+    <input type="file" x-ref="pick" multiple accept="{{ \App\Services\AttachmentService::accept() }}" style="{{ $vh }}" tabindex="-1" @change="add($event)">
+    <input type="file" x-ref="camera" accept="image/*" capture="environment" style="{{ $vh }}" tabindex="-1" @change="add($event)">
 
-    <div class="grid grid-cols-2 gap-3">
+    <div class="row2">
         <button type="button" @click="$refs.camera.click()" :disabled="files.length >= max"
-                class="min-h-[48px] rounded-xl border-2 border-blue-600 px-3 py-3 text-base font-bold text-blue-700 disabled:opacity-40">
-            📷 Take photo
+                class="btn" style="width:100%;height:48px;border-color:var(--blue);color:var(--deep)"
+                :style="files.length >= max ? 'opacity:.4;cursor:not-allowed' : ''">
+            <i class="fa-solid fa-camera"></i> Take photo
         </button>
         <button type="button" @click="$refs.pick.click()" :disabled="files.length >= max"
-                class="min-h-[48px] rounded-xl border-2 border-blue-600 px-3 py-3 text-base font-bold text-blue-700 disabled:opacity-40">
-            📎 Choose files
+                class="btn" style="width:100%;height:48px;border-color:var(--blue);color:var(--deep)"
+                :style="files.length >= max ? 'opacity:.4;cursor:not-allowed' : ''">
+            <i class="fa-solid fa-paperclip"></i> Choose files
         </button>
     </div>
 
-    <p class="mt-2 text-xs text-gray-500">
+    <p class="hint">
         Up to {{ $max }} files, {{ \App\Services\AttachmentService::maxSizeLabel() }} each.
         Allowed: {{ \App\Services\AttachmentService::allowedLabel() }}.
     </p>
 
     <template x-if="notes.length">
-        <ul class="mt-2 space-y-1 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            <template x-for="(note, n) in notes" :key="n"><li x-text="note"></li></template>
-        </ul>
+        <div class="alert err" role="alert" style="margin:10px 0 0">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <ul style="margin:0;padding-left:16px">
+                <template x-for="(note, n) in notes" :key="n"><li x-text="note"></li></template>
+            </ul>
+        </div>
     </template>
 
-    <ul class="mt-3 space-y-2" x-show="files.length">
+    <ul style="list-style:none;margin:10px 0 0;padding:0" x-show="files.length">
         <template x-for="(f, i) in files" :key="i + '-' + f.name + '-' + f.size">
-            <li class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                <div class="min-w-0">
-                    <div class="truncate text-sm font-semibold text-gray-800" x-text="f.name"></div>
-                    <div class="text-xs text-gray-500" x-text="human(f.size)"></div>
+            <li class="pf-row" style="padding:9px 0">
+                <div style="min-width:0">
+                    <div style="font-weight:700;font-size:14px;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="f.name"></div>
+                    <div class="hint" style="margin:0" x-text="human(f.size)"></div>
                 </div>
-                <button type="button" @click="remove(i)" class="min-h-[44px] min-w-[44px] shrink-0 rounded-lg px-3 text-sm font-bold text-red-600 hover:bg-red-50" :aria-label="'Remove ' + f.name">✕ Remove</button>
+                <button type="button" @click="remove(i)" class="btn btn-sm btn-danger" :aria-label="'Remove ' + f.name"><i class="fa-solid fa-xmark"></i> Remove</button>
             </li>
         </template>
     </ul>

@@ -1,76 +1,78 @@
 @php
     $fmt = fn ($d) => $d?->format('M j, Y g:i A') ?? '—';
-    $input = 'mt-1 w-full rounded-lg border-gray-300 text-base';
+    $area = 'min-height:84px';
 @endphp
 
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Approvals</h2>
-    </x-slot>
+    <x-slot name="header">Approvals</x-slot>
 
-    <div class="py-4">
-        <div class="max-w-5xl mx-auto space-y-4 px-3 sm:px-6 lg:px-8">
+    <div style="max-width:1000px">
 
-            @if (session('status'))
-                <div class="rounded-xl bg-green-100 p-4 font-semibold text-green-800">{{ session('status') }}</div>
-            @endif
-            @if (session('error'))
-                <div class="rounded-xl bg-red-100 p-4 font-semibold text-red-800" role="alert">{{ session('error') }}</div>
-            @endif
+        @if (session('status'))
+            <div class="alert ok"><i class="fa-solid fa-circle-check"></i><div>{{ session('status') }}</div></div>
+        @endif
+        @if (session('error'))
+            <div class="alert err" role="alert"><i class="fa-solid fa-circle-exclamation"></i><div>{{ session('error') }}</div></div>
+        @endif
 
-            @foreach (['approve', 'disapprove'] as $bag)
-                @foreach ($errors->getBag($bag)->all() as $message)
-                    <div class="rounded-xl bg-red-100 p-4 font-semibold text-red-800" role="alert">{{ $message }}</div>
-                @endforeach
+        @foreach (['approve', 'disapprove'] as $bag)
+            @foreach ($errors->getBag($bag)->all() as $message)
+                <div class="alert err" role="alert"><i class="fa-solid fa-circle-exclamation"></i><div>{{ $message }}</div></div>
             @endforeach
+        @endforeach
 
-            <p class="text-sm text-gray-600">
-                Tickets waiting for your authorization. Emergencies are first, then the oldest request.
-                The app records who authorized and when; it does not replace the official signatures.
-                To attach a signed file, open the ticket.
-            </p>
+        <p class="page-sub" style="margin:0 0 18px">
+            Tickets waiting for your authorization. Emergencies are first, then the oldest request.
+            The app records who authorized and when; it does not replace the official signatures.
+            To attach a signed file, open the ticket.
+        </p>
 
-            @forelse ($tickets as $ticket)
-                <article class="overflow-hidden rounded-xl bg-white shadow-sm {{ $ticket->is_emergency ? 'ring-2 ring-red-500' : '' }}" id="ticket-{{ $ticket->id }}">
-                    <div class="space-y-1 p-4">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <a href="{{ route('tickets.show', $ticket) }}" class="font-extrabold text-blue-700 hover:underline">{{ $ticket->ticket_no }}</a>
-                            <x-status-badge :status="$ticket->status" />
-                            <x-ticket-badges :ticket="$ticket" />
+        @forelse ($tickets as $ticket)
+            <article class="card" id="ticket-{{ $ticket->id }}" @if ($ticket->is_emergency) style="border-color:var(--red);box-shadow:0 0 0 3px rgba(200,55,45,.18)" @endif>
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+                    <a href="{{ route('tickets.show', $ticket) }}" style="font-weight:800">{{ $ticket->ticket_no }}</a>
+                    @include('tickets._badges', ['ticket' => $ticket])
+                </div>
+
+                <h3 style="font-family:var(--font-display);font-size:21px;font-weight:600;color:var(--navy);margin-top:8px;word-break:break-word">
+                    <i class="fa-solid fa-location-dot" style="color:var(--blue);font-size:17px"></i> {{ $ticket->location }}
+                </h3>
+                <div style="white-space:pre-line;word-break:break-word;margin-top:4px">{{ $ticket->description }}</div>
+                @if ($ticket->is_emergency)
+                    <div class="alert err" style="margin:10px 0 0"><i class="fa-solid fa-triangle-exclamation"></i><div style="word-break:break-word"><b>Emergency:</b> {{ $ticket->emergency_reason }}</div></div>
+                @endif
+                <div class="tk-sub" style="margin-top:8px;font-size:13px">
+                    {{ $ticket->requester->name }} · {{ $ticket->department?->name }} · {{ $ticket->category?->name }} · submitted {{ $fmt($ticket->submitted_at) }}
+                </div>
+
+                <div class="row2" style="margin-top:16px;padding-top:16px;border-top:1px dashed var(--line);align-items:start">
+                    <form method="POST" action="{{ route('tickets.approve', $ticket) }}" style="background:var(--green-dim);border:1.5px solid #bfe6cc;border-radius:18px;padding:14px 16px">
+                        @csrf
+                        <input type="hidden" name="return" value="approvals">
+                        <div class="field">
+                            <label for="remarks-{{ $ticket->id }}" class="lbl">Remarks (optional)</label>
+                            <textarea id="remarks-{{ $ticket->id }}" name="remarks" rows="2" style="{{ $area }}"></textarea>
                         </div>
-                        <div class="text-lg font-bold text-gray-900 break-words">📍 {{ $ticket->location }}</div>
-                        <div class="whitespace-pre-line break-words text-gray-800">{{ $ticket->description }}</div>
-                        @if ($ticket->is_emergency)
-                            <div class="break-words text-sm font-semibold text-red-800">Emergency: {{ $ticket->emergency_reason }}</div>
-                        @endif
-                        <div class="text-sm text-gray-500">
-                            {{ $ticket->requester->name }} · {{ $ticket->department?->name }} · {{ $ticket->category?->name }} · submitted {{ $fmt($ticket->submitted_at) }}
+                        <button class="btn btn-primary" style="background:var(--green);border-color:var(--green);width:100%"><i class="fa-solid fa-circle-check"></i> Approve</button>
+                    </form>
+
+                    <form method="POST" action="{{ route('tickets.disapprove', $ticket) }}" style="background:var(--red-dim);border:1.5px solid #f3c9c5;border-radius:18px;padding:14px 16px">
+                        @csrf
+                        <input type="hidden" name="return" value="approvals">
+                        <div class="field">
+                            <label for="reason-{{ $ticket->id }}" class="lbl">Reason to disapprove (required)</label>
+                            <textarea id="reason-{{ $ticket->id }}" name="reason" rows="2" required style="{{ $area }}"></textarea>
                         </div>
-                    </div>
+                        <button class="btn btn-danger" style="width:100%"><i class="fa-solid fa-circle-xmark"></i> Disapprove</button>
+                    </form>
+                </div>
+            </article>
+        @empty
+            <div class="card">
+                <div class="empty"><i class="fa-regular fa-circle-check"></i>Nothing is waiting for your authorization.</div>
+            </div>
+        @endforelse
 
-                    <div class="grid grid-cols-1 gap-3 border-t border-gray-100 bg-gray-50 p-4 md:grid-cols-2">
-                        <form method="POST" action="{{ route('tickets.approve', $ticket) }}" class="space-y-2">
-                            @csrf
-                            <input type="hidden" name="return" value="approvals">
-                            <label for="remarks-{{ $ticket->id }}" class="block text-sm font-semibold text-gray-700">Remarks (optional)</label>
-                            <textarea id="remarks-{{ $ticket->id }}" name="remarks" rows="2" class="{{ $input }}"></textarea>
-                            <button class="min-h-[48px] w-full rounded-xl bg-green-600 px-6 py-3 text-base font-bold text-white hover:bg-green-700">Approve</button>
-                        </form>
-
-                        <form method="POST" action="{{ route('tickets.disapprove', $ticket) }}" class="space-y-2">
-                            @csrf
-                            <input type="hidden" name="return" value="approvals">
-                            <label for="reason-{{ $ticket->id }}" class="block text-sm font-semibold text-gray-700">Reason to disapprove (required)</label>
-                            <textarea id="reason-{{ $ticket->id }}" name="reason" rows="2" required class="{{ $input }}"></textarea>
-                            <button class="min-h-[48px] w-full rounded-xl bg-red-600 px-6 py-3 text-base font-bold text-white hover:bg-red-700">Disapprove</button>
-                        </form>
-                    </div>
-                </article>
-            @empty
-                <div class="rounded-xl bg-white p-8 text-center text-gray-500 shadow-sm">Nothing is waiting for your authorization. 🎉</div>
-            @endforelse
-
-            {{ $tickets->links() }}
-        </div>
+        @include('partials.pager', ['paginator' => $tickets])
     </div>
 </x-app-layout>

@@ -1,21 +1,15 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Maintenance Tasks</h2>
-    </x-slot>
+    <x-slot name="header">Maintenance Tasks</x-slot>
 
-    <div class="py-4">
-        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            @if (session('status'))
-                <div class="mb-4 rounded-lg bg-green-100 p-4 text-lg font-bold text-green-800">{{ session('status') }}</div>
-            @endif
-            @error('board')
-                <div class="mb-4 rounded-lg bg-red-100 p-4 text-lg font-bold text-red-800">{{ $message }}</div>
-            @enderror
+    @if (session('status'))
+        <div class="alert ok"><i class="fa-solid fa-circle-check"></i><div>{{ session('status') }}</div></div>
+    @endif
+    @error('board')
+        <div class="alert err" role="alert"><i class="fa-solid fa-circle-exclamation"></i><div>{{ $message }}</div></div>
+    @enderror
 
-            <div id="board">
-                @include('maintenance._cards')
-            </div>
-        </div>
+    <div id="board">
+        @include('maintenance._cards')
     </div>
 
     <script>
