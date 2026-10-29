@@ -1,0 +1,48 @@
+PHASE 6 - User / Team management (/admin/users)
+===============================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 6 users"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase6-users-patch.zip" -DestinationPath . -Force
+  php artisan view:clear
+  php artisan route:clear
+  php artisan config:clear
+  php artisan test --filter=UserAdminTest
+  php artisan test
+
+Kapag hindi gumana ang Expand-Archive:
+  tar -xf "$env:USERPROFILE\Downloads\phase6-users-patch.zip" -C .
+
+WALANG bagong migration. Walang kailangang "php artisan migrate" (ginagamit ang users.must_change_password ng Phase 2).
+Walang kailangang "npm run build" (walang binago sa JS/CSS).
+
+Bago (3):  app/Http/Controllers/Admin/UserController.php
+           resources/views/admin/users.blade.php
+           tests/Feature/UserAdminTest.php
+Ino-overwrite (6): routes/web.php, resources/views/layouts/navigation.blade.php,
+           app/Services/AuditLogger.php, app/Http/Requests/Auth/LoginRequest.php,
+           config/permissions.php (comment lang), APPLY-PHASE-6-USERS.txt
+
+Kung may sarili kang binago sa routes/web.php o navigation, i-merge mo ang mga linyang ito imbes na mag-overwrite:
+  routes/web.php:   use App\Http\Controllers\Admin\UserController;  +  ang group na Route::prefix('admin/users')
+  navigation:       ang "Users" link (manage_users) at ang manage_users sa kondisyon ng "Administration"
+
+Paano gumagana
+  - Sidebar > Administration > Users (/admin/users). Capability: manage_users (maintenance_admin lang). Iba = 403, guest = login.
+  - Listahan + search (pangalan, email, employee no.) + filter (role, department, status), 15 kada page.
+  - Add user: pangalan, school email, role, department, employee no. May kusang TEMPORARY password
+    (12 characters). Ipinapakita ISANG BESES lang sa admin. Pag-login ng user, diretso sa "Choose a new password".
+  - Activate / Deactivate: ang inactive ay hindi na makaka-login at natatanggal ang open sessions niya.
+  - Reset password: bagong temporary password, kailangang palitan sa susunod na login.
+  - Edit: palit ng role at department.
+  - HINDI puwede sa sarili: i-deactivate, palitan ang role, i-reset ang password (gamitin ang Profile).
+    Kaya laging may natitirang active admin; hindi mai-lock out ang sistema.
+  - AUDIT: user_created, user_updated (department), role_changed, user_deactivated, user_reactivated
+    (galing sa UserObserver) at user_password_reset (bago). Hindi kailanman nasusulat ang password sa audit log.
+
+Dagdag na pagbabago (kailangan para gumana ang Deactivate)
+  - LoginRequest: Auth::attempt na ngayon ay may 'is_active' => true. Dati, nakakapag-login pa ang inactive.
+
+Rollback: git checkout -- . ; at burahin ang 3 bagong file.
+
+Test accounts (php artisan db:seed): maintenance@lcctanauan.edu.ph / password

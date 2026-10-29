@@ -43,6 +43,8 @@ class AuditLogger
 
     public const ROLE_CHANGED = 'role_changed';
 
+    public const USER_PASSWORD_RESET = 'user_password_reset';   // an admin issued a temporary password (Phase 6)
+
     public const SETTINGS_UPDATED = 'settings_updated';
 
     public const CATEGORY_CHANGED = 'category_changed';
@@ -71,7 +73,7 @@ class AuditLogger
     {
         return [
             self::LOGIN, self::LOGOUT, self::LOGIN_FAILED, self::REGISTERED, self::PASSWORD_RESET,
-            self::USER_CREATED, self::USER_UPDATED, self::USER_DEACTIVATED, self::USER_REACTIVATED, self::ROLE_CHANGED,
+            self::USER_CREATED, self::USER_UPDATED, self::USER_DEACTIVATED, self::USER_REACTIVATED, self::ROLE_CHANGED, self::USER_PASSWORD_RESET,
             self::SETTINGS_UPDATED, self::CATEGORY_CHANGED,
             self::TICKET_STATUS, self::TICKET_ASSIGNED, self::TICKET_REASSIGNED,
             self::ATTACHMENT_UPLOADED, self::ATTACHMENT_DOWNLOADED,

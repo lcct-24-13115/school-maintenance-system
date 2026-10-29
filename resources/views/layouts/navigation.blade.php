@@ -37,13 +37,19 @@
             <i class="fa-solid fa-bell"></i> Notifications
         </a>
 
-        @if ($u->can_do('view_analytics') || $u->can_do('manage_settings') || $u->can_do('manage_categories') || $u->can_do('view_audit_logs'))
+        @if ($u->can_do('view_analytics') || $u->can_do('manage_settings') || $u->can_do('manage_categories') || $u->can_do('manage_users') || $u->can_do('view_audit_logs'))
             <div class="nav-sec">Administration</div>
         @endif
 
         @if ($u->can_do('view_analytics'))
             <a href="{{ route('reports.index') }}" class="{{ request()->routeIs('reports.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-chart-column"></i> Reports
+            </a>
+        @endif
+
+        @if ($u->can_do('manage_users'))
+            <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-users"></i> Users
             </a>
         @endif
 

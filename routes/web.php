@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\DashboardController;
@@ -103,6 +104,15 @@ Route::middleware('auth')->group(function () {
         Route::patch('/{category}/visibility', [CategoryController::class, 'toggle'])->name('toggle');
         Route::post('/{category}/move', [CategoryController::class, 'move'])->name('move');
         Route::delete('/{category}', [CategoryController::class, 'destroy'])->name('destroy');
+    });
+
+    // ---- User / team management (Phase 6). Capability manage_users is checked in the controller (others get 403) ----
+    Route::prefix('admin/users')->name('admin.users.')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->name('index');
+        Route::post('/', [UserController::class, 'store'])->name('store');
+        Route::put('/{user}', [UserController::class, 'update'])->name('update');
+        Route::patch('/{user}/status', [UserController::class, 'status'])->name('status');
+        Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])->name('reset-password');
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

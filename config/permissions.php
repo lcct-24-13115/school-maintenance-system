@@ -22,7 +22,7 @@
 |   view_analytics     open /reports: charts and numbers (Phase 6, built in Merge Phase M4)
 |   export_reports     download the CSV from /reports/export (Phase 7, built in M4). Logged to audit_logs.
 |                      Both only ever cover the tickets the user may see (confidential: view_confidential).
-|   manage_users       manage user accounts (later phase)
+|   manage_users       open /admin/users: add, activate / deactivate, reset password, change role and department (Phase 6)
 |   manage_settings    edit /admin/settings: SLA hours, reopen window (Merge Phase M1)
 |   manage_categories  open /admin/categories: add, edit, hide, reorder and delete categories (Phase 5)
 |   cancel_own         cancel YOUR OWN ticket, before it is Assigned (Merge Phase M2). Every role has it.
