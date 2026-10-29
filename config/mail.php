@@ -115,4 +115,18 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    | Look of every system email (resources/views/emails/layout.blade.php).
+    | Phase 1. Colors match public/css/style.css (--navy, --blue, --gold).
+    */
+    'brand' => [
+        'name' => env('MAIL_BRAND_NAME', env('APP_NAME', 'LCCT Maintenance')),
+        'tagline' => 'Maintenance Request System',
+        'color' => '#1B3355',
+        'accent' => '#5E94CF',
+        'gold' => '#F2B705',
+        // Where "problem with this email?" replies go. Empty = the From address.
+        'support_email' => env('MAIL_SUPPORT_ADDRESS'),
+    ],
+
 ];

@@ -1,0 +1,47 @@
+PHASE 1 - Totoong email (Brevo SMTP), branded email layout, mail:test command
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 1"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase1update.zip" -DestinationPath . -Force
+  php artisan config:clear
+  php artisan view:clear
+  php artisan test --filter=MailTestCommandTest
+
+Kapag hindi gumana ang Expand-Archive:
+  tar -xf "$env:USERPROFILE\Downloads\phase1update.zip" -C .
+
+LOCAL TEST (walang Brevo, nasa log lang):
+  php artisan mail:test ikaw@gmail.com
+  -> makikita ang email sa storage/logs/laravel.log (MAIL_MAILER=log)
+
+TOTOONG EMAIL (Brevo):
+  1. Sa Brevo: SMTP & API > SMTP. Kopyahin ang "SMTP server", "Login", at gumawa ng BAGONG SMTP key.
+     (Huwag gamitin ang lumang API key sa download.zip: nakalantad iyon, palitan na.)
+  2. Sa Brevo: Senders & IP > siguraduhing verified ang sender address na gagamitin mo.
+  3. Sa .env mo (HINDI sa .env.example, at huwag i-commit):
+       MAIL_MAILER=smtp
+       MAIL_HOST=smtp-relay.brevo.com
+       MAIL_PORT=587
+       MAIL_USERNAME=<Brevo SMTP login>
+       MAIL_PASSWORD=<SMTP key>
+       MAIL_FROM_ADDRESS="<verified sender>"
+       MAIL_FROM_NAME="LCCT Maintenance"
+  4. php artisan config:clear
+  5. php artisan mail:test ikaw@gmail.com   (tingnan ang inbox at spam)
+
+SA LIVE SITE (lccticketing.wuaze.com):
+  I-upload ang patch, i-edit ang .env sa server gaya ng nasa taas, at i-run ang "php artisan config:clear"
+  kung may SSH. Kung wala, burahin ang bootstrap/cache/config.php.
+  Tandaan: may mga host (hal. InfinityFree) na humaharang sa outbound SMTP port 587. Kung nag-time out ang
+  mail:test sa live pero gumagana sa local, ang host ang dahilan; tingnan ang Brevo API option sa Phase 13.
+
+Bago (5):  app/Mail/TestMail.php, app/Console/Commands/MailTest.php,
+           resources/views/emails/layout.blade.php, resources/views/emails/test.blade.php,
+           tests/Feature/MailTestCommandTest.php
+Ino-overwrite (2): config/mail.php (dagdag na 'brand' block lang), .env.example
+Hindi ginalaw: controllers, routes, database, CSS, ibang views
+
+Epekto: wala pang nagbabago sa app. Ang Forgot Password / Verify Email ay gagamit ng totoong email
+kapag nilagay mo na ang MAIL_MAILER=smtp. Ang email notifications ng tickets ay sa Phase 13.
+
+Rollback: ibalik ang backup, o "git checkout -- config .env.example" at burahin ang 5 bagong file.
