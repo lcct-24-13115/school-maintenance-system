@@ -1,6 +1,6 @@
 <x-guest-layout>
     <h1 class="form-title">Welcome <span>back</span></h1>
-    <p class="form-sub">Log in with your institutional account. Your role decides your dashboard.</p>
+    <p class="form-sub">Log in with your institutional account. We will take you to your dashboard.</p>
 
     @if (session('status'))
         <div class="alert ok"><i class="fa-solid fa-circle-check"></i><span>{{ session('status') }}</span></div>
@@ -9,31 +9,6 @@
     @if ($errors->any())
         <div class="alert err"><i class="fa-solid fa-circle-exclamation"></i><span>{{ $errors->first() }}</span></div>
     @endif
-
-    @env('local')
-        {{-- Dev only: pick a role to auto-fill its test account. Hidden outside the local environment. --}}
-        <div class="tile-wrap">
-            <span class="tile-lbl">Quick demo login (local only)</span>
-            <div class="tile-grid">
-                @php
-                    $demoRoles = [
-                        ['requester', 'Requester', 'fa-user-pen', 'requester@lcctanauan.edu.ph'],
-                        ['maintenance', 'Maintenance', 'fa-screwdriver-wrench', 'maintenance@lcctanauan.edu.ph'],
-                        ['finance', 'Finance', 'fa-coins', 'finance@lcctanauan.edu.ph'],
-                        ['custodian', 'Custodian', 'fa-boxes-stacked', 'custodian@lcctanauan.edu.ph'],
-                        ['president', 'President', 'fa-user-shield', 'president@lcctanauan.edu.ph'],
-                    ];
-                @endphp
-                @foreach ($demoRoles as $i => [$key, $label, $icon, $email])
-                    <button type="button" data-role="{{ $key }}" data-email="{{ $email }}"
-                        class="tile-opt role-btn {{ $i === 0 ? 'active' : '' }}">
-                        <i class="fa-solid {{ $icon }}"></i>
-                        <span>{{ $label }}</span>
-                    </button>
-                @endforeach
-            </div>
-        </div>
-    @endenv
 
     <form method="POST" action="{{ route('login') }}">
         @csrf
@@ -89,16 +64,6 @@
             input.type = show ? 'text' : 'password';
             icon.classList.toggle('fa-eye', !show);
             icon.classList.toggle('fa-eye-slash', show);
-        });
-
-        // Local-only role tiles: fill the test account of the chosen role
-        document.querySelectorAll('.role-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                document.querySelectorAll('.role-btn').forEach(function (b) { b.classList.remove('active'); });
-                btn.classList.add('active');
-                document.getElementById('email').value = btn.dataset.email;
-                document.getElementById('password').value = 'password';
-            });
         });
     </script>
     @endpush

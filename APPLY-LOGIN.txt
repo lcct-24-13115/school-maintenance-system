@@ -1,0 +1,4 @@
+PowerShell sa project folder:
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\login-patch.zip" -DestinationPath . -Force
+  php artisan view:clear
+Ino-overwrite lang: resources/views/auth/login.blade.php
