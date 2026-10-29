@@ -7,9 +7,11 @@ use App\Models\MaintenanceRequest;
 use App\Models\RequestAttachment;
 use App\Models\RequestStatusLog;
 use App\Models\Role;
+use App\Models\Setting;
 use App\Models\User;
 use DomainException;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
@@ -264,7 +266,7 @@ class TicketWorkflow
         }
 
         $status = $ticket->status;
-        if (! in_array($status, [TicketStatus::Approved, TicketStatus::Assigned, TicketStatus::InProgress], true)) {
+        if (! in_array($status, [TicketStatus::Approved, TicketStatus::Assigned, TicketStatus::InProgress, TicketStatus::Reopened], true)) {
             throw new DomainException("Ticket {$ticket->ticket_no} is \"{$status->label()}\". It must be Approved before it can be assigned.");
         }
 
@@ -301,18 +303,18 @@ class TicketWorkflow
             throw new DomainException('Only maintenance staff can accept a task.');
         }
 
-        if (! in_array($ticket->status, [TicketStatus::Approved, TicketStatus::Assigned], true)) {
+        if (! in_array($ticket->status, [TicketStatus::Approved, TicketStatus::Assigned, TicketStatus::Reopened], true)) {
             throw new DomainException(in_array($ticket->status, [TicketStatus::Submitted, TicketStatus::PendingAuthorization], true)
                 ? "Ticket {$ticket->ticket_no} is still \"{$ticket->status->label()}\" — it needs authorization before work can start."
                 : "Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\" and cannot be accepted.");
         }
 
-        if ($ticket->status === TicketStatus::Assigned && (int) $ticket->assigned_to !== (int) $staff->id) {
+        if (in_array($ticket->status, [TicketStatus::Assigned, TicketStatus::Reopened], true) && $ticket->assigned_to !== null && (int) $ticket->assigned_to !== (int) $staff->id) {
             throw new DomainException("This task is assigned to {$ticket->assignee?->name}.");
         }
 
         return DB::transaction(function () use ($ticket, $staff) {
-            self::assign($ticket, $staff, $staff);   // Approved -> Assigned (no-op when already theirs)
+            self::assign($ticket, $staff, $staff);   // Approved -> Assigned (no-op when already theirs; a Reopened ticket keeps its status)
 
             return self::transition($ticket, TicketStatus::InProgress, $staff, 'Work started.');
         });
@@ -340,6 +342,128 @@ class TicketWorkflow
     public static function close(MaintenanceRequest $ticket, User $by, ?string $note = null): MaintenanceRequest
     {
         return self::apply($ticket, TicketStatus::Closed, ['closed_at' => now()], RequestStatusLog::ACTION_STATUS, $by, $note ?: 'Ticket closed.');
+    }
+
+    // ---- Phase 8: the requester's own actions (cancel, confirm resolved, reopen) --------------------
+    // The policy (cancel_own / reopen_own) is the first gate; these methods repeat the "own ticket" check and
+    // add the STATE rules, so calling them directly can never skip a rule.
+
+    /**
+     * Why $by cannot cancel $ticket right now, or null when they can. CONFIRM WITH CLIENT: "before Assigned".
+     * The status table says which statuses may move to Cancelled; a ticket that already has an assignee is
+     * refused too (e.g. Waiting for User / Escalated on a ticket that was already assigned).
+     */
+    public static function cancelBlocker(MaintenanceRequest $ticket, User $by): ?string
+    {
+        if ((int) $ticket->requester_id !== (int) $by->id) {
+            return 'Only the person who filed the ticket can cancel it.';
+        }
+
+        if (! $ticket->status->canTransitionTo(TicketStatus::Cancelled) || $ticket->assigned_to !== null) {
+            return "Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\" and can no longer be cancelled. A ticket can only be cancelled before it is assigned.";
+        }
+
+        return null;
+    }
+
+    /** The requester cancels their OWN ticket, before it is Assigned. A reason is required. */
+    public static function cancel(MaintenanceRequest $ticket, User $by, string $reason): MaintenanceRequest
+    {
+        if (blank($reason)) {
+            throw new DomainException('Cancelling a ticket needs a reason.');
+        }
+
+        if ($error = self::cancelBlocker($ticket, $by)) {
+            throw new DomainException($error);
+        }
+
+        return self::apply($ticket, TicketStatus::Cancelled, [], RequestStatusLog::ACTION_STATUS, $by, 'Cancelled by the requester: '.trim($reason));
+    }
+
+    /** The last moment a Work Completed / Closed ticket may be reopened, or null when it is not in one of those statuses. */
+    public static function reopenDeadline(MaintenanceRequest $ticket): ?Carbon
+    {
+        $anchor = match ($ticket->status) {
+            TicketStatus::WorkCompleted => $ticket->completed_at,
+            TicketStatus::Closed => $ticket->closed_at ?? $ticket->completed_at,
+            default => null,
+        };
+
+        if (! in_array($ticket->status, [TicketStatus::WorkCompleted, TicketStatus::Closed], true)) {
+            return null;
+        }
+
+        $days = Setting::int('reopen_window_days');
+
+        return ($anchor ?? $ticket->updated_at)->copy()->addDays(max(0, $days));
+    }
+
+    /**
+     * Why $by cannot reopen $ticket right now, or null when they can.
+     * Only Work Completed / Closed, only the requester, and only inside settings.reopen_window_days
+     * (counted from completed_at, or closed_at for a Closed ticket). A window of 0 days turns reopening off.
+     */
+    public static function reopenBlocker(MaintenanceRequest $ticket, User $by): ?string
+    {
+        if ((int) $ticket->requester_id !== (int) $by->id) {
+            return 'Only the person who filed the ticket can reopen it.';
+        }
+
+        if (! in_array($ticket->status, [TicketStatus::WorkCompleted, TicketStatus::Closed], true)) {
+            return "Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\". Only a Work Completed or Closed ticket can be reopened.";
+        }
+
+        $days = Setting::int('reopen_window_days');
+
+        if ($days <= 0) {
+            return 'Reopening tickets is turned off. File a new ticket instead.';
+        }
+
+        if (now()->greaterThan(self::reopenDeadline($ticket))) {
+            return "The {$days}-day window to reopen ticket {$ticket->ticket_no} has ended. File a new ticket instead.";
+        }
+
+        return null;
+    }
+
+    /**
+     * The requester reopens their OWN ticket inside the window. A reason is required.
+     * The ticket goes to Reopened and its completed/closed dates are cleared (they are set again when the work is
+     * redone); the history line keeps the original status in meta.reopened_from.
+     */
+    public static function reopen(MaintenanceRequest $ticket, User $by, string $reason): MaintenanceRequest
+    {
+        if (blank($reason)) {
+            throw new DomainException('Reopening a ticket needs a reason.');
+        }
+
+        if ($error = self::reopenBlocker($ticket, $by)) {
+            throw new DomainException($error);
+        }
+
+        return self::apply(
+            $ticket,
+            TicketStatus::Reopened,
+            ['completed_at' => null, 'closed_at' => null],
+            RequestStatusLog::ACTION_STATUS,
+            $by,
+            'Reopened by the requester: '.trim($reason),
+            ['reopened_from' => $ticket->status->value],
+        );
+    }
+
+    /** [Confirm resolved]: the requester agrees the work is done, so a Work Completed ticket is closed at once. */
+    public static function confirmResolved(MaintenanceRequest $ticket, User $by): MaintenanceRequest
+    {
+        if ((int) $ticket->requester_id !== (int) $by->id) {
+            throw new DomainException('Only the person who filed the ticket can confirm it is resolved.');
+        }
+
+        if ($ticket->status !== TicketStatus::WorkCompleted) {
+            throw new DomainException("Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\". Only a Work Completed ticket can be confirmed as resolved.");
+        }
+
+        return self::close($ticket, $by, 'Confirmed resolved by the requester.');
     }
 
     /** Raise an emergency flag. The reason is required. Who may flag is enforced in Phase 2. */

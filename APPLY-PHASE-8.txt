@@ -1,0 +1,48 @@
+PHASE 8 - Cancel, Reopen, Confirm resolved (ang requester ang kumikilos)
+=========================================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 8 requester actions"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase8-requester-actions-patch.zip" -DestinationPath . -Force
+  php artisan view:clear
+  php artisan route:clear
+  php artisan config:clear
+  php artisan test --filter=TicketRequesterActionsTest
+  php artisan test
+
+Kapag hindi gumana ang Expand-Archive:
+  tar -xf "$env:USERPROFILE\Downloads\phase8-requester-actions-patch.zip" -C .
+
+WALANG migration at WALANG "php artisan migrate". Walang bagong column; ang reopen_window_days ay nasa settings na.
+
+Ino-overwrite / bago:
+  app/Services/TicketWorkflow.php                      <- cancel(), reopen(), confirmResolved() + cancelBlocker(), reopenBlocker(), reopenDeadline()
+  app/Policies/TicketPolicy.php                        <- cancel, reopen, confirmResolved
+  app/Services/TicketActions.php                       <- CANCEL, REOPEN, CONFIRM_RESOLVED; Closed ticket ay may Reopen pa rin (sa window)
+  app/Http/Controllers/TicketActionController.php      <- cancel, confirmResolved, reopen
+  app/Services/FormNotifier.php                        <- requesterAction(): alerto sa maintenance at assignee
+  routes/web.php                                       <- 3 bagong POST route (tickets.cancel / .confirm-resolved / .reopen)
+  resources/views/tickets/_actions.blade.php           <- 3 bagong form
+  resources/views/maintenance/_cards.blade.php         <- may ACCEPT TASK na ang Reopened ticket (assignee)
+  docs/OPEN_QUESTIONS.md                               <- rows 24-26
+  tests/Feature/TicketRequesterActionsTest.php         <- BAGO
+  APPLY-PHASE-8.txt
+
+Kung may sarili kang binago sa routes/web.php, idagdag mo na lang ang 3 linya na may komentong "Phase 8".
+
+ANG MGA RULE
+  Cancel (cancel_own)    Sariling ticket lang, may reason. Puwede lang bago ma-Assign:
+                         Submitted, Pending Authorization, Approved. Waiting for User / Escalated ay puwede
+                         lang kung hindi pa na-assign ang ticket kahit kailan. Assigned, In Progress, Work Completed,
+                         Closed = hindi na.
+  Confirm resolved       Requester lang, Work Completed lang -> Closed agad. Dumadaan pa rin sa closure rule ng model.
+  Reopen (reopen_own)    Sariling ticket lang, may reason. Work Completed o Closed lang, at nasa loob ng
+                         reopen_window_days (/admin/settings, default 14). Bilang mula sa completed_at (Work Completed)
+                         o closed_at (Closed). Kasama ang mismong huling sandali. 0 = patay ang reopen.
+                         Pagka-reopen: status = Reopened, nililinis ang completed_at at closed_at (nasa history ang dati).
+
+Dagdag na hindi mo hiningi (para hindi ma-stuck ang Reopened ticket)
+  Ang maintenance staff ay puwedeng i-ACCEPT TASK ang Reopened ticket (Reopened -> In Progress),
+  at puwede itong i-reassign. Kung ayaw mo, burahin ang "Reopened" sa startWork(), assign() at TicketActions::REASSIGN.
+
+Rollback: git checkout -- .   (walang database na babalikan)

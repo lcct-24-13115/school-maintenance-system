@@ -66,6 +66,21 @@ class FormNotifier
         self::send(collect([$form->requester]), $form, $event, $actor, $text);
     }
 
+    /**
+     * Phase 8: the requester cancelled, reopened or confirmed (closed) their own ticket.
+     * The assignee and the maintenance staff are alerted (never the actor, see send()).
+     */
+    public static function requesterAction(MaintenanceRequest $ticket, User $actor, string $event): void
+    {
+        $text = match ($event) {
+            'cancelled' => 'cancelled their ticket',
+            'reopened' => 'reopened their ticket',
+            default => 'confirmed their ticket is resolved',
+        };
+
+        self::send(self::usersWithRole(Role::MAINTENANCE_ADMIN)->push($ticket->assignee), $ticket, $event, $actor, $text);
+    }
+
     // ---------------------------------------------------------------------------------------------
 
     private static function send(Collection $recipients, Model $form, string $event, User $actor, string $text): void

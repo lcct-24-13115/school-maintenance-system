@@ -20,6 +20,9 @@
         <p class="hint" style="margin:0">
             @if ($ticket->status->isTerminal())
                 This ticket is {{ $ticket->status->label() }}. No further actions are possible.
+                @if ($ticket->status === \App\Enums\TicketStatus::Closed && (int) $ticket->requester_id === (int) auth()->id())
+                    The reopen window has ended; file a new ticket if the problem is back.
+                @endif
             @else
                 There is nothing for you to do on this ticket right now.
             @endif
@@ -128,6 +131,49 @@
                 </div>
                 <p class="hint" style="margin:0 0 12px">The ticket goes back to its original place in the queue (by the time it was submitted).</p>
                 <button class="btn">Clear emergency</button>
+            </form>
+        @endif
+
+        {{-- Requester (Phase 8): confirm the work is done --}}
+        @if ($has(A::CONFIRM_RESOLVED))
+            <form method="POST" action="{{ route('tickets.confirm-resolved', $ticket) }}" style="{{ $box('#bfe6cc', 'var(--green-dim)') }}">
+                @csrf
+                <div class="lbl" style="font-size:16px;color:#0f6a31"><i class="fa-solid fa-circle-check"></i> Is the problem fixed?</div>
+                <p class="hint" style="margin:0 0 12px">Maintenance says the work is done. If you agree, confirm and the ticket is closed right away.</p>
+                <button class="btn btn-primary" style="background:var(--green);border-color:var(--green)">Confirm resolved</button>
+            </form>
+        @endif
+
+        {{-- Requester (Phase 8): not fixed after all (inside the reopen window) --}}
+        @if ($has(A::REOPEN))
+            @php $deadline = \App\Services\TicketWorkflow::reopenDeadline($ticket); @endphp
+            <form method="POST" action="{{ route('tickets.reopen', $ticket) }}" style="{{ $box('#bcd5ee', 'var(--sky)') }}">
+                @csrf
+                <div class="lbl" style="font-size:16px"><i class="fa-solid fa-rotate-left"></i> Reopen</div>
+                <div class="field">
+                    <label for="reopen_reason" class="lbl">What is still wrong? (required)</label>
+                    <textarea id="reopen_reason" name="reopen_reason" rows="2" required style="{{ $area }}">{{ old('reopen_reason') }}</textarea>
+                    @if ($errors->reopen->has('reopen_reason'))<p class="field-err">{{ $errors->reopen->first('reopen_reason') }}</p>@endif
+                </div>
+                @if ($deadline)
+                    <p class="hint" style="margin:0 0 12px">You can reopen this ticket until {{ $deadline->timezone(config('app.timezone'))->format('M j, Y g:i A') }}.</p>
+                @endif
+                <button class="btn btn-primary">Reopen ticket</button>
+            </form>
+        @endif
+
+        {{-- Requester (Phase 8): cancel, only before the ticket is assigned --}}
+        @if ($has(A::CANCEL))
+            <form method="POST" action="{{ route('tickets.cancel', $ticket) }}" style="{{ $box('#f3c9c5', 'var(--red-dim)') }}">
+                @csrf
+                <div class="lbl" style="font-size:16px;color:#9d2820"><i class="fa-solid fa-ban"></i> Cancel this ticket</div>
+                <div class="field">
+                    <label for="cancel_reason" class="lbl">Reason (required)</label>
+                    <textarea id="cancel_reason" name="cancel_reason" rows="2" required style="{{ $area }}">{{ old('cancel_reason') }}</textarea>
+                    @if ($errors->cancel->has('cancel_reason'))<p class="field-err">{{ $errors->cancel->first('cancel_reason') }}</p>@endif
+                </div>
+                <p class="hint" style="margin:0 0 12px">You can cancel only until the ticket is assigned. A cancelled ticket cannot be reopened.</p>
+                <button class="btn btn-danger" onclick="return confirm('Cancel this ticket? This cannot be undone.')">Cancel ticket</button>
             </form>
         @endif
 

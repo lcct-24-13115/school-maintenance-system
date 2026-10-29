@@ -86,6 +86,27 @@ class TicketPolicy
         return false;
     }
 
+    /**
+     * Phase 8: cancel YOUR OWN ticket (cancel_own, every role). "Before Assigned" is a STATE rule:
+     * TicketWorkflow::cancelBlocker().
+     */
+    public function cancel(User $user, MaintenanceRequest $ticket): bool
+    {
+        return $this->ownTicket($user, $ticket) && $user->can_do('cancel_own');
+    }
+
+    /** Reopen YOUR OWN ticket (reopen_own, every role). The status and the window: TicketWorkflow::reopenBlocker(). */
+    public function reopen(User $user, MaintenanceRequest $ticket): bool
+    {
+        return $this->ownTicket($user, $ticket) && $user->can_do('reopen_own');
+    }
+
+    /** [Confirm resolved]: only the requester of the ticket. (The status rule is in TicketWorkflow::confirmResolved().) */
+    public function confirmResolved(User $user, MaintenanceRequest $ticket): bool
+    {
+        return $this->ownTicket($user, $ticket);
+    }
+
     public function assign(User $user, MaintenanceRequest $ticket): bool
     {
         return $this->can($user, $ticket, 'assign');
@@ -120,6 +141,13 @@ class TicketPolicy
         }
 
         return (int) $ticket->requester_id === (int) $user->id && ! $ticket->status->isTerminal();
+    }
+
+    private function ownTicket(User $user, MaintenanceRequest $ticket): bool
+    {
+        return $user->is_active
+            && (int) $ticket->requester_id === (int) $user->id
+            && $ticket->isVisibleTo($user);
     }
 
     private function can(User $user, MaintenanceRequest $ticket, string $capability): bool

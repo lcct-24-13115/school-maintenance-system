@@ -69,6 +69,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/emergency', [TicketActionController::class, 'flagEmergency'])->name('emergency.flag');
         Route::post('/emergency/clear', [TicketActionController::class, 'clearEmergency'])->name('emergency.clear');
         Route::post('/notes', [TicketActionController::class, 'note'])->name('notes.store');
+        // Phase 8: the requester's own actions
+        Route::post('/cancel', [TicketActionController::class, 'cancel'])->name('cancel');
+        Route::post('/confirm-resolved', [TicketActionController::class, 'confirmResolved'])->name('confirm-resolved');
+        Route::post('/reopen', [TicketActionController::class, 'reopen'])->name('reopen');
     });
 
     // ---- Authorizer inbox (school.workflow.authorizers only; others get 403) ----

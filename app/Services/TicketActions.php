@@ -34,16 +34,28 @@ class TicketActions
 
     public const ADD_NOTE = 'add_note';
 
+    // Phase 8: the requester's own actions
+    public const CANCEL = 'cancel';
+
+    public const CONFIRM_RESOLVED = 'confirm_resolved';
+
+    public const REOPEN = 'reopen';
+
     /** @return list<string> */
     public static function for(MaintenanceRequest $ticket, User $user): array
     {
         $status = $ticket->status;
 
+        $can = fn (string $ability) => Gate::forUser($user)->allows($ability, $ticket);
+
         if ($status->isTerminal()) {
-            return [];   // Closed / Disapproved / Cancelled: nothing more can happen
+            // Closed / Disapproved / Cancelled: nothing more can happen, except that the requester may still
+            // REOPEN a Closed ticket inside the window (Phase 8).
+            return $status === TicketStatus::Closed && $can('reopen') && TicketWorkflow::reopenBlocker($ticket, $user) === null
+                ? [self::REOPEN]
+                : [];
         }
 
-        $can = fn (string $ability) => Gate::forUser($user)->allows($ability, $ticket);
         $actions = [];
 
         // Only a Submitted ticket is sent for authorization (Phase 7: Waiting for User / Escalated may also move to Pending Authorization, but only through their own actions)
@@ -64,7 +76,7 @@ class TicketActions
         if ($can('assign')) {
             if ($status === TicketStatus::Approved) {
                 $actions[] = self::ASSIGN;
-            } elseif (in_array($status, [TicketStatus::Assigned, TicketStatus::InProgress], true)) {
+            } elseif (in_array($status, [TicketStatus::Assigned, TicketStatus::InProgress, TicketStatus::Reopened], true)) {
                 $actions[] = self::REASSIGN;
             }
         }
@@ -74,6 +86,17 @@ class TicketActions
         }
         if ($ticket->is_emergency && $can('clearEmergency')) {
             $actions[] = self::CLEAR_EMERGENCY;
+        }
+
+        // Phase 8: the requester's own actions (policy = who, TicketWorkflow = which status / window)
+        if ($status === TicketStatus::WorkCompleted && $can('confirmResolved')) {
+            $actions[] = self::CONFIRM_RESOLVED;
+        }
+        if ($can('reopen') && TicketWorkflow::reopenBlocker($ticket, $user) === null) {
+            $actions[] = self::REOPEN;
+        }
+        if ($can('cancel') && TicketWorkflow::cancelBlocker($ticket, $user) === null) {
+            $actions[] = self::CANCEL;
         }
 
         if ($can('addNote')) {

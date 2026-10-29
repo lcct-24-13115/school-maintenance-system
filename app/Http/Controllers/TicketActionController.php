@@ -6,6 +6,7 @@ use App\Models\MaintenanceRequest;
 use App\Models\User;
 use App\Rules\ValidAttachment;
 use App\Services\AttachmentService;
+use App\Services\FormNotifier;
 use App\Services\TicketWorkflow;
 use Closure;
 use DomainException;
@@ -87,6 +88,43 @@ class TicketActionController extends Controller
         ], [],
             fn (array $data) => TicketWorkflow::clearEmergency($ticket, $request->user(), $data['clear_note'] ?? null),
             'Emergency flag removed. The ticket is back in its original place in the queue.');
+    }
+
+    /** Phase 8: the requester cancels their own ticket, before it is Assigned. */
+    public function cancel(Request $request, MaintenanceRequest $ticket): RedirectResponse
+    {
+        return $this->act($request, $ticket, 'cancel', 'cancel', [
+            'cancel_reason' => ['required', 'string', 'max:500'],
+        ], ['cancel_reason.required' => 'Cancelling a ticket needs a reason.'],
+            function (array $data) use ($request, $ticket) {
+                TicketWorkflow::cancel($ticket, $request->user(), $data['cancel_reason']);
+                FormNotifier::requesterAction($ticket->refresh(), $request->user(), 'cancelled');
+            },
+            'Ticket cancelled.');
+    }
+
+    /** Phase 8: [Confirm resolved] on a Work Completed ticket closes it at once. */
+    public function confirmResolved(Request $request, MaintenanceRequest $ticket): RedirectResponse
+    {
+        return $this->act($request, $ticket, 'confirmResolved', 'confirm', [], [],
+            function () use ($request, $ticket) {
+                TicketWorkflow::confirmResolved($ticket, $request->user());
+                FormNotifier::requesterAction($ticket->refresh(), $request->user(), 'confirmed');
+            },
+            'Thank you. The ticket is closed.');
+    }
+
+    /** Phase 8: the requester reopens their own Work Completed / Closed ticket inside reopen_window_days. */
+    public function reopen(Request $request, MaintenanceRequest $ticket): RedirectResponse
+    {
+        return $this->act($request, $ticket, 'reopen', 'reopen', [
+            'reopen_reason' => ['required', 'string', 'max:500'],
+        ], ['reopen_reason.required' => 'Reopening a ticket needs a reason.'],
+            function (array $data) use ($request, $ticket) {
+                TicketWorkflow::reopen($ticket, $request->user(), $data['reopen_reason']);
+                FormNotifier::requesterAction($ticket->refresh(), $request->user(), 'reopened');
+            },
+            'Ticket reopened. Maintenance has been alerted.');
     }
 
     public function note(Request $request, MaintenanceRequest $ticket): RedirectResponse

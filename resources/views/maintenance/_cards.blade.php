@@ -44,7 +44,7 @@
                         <div class="tk-foot">
                             <a href="{{ route('tickets.show', $r) }}" class="btn btn-sm" style="width:100%">View details &amp; history</a>
 
-                            @if ($r->status === TicketStatus::Approved || ($r->status === TicketStatus::Assigned && (int) $r->assigned_to === (int) auth()->id()))
+                            @if ($r->status === TicketStatus::Approved || (in_array($r->status, [TicketStatus::Assigned, TicketStatus::Reopened], true) && (int) $r->assigned_to === (int) auth()->id()))
                                 <form method="POST" action="{{ route('maintenance.accept', $r) }}" style="width:100%">
                                     @csrf
                                     <button class="btn btn-primary" style="width:100%;height:58px;font-size:18px;letter-spacing:.04em">ACCEPT TASK</button>
