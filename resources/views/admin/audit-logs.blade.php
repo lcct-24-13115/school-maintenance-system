@@ -1,112 +1,117 @@
+@php
+    $badge = fn (string $action) => match (true) {
+        $action === 'login_failed' => 'ab-fail',
+        in_array($action, ['login', 'logout', 'registered', 'password_reset'], true) => 'ab-auth',
+        str_starts_with($action, 'user_') || $action === 'role_changed' => 'ab-user',
+        str_starts_with($action, 'ticket_') => 'ab-ticket',
+        str_starts_with($action, 'attachment_') => 'ab-file',
+        default => 'ab-ok',
+    };
+@endphp
+
 <x-app-layout>
+    <link rel="stylesheet" href="{{ asset('css/phase6.css') }}?v={{ @filemtime(public_path('css/phase6.css')) }}">
+
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Audit log</h2>
+        <h2 class="page-title">Audit log</h2>
     </x-slot>
 
-    @php
-        $badge = fn (string $action) => match (true) {
-            $action === 'login_failed' => 'bg-red-100 text-red-800',
-            in_array($action, ['login', 'logout', 'registered', 'password_reset'], true) => 'bg-gray-100 text-gray-800',
-            str_starts_with($action, 'user_') || $action === 'role_changed' => 'bg-purple-100 text-purple-800',
-            str_starts_with($action, 'ticket_') => 'bg-blue-100 text-blue-800',
-            str_starts_with($action, 'attachment_') => 'bg-amber-100 text-amber-800',
-            default => 'bg-green-100 text-green-800',
-        };
-    @endphp
+    <div class="content p6-wrap">
 
-    <div class="py-4">
-        <div class="max-w-7xl mx-auto space-y-4 px-3 sm:px-6 lg:px-8">
+        <p class="p6-note">
+            A read-only record of sign-ins, account changes, settings changes and ticket activity.
+            Ticket notes and reasons are not copied here; they stay on the ticket history.
+        </p>
 
-            <p class="text-sm text-gray-600">
-                A read-only record of sign-ins, account changes, settings changes and ticket activity.
-                Ticket notes and reasons are not copied here; they stay on the ticket history.
-            </p>
-
-            <form method="GET" action="{{ route('admin.audit-logs.index') }}" class="grid grid-cols-1 gap-3 rounded-xl bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-6">
-                <label class="block text-sm font-semibold text-gray-700">User
-                    <select name="user" class="mt-1 min-h-[44px] w-full rounded-lg border-gray-300">
+        <form method="GET" action="{{ route('admin.audit-logs.index') }}" class="card">
+            <div class="p6-grid p6-filters">
+                <div class="field">
+                    <label for="f-user">User</label>
+                    <select id="f-user" name="user">
                         <option value="">All users</option>
                         @foreach ($users as $u)
                             <option value="{{ $u->id }}" @selected((string) ($filters['user'] ?? '') === (string) $u->id)>{{ $u->name }}</option>
                         @endforeach
                     </select>
-                </label>
+                </div>
 
-                <label class="block text-sm font-semibold text-gray-700">Action
-                    <select name="action" class="mt-1 min-h-[44px] w-full rounded-lg border-gray-300">
+                <div class="field">
+                    <label for="f-action">Action</label>
+                    <select id="f-action" name="action">
                         <option value="">All actions</option>
                         @foreach ($actions as $a)
                             <option value="{{ $a }}" @selected(($filters['action'] ?? '') === $a)>{{ \Illuminate\Support\Str::headline($a) }}</option>
                         @endforeach
                     </select>
-                </label>
-
-                <label class="block text-sm font-semibold text-gray-700">From
-                    <input type="date" name="from" value="{{ $filters['from'] ?? '' }}" class="mt-1 min-h-[44px] w-full rounded-lg border-gray-300">
-                    <x-input-error :messages="$errors->get('from')" class="mt-1" />
-                </label>
-
-                <label class="block text-sm font-semibold text-gray-700">To
-                    <input type="date" name="to" value="{{ $filters['to'] ?? '' }}" class="mt-1 min-h-[44px] w-full rounded-lg border-gray-300">
-                    <x-input-error :messages="$errors->get('to')" class="mt-1" />
-                </label>
-
-                <label class="block text-sm font-semibold text-gray-700 lg:col-span-2">Search
-                    <input type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Description, user name or e-mail"
-                           class="mt-1 min-h-[44px] w-full rounded-lg border-gray-300">
-                </label>
-
-                <div class="flex items-end gap-2 sm:col-span-2 lg:col-span-6">
-                    <button class="min-h-[44px] rounded-lg bg-blue-600 px-5 font-bold text-white hover:bg-blue-700">Filter</button>
-                    <a href="{{ route('admin.audit-logs.index') }}" class="inline-flex min-h-[44px] items-center rounded-lg px-4 font-semibold text-gray-700 hover:bg-gray-100">Clear</a>
                 </div>
-            </form>
 
-            <div class="overflow-x-auto rounded-xl bg-white shadow-sm">
-                <table class="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">
+                <div class="field">
+                    <label for="f-from">From</label>
+                    <input id="f-from" type="date" name="from" value="{{ $filters['from'] ?? '' }}">
+                    @error('from')<div class="field-err">{{ $message }}</div>@enderror
+                </div>
+
+                <div class="field">
+                    <label for="f-to">To</label>
+                    <input id="f-to" type="date" name="to" value="{{ $filters['to'] ?? '' }}">
+                    @error('to')<div class="field-err">{{ $message }}</div>@enderror
+                </div>
+
+                <div class="field wide">
+                    <label for="f-q">Search</label>
+                    <input id="f-q" type="search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" placeholder="Description, user name or email">
+                </div>
+            </div>
+
+            <div class="p6-bar">
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-filter"></i> Filter</button>
+                <a href="{{ route('admin.audit-logs.index') }}" class="btn">Clear</a>
+            </div>
+        </form>
+
+        <div class="card" style="padding:18px">
+            <div class="table-wrap">
+                <table class="stack">
+                    <thead>
                         <tr>
-                            <th class="px-4 py-3">When</th>
-                            <th class="px-4 py-3">User</th>
-                            <th class="px-4 py-3">Action</th>
-                            <th class="px-4 py-3">Description</th>
-                            <th class="px-4 py-3">IP</th>
+                            <th>When</th>
+                            <th>User</th>
+                            <th>Action</th>
+                            <th>Description</th>
+                            <th>IP</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100">
+                    <tbody>
                         @forelse ($logs as $log)
                             <tr>
-                                <td class="whitespace-nowrap px-4 py-3 text-gray-700">{{ $log->created_at?->format('M j, Y g:i A') }}</td>
-                                <td class="px-4 py-3 text-gray-900">
+                                <td data-label="When" style="white-space:nowrap">{{ $log->created_at?->format('M j, Y g:i A') }}</td>
+                                <td data-label="User" class="p6-who">
                                     @if ($log->user)
-                                        <div class="font-semibold">{{ $log->user->name }}</div>
-                                        <div class="text-xs text-gray-500">{{ $log->user->email }}</div>
+                                        <div><b>{{ $log->user->name }}</b><small>{{ $log->user->email }}</small></div>
                                     @else
-                                        <span class="text-gray-500">{{ $log->action === 'login_failed' ? 'Unknown' : 'System' }}</span>
+                                        <span class="sub">{{ $log->action === 'login_failed' ? 'Unknown' : 'System' }}</span>
                                     @endif
                                 </td>
-                                <td class="whitespace-nowrap px-4 py-3">
-                                    <span class="rounded-full px-2.5 py-1 text-xs font-bold {{ $badge($log->action) }}">{{ \Illuminate\Support\Str::headline($log->action) }}</span>
+                                <td data-label="Action">
+                                    <span class="badge nocap {{ $badge($log->action) }}">{{ \Illuminate\Support\Str::headline($log->action) }}</span>
                                 </td>
-                                <td class="px-4 py-3 text-gray-800">
+                                <td data-label="Description" class="p6-desc">
                                     @if (isset($ticketLinks[$log->id]))
-                                        <a href="{{ $ticketLinks[$log->id] }}" class="font-semibold text-blue-700 hover:underline">{{ $log->description }}</a>
+                                        <a href="{{ $ticketLinks[$log->id] }}">{{ $log->description }}</a>
                                     @else
                                         {{ $log->description }}
                                     @endif
                                 </td>
-                                <td class="whitespace-nowrap px-4 py-3 text-gray-600">{{ $log->ip_address ?? '—' }}</td>
+                                <td data-label="IP" class="mono">{{ $log->ip_address ?? '—' }}</td>
                             </tr>
                         @empty
-                            <tr>
-                                <td colspan="5" class="px-4 py-8 text-center text-gray-500">No audit entries match these filters.</td>
-                            </tr>
+                            <tr><td colspan="5"><div class="empty"><i class="fa-regular fa-folder-open"></i>No audit entries match these filters.</div></td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
-
-            {{ $logs->links() }}
         </div>
+
+        {{ $logs->links() }}
     </div>
 </x-app-layout>

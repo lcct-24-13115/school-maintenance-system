@@ -1,0 +1,39 @@
+PHASE 6 - Reports, Notifications, Profile, System settings, Audit log, Pager
+==========================================================================
+
+PALIT MUNA (backup): kopyahin ang folder ng project (o i-commit sa git) bago mag-apply.
+
+--- A. Sa LOCAL (Windows / Laragon) -- PowerShell sa project folder ---------
+  cd C:\laragon\www\school-maintenance-system
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase6-patch.zip" -DestinationPath . -Force
+  php artisan view:clear
+  php artisan serve
+
+  (Walang kailangang i-extract nang manual: ang Expand-Archive ang gumagawa.)
+
+  Optional - para sa bagong kulay ng charts (reports.js):
+  npm run build
+
+--- B. Sa LIVE site (lccticketing.wuaze.com) ---------------------------------
+  1. I-upload ang phase6-patch.zip sa htdocs (root ng Laravel), right-click > Extract.
+     Ino-overwrite lang nito ang mga file sa listahan sa ibaba.
+  2. Kung ang web root ay ang "public" folder, siguraduhing napunta ang
+     public/css/phase6.css doon.
+  3. Kung nag-run ka ng "npm run build" locally, i-upload din ang public/build/.
+  4. Hard refresh (Ctrl+F5).
+
+Mga file sa patch
+  NEW  public/css/phase6.css                                        (hiwalay na CSS; hindi ginagalaw ang style.css)
+  NEW  resources/views/vendor/pagination/tailwind.blade.php         (pager para sa LAHAT ng ->links())
+  NEW  resources/views/vendor/pagination/simple-tailwind.blade.php
+  EDIT resources/views/reports/index.blade.php
+  EDIT resources/views/notifications/index.blade.php
+  EDIT resources/views/profile/edit.blade.php
+  EDIT resources/views/profile/partials/update-profile-information-form.blade.php
+  EDIT resources/views/profile/partials/update-password-form.blade.php
+  EDIT resources/views/profile/partials/delete-user-form.blade.php
+  EDIT resources/views/admin/settings.blade.php
+  EDIT resources/views/admin/audit-logs.blade.php
+  EDIT resources/js/reports.js                                      (kulay ng charts; kailangan ng npm run build)
+
+Rollback: ibalik ang backup, o "git checkout -- resources public".

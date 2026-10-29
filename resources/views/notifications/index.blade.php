@@ -1,30 +1,50 @@
 <x-app-layout>
+    <link rel="stylesheet" href="{{ asset('css/phase6.css') }}?v={{ @filemtime(public_path('css/phase6.css')) }}">
+
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Notifications</h2>
-            <form method="POST" action="{{ route('notifications.readAll') }}">
-                @csrf
-                <button class="rounded-lg bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700">Mark all as read</button>
-            </form>
-        </div>
+        <h2 class="page-title">Notifications</h2>
     </x-slot>
 
-    <div class="py-8">
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
-            @forelse ($notifications as $n)
-                @php($d = $n->data)
-                <div class="rounded-lg bg-white p-4 shadow-sm border-l-8 {{ ($d['urgent'] ?? false) ? 'border-red-600' : ($n->read_at ? 'border-gray-300' : 'border-blue-600') }}">
-                    <div class="text-xs font-bold uppercase text-gray-500">{{ $d['form_label'] ?? 'Notice' }} · {{ $d['reference_no'] ?? '' }}</div>
-                    <div class="mt-1 font-semibold text-gray-900">{{ $d['title'] ?? '' }}</div>
-                    <div class="text-sm text-gray-600">{{ $d['requester_name'] ?? '' }}@if (!empty($d['department'])) · {{ $d['department'] }}@endif</div>
-                    <div class="text-sm text-gray-600">{{ $d['message'] ?? '' }}</div>
-                    <div class="mt-1 text-xs text-gray-400">{{ $n->created_at->diffForHumans() }}</div>
-                </div>
-            @empty
-                <p class="text-center text-gray-500">No notifications yet.</p>
-            @endforelse
-
-            {{ $notifications->links() }}
+    <div class="content p6-narrow">
+        <div class="p6-bar" style="margin:0 0 18px">
+            <p class="p6-note" style="margin:0">
+                @php($unread = auth()->user()->unreadNotifications()->count())
+                {{ $unread > 0 ? $unread.' unread' : 'You are all caught up.' }}
+            </p>
+            <form method="POST" action="{{ route('notifications.readAll') }}" class="push">
+                @csrf
+                <button type="submit" class="btn btn-sm"><i class="fa-solid fa-check-double"></i> Mark all as read</button>
+            </form>
         </div>
+
+        <div class="p6-notifs">
+            @forelse ($notifications as $n)
+                @php
+                    $d = $n->data;
+                    $urgent = (bool) ($d['urgent'] ?? false);
+                    $isNew = is_null($n->read_at);
+                @endphp
+                <article class="p6-n {{ $urgent ? 'urgent' : ($isNew ? 'unread' : '') }}">
+                    <span class="ico"><i class="fa-solid {{ $urgent ? 'fa-triangle-exclamation' : 'fa-bell' }}"></i></span>
+                    <div class="bd">
+                        <div class="tp">
+                            @if ($isNew)<span class="p6-new" title="Unread"></span>@endif
+                            <span>{{ $d['form_label'] ?? 'Notice' }}@if (!empty($d['reference_no'])) · {{ $d['reference_no'] }}@endif</span>
+                            @if ($urgent)<span class="badge pr-urgent">Emergency</span>@endif
+                        </div>
+                        <div class="tt">{{ $d['title'] ?? '' }}</div>
+                        @if (!empty($d['requester_name']) || !empty($d['department']))
+                            <div class="tx">{{ $d['requester_name'] ?? '' }}@if (!empty($d['department'])) · {{ $d['department'] }}@endif</div>
+                        @endif
+                        @if (!empty($d['message']))<div class="tx">{{ $d['message'] }}</div>@endif
+                        <div class="tm"><i class="fa-regular fa-clock"></i>{{ $n->created_at->diffForHumans() }}</div>
+                    </div>
+                </article>
+            @empty
+                <div class="card"><div class="empty"><i class="fa-regular fa-bell"></i>No notifications yet.</div></div>
+            @endforelse
+        </div>
+
+        {{ $notifications->links() }}
     </div>
 </x-app-layout>

@@ -11,7 +11,10 @@ Chart.register(
     CategoryScale, LinearScale, Tooltip, Legend, Filler,
 );
 
-const PALETTE = ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#65a30d', '#ea580c', '#475569'];
+// LCCT design-system colours (match public/css/style.css)
+const PALETTE = ['#2F5D95', '#5E94CF', '#F2B705', '#c8372d', '#1f8a4c', '#6d4fc2', '#a8590a', '#1B3355', '#8795ab', '#bcd5ee'];
+Chart.defaults.font.family = "'Nunito Sans', system-ui, sans-serif";
+Chart.defaults.color = '#5b6b84';
 const colors = (n) => Array.from({ length: n }, (_, i) => PALETTE[i % PALETTE.length]);
 const whole = { beginAtZero: true, ticks: { precision: 0 } };   // ticket counts are whole numbers
 
@@ -41,19 +44,19 @@ export default function initReports() {
 
     draw('chart-status', (s) => ({
         type: 'doughnut',
-        data: { labels: s.labels, datasets: [{ data: s.data, backgroundColor: colors(s.data.length) }] },
+        data: { labels: s.labels, datasets: [{ data: s.data, backgroundColor: colors(s.data.length), borderColor: '#fff', borderWidth: 2 }] },
         options: { ...common, plugins: { legend: { position: 'bottom' } } },
     }));
 
     draw('chart-category', (s) => ({
         type: 'bar',
-        data: { labels: s.labels, datasets: [{ label: 'Tickets', data: s.data, backgroundColor: '#2563eb' }] },
+        data: { labels: s.labels, datasets: [{ label: 'Tickets', data: s.data, backgroundColor: '#2F5D95', borderRadius: 6 }] },
         options: { ...common, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: whole } },
     }));
 
     draw('chart-department', (s) => ({
         type: 'bar',
-        data: { labels: s.labels, datasets: [{ label: 'Tickets', data: s.data, backgroundColor: '#16a34a' }] },
+        data: { labels: s.labels, datasets: [{ label: 'Tickets', data: s.data, backgroundColor: '#5E94CF', borderRadius: 6 }] },
         options: { ...common, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: whole } },
     }));
 
@@ -61,7 +64,7 @@ export default function initReports() {
         type: 'line',
         data: {
             labels: s.labels,
-            datasets: [{ label: 'Tickets submitted', data: s.data, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.15)', fill: true, tension: 0.25 }],
+            datasets: [{ label: 'Tickets submitted', data: s.data, borderColor: '#2F5D95', backgroundColor: 'rgba(94,148,207,.18)', fill: true, tension: 0.25 }],
         },
         options: { ...common, plugins: { legend: { display: false } }, scales: { y: whole } },
     }));
