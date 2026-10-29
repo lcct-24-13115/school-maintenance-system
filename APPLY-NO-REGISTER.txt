@@ -1,0 +1,4 @@
+PowerShell sa project folder:
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\no-register-patch.zip" -DestinationPath . -Force
+  php artisan view:clear
+Ino-overwrite: resources/views/auth/login.blade.php, app/Http/Controllers/Auth/RegisteredUserController.php

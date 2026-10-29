@@ -48,12 +48,6 @@
         </button>
     </form>
 
-    @if (Route::has('register') && config('school.allow_public_registration'))
-        <div class="auth-foot">
-            No account yet? <a href="{{ route('register') }}">Register as Requester</a>
-        </div>
-    @endif
-
     @push('scripts')
     <script>
         // Show / hide password

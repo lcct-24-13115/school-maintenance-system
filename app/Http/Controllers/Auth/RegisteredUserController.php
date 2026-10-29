@@ -15,16 +15,17 @@ use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
 {
+    // Public registration is closed: accounts are created by an admin. Both routes answer 404.
     public function create(): View
     {
-        abort_unless(config('school.allow_public_registration'), 404);
+        abort(404);
 
         return view('auth.register', ['departments' => Department::orderBy('name')->get()]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        abort_unless(config('school.allow_public_registration'), 404);
+        abort(404);
 
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
