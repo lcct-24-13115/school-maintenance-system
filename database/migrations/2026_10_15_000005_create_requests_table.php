@@ -25,7 +25,7 @@ return new class extends Migration
 
             // Only two priority types. FCFS order = submitted_at ASC.
             $table->enum('priority', ['first_come_first_served', 'emergency'])
-                  ->default('first_come_first_served');
+                ->default('first_come_first_served');
 
             $table->enum('status', [
                 'submitted',

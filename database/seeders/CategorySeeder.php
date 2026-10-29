@@ -10,7 +10,8 @@ class CategorySeeder extends Seeder
     public function run(): void
     {
         $categories = [
-            Category::TYPE_MATERIALS => ['Plumbing (faucets, pipes)', 'Electrical', 'Office Supplies', 'Carpentry / Civil Works', 'Cleaning Supplies'],
+            Category::TYPE_MATERIALS => ['Plumbing (faucets, pipes)', 'Electrical', 'Carpentry / Civil Works'],
+            Category::TYPE_SUPPLIES => ['Office Supplies', 'Cleaning Supplies'],
             Category::TYPE_EQUIPMENT => ['Computers / IT', 'Air Conditioning', 'Water Pumps', 'Furniture', 'Electrical Equipment'],
         ];
 
