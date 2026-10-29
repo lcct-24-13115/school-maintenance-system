@@ -33,9 +33,7 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            // Phase 3: ticket attachments live here. Never serve this disk straight from a URL;
-            // files are only reachable through the authorized route attachments.show.
-            'serve' => false,
+            'serve' => true,
             'throw' => false,
             'report' => false,
         ],

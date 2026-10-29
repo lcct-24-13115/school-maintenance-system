@@ -1,0 +1,10 @@
+PHASE 1 - Foundation
+1. Backup muna ang live site (files + database).
+2. Hosting File Manager -> buksan ang htdocs (root ng Laravel project).
+3. I-upload ang phase1-patch.zip sa htdocs, i-right-click -> Extract.
+   Mag-merge lang ito: puro bagong file ang laman, kaya wala itong ino-overwrite
+   o binubura na existing file.
+4. Buksan sa browser:  https://lccticketing.wuaze.com/phase1-test.html
+   (Kung ang public folder ay hindi ang web root, ilagay ang test file kung nasaan ang index.php.)
+5. Dapat makita: campus photo sa background, seal sa taas ng card, INTEL chip sa baba.
+6. Kapag OK na, burahin ang phase1-test.html.

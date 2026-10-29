@@ -5,32 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/**
- * Internal history of a ticket: status changes, assignments, reassignments, emergency flags,
- * authorizations, notes. Never show this on the public announcements board.
- */
+/** Internal audit trail. Never show this on the public announcements board. */
 class RequestStatusLog extends Model
 {
-    public const ACTION_STATUS = 'status_change';
-
-    public const ACTION_ASSIGNMENT = 'assignment';
-
-    public const ACTION_REASSIGNMENT = 'reassignment';
-
-    public const ACTION_EMERGENCY = 'emergency_flag';
-
-    public const ACTION_AUTHORIZATION = 'authorization';
-
-    public const ACTION_NOTE = 'note';
-
-    public const ACTION_ATTACHMENT = 'attachment';
-
-    protected $fillable = ['request_id', 'user_id', 'action', 'from_status', 'to_status', 'note', 'meta'];
-
-    protected function casts(): array
-    {
-        return ['meta' => 'array'];
-    }
+    protected $fillable = ['request_id', 'user_id', 'from_status', 'to_status', 'note'];
 
     public function request(): BelongsTo
     {
