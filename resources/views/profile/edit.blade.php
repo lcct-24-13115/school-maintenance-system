@@ -7,6 +7,10 @@
 
     <div class="content p6-wrap">
         <div class="card">
+            @include('profile.partials.update-avatar-form')
+        </div>
+
+        <div class="card">
             @include('profile.partials.update-profile-information-form')
         </div>
 

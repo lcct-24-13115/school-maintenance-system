@@ -48,12 +48,13 @@
                 {{-- Profile menu --}}
                 <div class="tb-user" x-data="{ open: false }" :class="{ 'open': open }" @click.outside="open = false">
                     <button type="button" class="who" @click="open = !open" aria-haspopup="true">
-                        <span class="avatar">{{ mb_strtoupper(mb_substr(Auth::user()->name, 0, 1)) }}</span>
+                        <x-avatar :user="Auth::user()" />
                         <span class="nm">{{ Auth::user()->name }}<small>{{ Auth::user()->role?->name }}</small></span>
                         <i class="fa-solid fa-chevron-down chev"></i>
                     </button>
                     <div class="tb-menu" x-cloak>
-                        <div class="tb-head">
+                        <div class="tb-head" style="display:flex;align-items:center;gap:10px">
+                            <x-avatar :user="Auth::user()" :size="44" />
                             <span><b>{{ Auth::user()->name }}</b><small>{{ Auth::user()->email }}</small></span>
                         </div>
                         <div class="tb-sep"></div>

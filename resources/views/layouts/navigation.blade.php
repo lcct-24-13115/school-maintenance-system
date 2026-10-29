@@ -66,7 +66,7 @@
     </div>
 
     <div class="sb-user">
-        <span class="avatar">{{ mb_strtoupper(mb_substr($u->name, 0, 1)) }}</span>
+        <x-avatar :user="$u" />
         <div class="who">
             <div class="n">{{ $u->name }}</div>
             <div class="r">{{ $u->role?->name }}</div>

@@ -1,0 +1,33 @@
+PHASE 4 (Profile photo) - avatar sa nav, profile page at ticket history
+=======================================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 4 avatar"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase4-avatar-patch.zip" -DestinationPath . -Force
+  php artisan migrate
+  php artisan view:clear
+  php artisan route:clear
+  php artisan test --filter=AvatarTest
+  php artisan test --filter=ProfileTest
+
+Kapag hindi gumana ang Expand-Archive:
+  tar -xf "$env:USERPROFILE\Downloads\phase4-avatar-patch.zip" -C .
+
+Bago (4):  database/migrations/2026_10_29_000002_add_avatar_path_to_users_table.php
+           resources/views/components/avatar.blade.php
+           resources/views/profile/partials/update-avatar-form.blade.php
+           tests/Feature/AvatarTest.php
+Ino-overwrite (6): app/Http/Controllers/ProfileController.php, app/Models/User.php, routes/web.php,
+           resources/views/layouts/navigation.blade.php, layouts/app.blade.php,
+           resources/views/profile/edit.blade.php, resources/views/tickets/show.blade.php
+Hindi ginalaw: CSS, config, policies, ibang controllers
+
+Paano gumagana
+  - Upload sa Profile page > "Profile photo". Max 3 MB, JPG/PNG/WEBP lang.
+  - Naka-save sa storage/app/private/avatars (private). Walang public URL; bubuksan lang via /avatars/{user}
+    (kailangan naka-login). Walang kailangang "storage:link".
+  - Kapag may GD ang PHP, nagiging 256x256 square JPEG (tinatanggal din ang metadata).
+  - Walang photo = unang letra ng pangalan.
+  - Lumalabas ang avatar sa sidebar, topbar menu at sa bawat entry ng History sa ticket.
+
+Rollback: php artisan migrate:rollback --step=1  (tatanggalin ang avatar_path), tapos ibalik ang backup / git checkout -- .

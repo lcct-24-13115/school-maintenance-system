@@ -192,6 +192,7 @@
                 @forelse ($ticket->statusLogs as $log)
                     <div class="msg">
                         <div class="meta">
+                            @if ($log->user)<x-avatar :user="$log->user" :size="28" />@endif
                             <b>{{ $actionLabels[$log->action] ?? ucfirst(str_replace('_', ' ', $log->action)) }}@if ($log->to_status) <span style="font-weight:600;color:var(--text-2)">:
                                 @if ($log->from_status){{ \App\Enums\TicketStatus::tryFrom($log->from_status)?->label() }} &rarr; @endif{{ \App\Enums\TicketStatus::tryFrom($log->to_status)?->label() }}</span>@endif</b>
                             <span>· {{ $fmt($log->created_at) }} · {{ $log->user?->name ?? 'System' }}</span>

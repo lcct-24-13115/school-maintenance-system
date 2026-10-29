@@ -31,6 +31,20 @@ class User extends Authenticatable implements MustVerifyEmail
         ];
     }
 
+    /** First letter of the name, shown when there is no profile photo. */
+    public function initial(): string
+    {
+        return mb_strtoupper(mb_substr(trim((string) $this->name), 0, 1)) ?: '?';
+    }
+
+    /** URL of the profile photo (authorized route, private storage) or null. ?v= busts the cache on a new photo. */
+    public function avatarUrl(): ?string
+    {
+        return $this->avatar_path
+            ? route('avatars.show', ['user' => $this->getKey(), 'v' => substr(md5($this->avatar_path), 0, 8)])
+            : null;
+    }
+
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);

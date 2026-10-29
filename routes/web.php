@@ -97,6 +97,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // ---- Profile photo (Phase 4). Private storage; the image is only reachable through avatars.show ----
+    Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar.update');
+    Route::delete('/profile/avatar', [ProfileController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
+    Route::get('/avatars/{user}', [ProfileController::class, 'avatar'])->name('avatars.show');
 });
 
 require __DIR__.'/auth.php';
