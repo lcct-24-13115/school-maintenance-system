@@ -1,0 +1,77 @@
+PHASE 7 - Bagong statuses: waiting_for_user, escalated, cancelled, reopened
+==========================================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 7 statuses"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase7-statuses-patch.zip" -DestinationPath . -Force
+  php artisan view:clear
+  php artisan route:clear
+  php artisan config:clear
+  php artisan test --filter=TicketFoundationTest
+  php artisan test
+
+Kapag hindi gumana ang Expand-Archive:
+  tar -xf "$env:USERPROFILE\Downloads\phase7-statuses-patch.zip" -C .
+
+WALANG migration at WALANG "php artisan migrate":
+  Ang requests.status ay string(30) na (inayos ng migration 2026_10_19_000001, enum -> string).
+  Ang pinakamahabang bagong value, "waiting_for_user", ay 16 characters lang. Kaya walang binabago sa database,
+  at walang nagagalaw na lumang ticket.
+  Para tiyakin sa MySQL mo:   php artisan db:table requests     (dapat "varchar(30)" ang status, hindi "enum")
+  Kung "enum" pa rin ang lumabas, ibig sabihin hindi pa na-run ang migration na iyon: php artisan migrate
+
+Bago: wala (maliban sa file na ito).
+Ino-overwrite (12):
+  app/Enums/TicketStatus.php                          <- ang puso ng phase
+  resources/views/tickets/_badges.blade.php
+  resources/views/tickets/_tracker.blade.php
+  resources/views/components/status-badge.blade.php
+  public/css/style.css                                <- dagdag na 5 linya sa dulo (kulay ng bagong statuses)
+  app/Services/TicketActions.php                      <- "Send for authorization" ay Submitted lang
+  app/Services/TicketWorkflow.php                     <- approve/disapprove ay Pending/Submitted lang; message ng startWork
+  app/Http/Controllers/MaintenanceBoardController.php <- hindi nawawala sa board ang bagong statuses
+  resources/views/maintenance/_cards.blade.php
+  app/Http/Controllers/DashboardController.php        <- bilang ng requester dashboard
+  tests/Feature/TicketFoundationTest.php
+  APPLY-PHASE-7.txt
+
+Kung may sarili kang binago sa style.css, idagdag mo na lang ang huling block (komentong "Phase 7") imbes na mag-overwrite.
+
+ANG BAGONG GALAW (allowedNext)
+  Submitted             -> Pending Authorization, Approved, Disapproved, Waiting for User, Escalated, Cancelled
+  Pending Authorization -> Approved, Disapproved, Waiting for User, Escalated, Cancelled
+  Approved              -> Assigned, Waiting for User, Escalated, Cancelled
+  Assigned              -> In Progress, Waiting for User, Escalated          (hindi na puwedeng i-cancel)
+  In Progress           -> Work Completed, Waiting for User, Escalated
+  Work Completed        -> Closed, In Progress, Reopened
+  Closed                -> Reopened                                          (dati: wala; ito lang ang pagbabago sa lumang status)
+  Disapproved           -> (wala)
+  Waiting for User      -> Submitted, Pending Authorization, Approved, Assigned, In Progress, Reopened, Escalated, Cancelled
+  Escalated             -> Pending Authorization, Approved, Disapproved, Assigned, In Progress, Reopened, Cancelled
+  Cancelled             -> (wala)
+  Reopened              -> Assigned, In Progress, Waiting for User, Escalated
+
+  CONFIRM WITH CLIENT (gaya ng iba): ang table na ito ang unang bersyon. Palitan sa TicketStatus::allowedNext()
+  at sa MOVES ng test; sinadya na kailangang baguhin ang dalawa nang magkasabay.
+
+Mga desisyon na dapat mong malaman
+  - Waiting for User, Escalated, Reopened = "pending" (bukas pa ang trabaho): bilang sa Pending, puwedeng maging Overdue.
+    Cancelled ay hindi pending at hindi completed (gaya ng Disapproved).
+  - isTerminal() ay Closed, Disapproved, Cancelled (fixed list). Kaya ang saradong ticket ay wala pa ring notes/flags/files.
+    Ang Reopened ay gagawin ng sariling action sa Phase 10, hindi ng karaniwang ticket actions.
+  - Ang "cancel bago ma-Assign" na rule ay sa table (Assigned/In Progress/Work Completed ay hindi puwedeng mag-Cancelled).
+    Ang "sarili mong ticket lang" ay trabaho ng policy sa Phase 8 (cancel_own).
+  - Walang button pa para sa apat na bagong status. Sa Phase 8-10 sila dadagdag. Ngayon, tinitiyak lang na
+    (a) tama ang label, kulay at tracker, (b) hindi sila nawawala sa board, dashboard, listahan at reports,
+    (c) walang aksidenteng aksyon: hindi ma-approve/disapprove/send-for-authorization ang Waiting/Escalated ticket.
+  - Sample data (php artisan db:seed) ay lumang 8 statuses pa rin (sadyang hindi ginalaw para hindi masira ang ibang tests).
+
+Kulay ng badge (bago; hindi ginamit ang kulay ng lumang statuses)
+  Waiting for User = orange (st-awaiting-reply)    Escalated = magenta (st-escalation)
+  Cancelled = abo, putol-putol ang border (st-cancelled)   Reopened = teal (st-reopen)
+
+Tracker (4 hakbang: Filed > Authorized > In work > Done)
+  Waiting for User at Escalated = nananatili sa hakbang na naabot na (galing sa assigned_at / president_approved_at)
+  Reopened = balik sa "In work"      Cancelled = hihinto sa hakbang 1, abo
+
+Rollback: git checkout -- .   (walang database na babalikan)

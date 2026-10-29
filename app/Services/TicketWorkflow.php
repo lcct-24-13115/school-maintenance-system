@@ -302,7 +302,7 @@ class TicketWorkflow
         }
 
         if (! in_array($ticket->status, [TicketStatus::Approved, TicketStatus::Assigned], true)) {
-            throw new DomainException($ticket->status->isPending() && $ticket->status !== TicketStatus::InProgress
+            throw new DomainException(in_array($ticket->status, [TicketStatus::Submitted, TicketStatus::PendingAuthorization], true)
                 ? "Ticket {$ticket->ticket_no} is still \"{$ticket->status->label()}\" — it needs authorization before work can start."
                 : "Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\" and cannot be accepted.");
         }
@@ -453,6 +453,12 @@ class TicketWorkflow
     {
         if ($ticket->status === TicketStatus::Submitted && ! config('school.workflow.authorize_from_submitted', true)) {
             throw new DomainException("Ticket {$ticket->ticket_no} is still \"Submitted\". It must be sent for authorization first.");
+        }
+
+        // Phase 7: Waiting for User and Escalated can also move to Approved / Disapproved, but approving them is
+        // not an action yet (Phase 9 decides it), so only the authorizable statuses are accepted here.
+        if (! in_array($ticket->status->value, MaintenanceRequest::authorizableStatusValues(), true)) {
+            throw new DomainException(MaintenanceRequest::invalidTransitionMessage($ticket->ticket_no, $ticket->status, $to));
         }
 
         if (! $ticket->status->canTransitionTo($to)) {

@@ -61,10 +61,12 @@ class MaintenanceBoardController extends Controller
             ->with(['requester', 'department', 'category', 'assignee', 'attachments']);
 
         return [
-            // not started yet (waiting for authorization, approved, or assigned)
+            // not started yet (waiting for authorization, approved, or assigned) + Phase 7: waiting for the requester,
+            // escalated, or reopened. They stay visible here; the buttons for them come in Phases 8-10.
             'newTasks' => $base()->whereIn('status', [
                 TicketStatus::Submitted->value, TicketStatus::PendingAuthorization->value,
                 TicketStatus::Approved->value, TicketStatus::Assigned->value,
+                TicketStatus::WaitingForUser->value, TicketStatus::Escalated->value, TicketStatus::Reopened->value,
             ])->queueOrder()->get(),
             'doingTasks' => $base()->where('status', TicketStatus::InProgress->value)->queueOrder()->get(),
             'doneTasks' => $base()->whereIn('status', TicketStatus::completedValues())

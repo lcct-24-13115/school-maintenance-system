@@ -10,6 +10,10 @@
         'work_completed' => 'st-resolved',
         'closed' => 'st-closed',
         'disapproved' => 'st-escalated',
+        'waiting_for_user' => 'st-awaiting-reply',
+        'escalated' => 'st-escalation',
+        'cancelled' => 'st-cancelled',
+        'reopened' => 'st-reopen',
     ];
 @endphp
 

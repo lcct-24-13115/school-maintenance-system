@@ -58,6 +58,12 @@
                                 <div class="hint" style="width:100%;margin:0;text-align:center;font-weight:700"><i class="fa-regular fa-hourglass-half"></i> Waiting for authorization</div>
                             @elseif ($r->status === TicketStatus::Assigned)
                                 <div class="hint" style="width:100%;margin:0;text-align:center;font-weight:700">Assigned to {{ $r->assignee?->name }}</div>
+                            @elseif ($r->status === TicketStatus::WaitingForUser)
+                                <div class="hint" style="width:100%;margin:0;text-align:center;font-weight:700"><i class="fa-regular fa-hourglass-half"></i> Waiting for the requester</div>
+                            @elseif ($r->status === TicketStatus::Escalated)
+                                <div class="hint" style="width:100%;margin:0;text-align:center;font-weight:700"><i class="fa-solid fa-arrow-up-right-dots"></i> Escalated to the authorizer</div>
+                            @elseif ($r->status === TicketStatus::Reopened)
+                                <div class="hint" style="width:100%;margin:0;text-align:center;font-weight:700"><i class="fa-solid fa-rotate-left"></i> Reopened</div>
                             @endif
                         </div>
                     </article>

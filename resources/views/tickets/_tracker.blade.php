@@ -2,6 +2,8 @@
     Phase 4 (design): delivery-style tracker (.trk) for a ticket. Purely visual: it only READS $ticket->status
     (and a few timestamps); it changes nothing.
     4 stages: Filed -> Authorized -> In work -> Done.   Disapproved stops at step 1 in red.
+    Phase 7: Waiting for User / Escalated stay on the stage the ticket had reached (read from its timestamps),
+    Reopened goes back to "In work", Cancelled stops at step 1 in grey.
     Usage: @include('tickets._tracker', ['ticket' => $ticket, 'full' => true])
 --}}
 @php
@@ -11,6 +13,9 @@
         ['In work', 'fa-screwdriver-wrench', $ticket->assigned_at],
         ['Done', 'fa-circle-check', $ticket->completed_at ?? $ticket->closed_at],
     ];
+
+    // Where a ticket that is waiting / escalated was: assigned -> In work, authorized -> Authorized, else Filed.
+    $reached = $ticket->assigned_at ? 2 : ($ticket->president_approved_at ? 1 : 0);
 
     // [current step (4 = everything done), colour flag, headline, detail line]
     [$now, $flag, $head, $sub] = match ($ticket->status->value) {
@@ -22,6 +27,10 @@
         'work_completed' => [3, 'st-warn', 'Work completed', 'Waiting to be closed'],
         'closed' => [4, '', 'Closed', 'This ticket is finished'],
         'disapproved' => [0, 'st-alert', 'Disapproved', 'This ticket will not be worked on'],
+        'waiting_for_user' => [$reached, 'st-warn', 'Waiting for the requester', 'More information is needed from the requester'],
+        'escalated' => [$reached, 'st-alert', 'Escalated', 'Waiting for the President / authorizer'],
+        'cancelled' => [0, 'st-off', 'Cancelled', 'This ticket was cancelled and will not be worked on'],
+        'reopened' => [2, 'st-warn', 'Reopened', 'Sent back for more work'],
         default => [0, '', $ticket->status->label(), ''],
     };
 

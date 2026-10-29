@@ -8,6 +8,7 @@ use App\Models\MaintenanceRequest;
 use App\Models\RequestStatusLog;
 use App\Models\User;
 use App\Rules\AdvanceNotice;
+use App\Services\TicketActions;
 use App\Services\TicketWorkflow;
 use Database\Seeders\CategorySeeder;
 use Database\Seeders\DepartmentSeeder;
@@ -15,6 +16,7 @@ use Database\Seeders\RoleSeeder;
 use Database\Seeders\UserSeeder;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /** Phase 1: unified ticket foundation (numbers, statuses, transitions, queue, emergency, history). */
@@ -112,12 +114,19 @@ class TicketFoundationTest extends TestCase
         $ticket->update(['status' => TicketStatus::InProgress]);
     }
 
-    public function test_closed_and_disapproved_are_final(): void
+    public function test_closed_disapproved_and_cancelled_are_final(): void
     {
-        $this->assertSame([], TicketStatus::Closed->allowedNext());
+        // Phase 7: Closed can only go to Reopened (reopen action, Phase 10); Disapproved and Cancelled go nowhere.
+        $this->assertSame([TicketStatus::Reopened], TicketStatus::Closed->allowedNext());
         $this->assertSame([], TicketStatus::Disapproved->allowedNext());
-        $this->assertTrue(TicketStatus::Closed->isTerminal());
-        $this->assertFalse(TicketStatus::InProgress->isTerminal());
+        $this->assertSame([], TicketStatus::Cancelled->allowedNext());
+
+        foreach ([TicketStatus::Closed, TicketStatus::Disapproved, TicketStatus::Cancelled] as $status) {
+            $this->assertTrue($status->isTerminal(), $status->value);
+        }
+        foreach ([TicketStatus::InProgress, TicketStatus::WorkCompleted, TicketStatus::WaitingForUser, TicketStatus::Escalated, TicketStatus::Reopened] as $status) {
+            $this->assertFalse($status->isTerminal(), $status->value);
+        }
     }
 
     public function test_a_ticket_cannot_be_closed_without_authorization(): void
@@ -278,8 +287,9 @@ class TicketFoundationTest extends TestCase
 
     public function test_pending_and_completed_scopes_follow_the_proposal(): void
     {
+        // Phase 7: Waiting for User, Escalated and Reopened are still open work. Cancelled is not.
         $this->assertEqualsCanonicalizing(
-            ['submitted', 'pending_authorization', 'approved', 'assigned', 'in_progress'],
+            ['submitted', 'pending_authorization', 'approved', 'assigned', 'in_progress', 'waiting_for_user', 'escalated', 'reopened'],
             TicketStatus::pendingValues()
         );
         $this->assertEqualsCanonicalizing(['work_completed', 'closed'], TicketStatus::completedValues());
@@ -391,6 +401,357 @@ class TicketFoundationTest extends TestCase
             ->assertForbidden();
     }
 
+    // ---- Phase 7: waiting_for_user, escalated, cancelled, reopened ------------------------------
+
+    /** The whole move table, written out. Change TicketStatus::allowedNext() and this test must change on purpose. */
+    private const MOVES = [
+        'submitted' => ['pending_authorization', 'approved', 'disapproved', 'waiting_for_user', 'escalated', 'cancelled'],
+        'pending_authorization' => ['approved', 'disapproved', 'waiting_for_user', 'escalated', 'cancelled'],
+        'approved' => ['assigned', 'waiting_for_user', 'escalated', 'cancelled'],
+        'assigned' => ['in_progress', 'waiting_for_user', 'escalated'],
+        'in_progress' => ['work_completed', 'waiting_for_user', 'escalated'],
+        'work_completed' => ['closed', 'in_progress', 'reopened'],
+        'closed' => ['reopened'],
+        'disapproved' => [],
+        'waiting_for_user' => ['submitted', 'pending_authorization', 'approved', 'assigned', 'in_progress', 'reopened', 'escalated', 'cancelled'],
+        'escalated' => ['pending_authorization', 'approved', 'disapproved', 'assigned', 'in_progress', 'reopened', 'cancelled'],
+        'cancelled' => [],
+        'reopened' => ['assigned', 'in_progress', 'waiting_for_user', 'escalated'],
+    ];
+
+    /** @return list<string> */
+    private function nextOf(TicketStatus $status): array
+    {
+        return array_map(fn (TicketStatus $s) => $s->value, $status->allowedNext());
+    }
+
+    /** Move a ticket to any status WITHOUT the guards (to build a situation for a page or a scope). */
+    private function forceStatus(MaintenanceRequest $ticket, TicketStatus $status): MaintenanceRequest
+    {
+        DB::table('requests')->where('id', $ticket->id)->update(['status' => $status->value]);
+
+        return $ticket->fresh();
+    }
+
+    public function test_the_four_new_statuses_have_labels_and_fit_the_column(): void
+    {
+        $labels = [
+            'waiting_for_user' => 'Waiting for User',
+            'escalated' => 'Escalated',
+            'cancelled' => 'Cancelled',
+            'reopened' => 'Reopened',
+        ];
+
+        foreach ($labels as $value => $label) {
+            $this->assertSame($label, TicketStatus::from($value)->label());
+        }
+
+        $values = array_map(fn (TicketStatus $s) => $s->value, TicketStatus::cases());
+
+        $this->assertCount(12, $values);
+        $this->assertSame($values, array_values(array_unique($values)));
+        $this->assertSame($values, array_keys(TicketStatus::options()));
+
+        foreach ($values as $value) {
+            $this->assertLessThanOrEqual(30, strlen($value), "requests.status is string(30): {$value}");
+        }
+    }
+
+    public function test_the_transition_table_is_exactly_this(): void
+    {
+        $this->assertCount(count(TicketStatus::cases()), self::MOVES, 'every status needs a row in MOVES');
+
+        foreach (TicketStatus::cases() as $status) {
+            $this->assertEqualsCanonicalizing(self::MOVES[$status->value], $this->nextOf($status), $status->value);
+        }
+    }
+
+    public function test_no_status_moves_to_itself_or_lists_a_move_twice(): void
+    {
+        foreach (TicketStatus::cases() as $status) {
+            $next = $this->nextOf($status);
+
+            $this->assertNotContains($status->value, $next, $status->value);
+            $this->assertSame($next, array_values(array_unique($next)), $status->value);
+        }
+    }
+
+    public function test_the_old_moves_still_work_and_the_old_skips_are_still_refused(): void
+    {
+        $old = [
+            ['submitted', 'pending_authorization'], ['submitted', 'approved'], ['submitted', 'disapproved'],
+            ['pending_authorization', 'approved'], ['pending_authorization', 'disapproved'],
+            ['approved', 'assigned'], ['assigned', 'in_progress'], ['in_progress', 'work_completed'],
+            ['work_completed', 'closed'], ['work_completed', 'in_progress'],
+        ];
+        foreach ($old as [$from, $to]) {
+            $this->assertTrue(TicketStatus::from($from)->canTransitionTo(TicketStatus::from($to)), "{$from} -> {$to}");
+        }
+
+        $skips = [
+            ['submitted', 'assigned'], ['submitted', 'in_progress'], ['submitted', 'closed'],
+            ['pending_authorization', 'assigned'], ['approved', 'in_progress'], ['approved', 'closed'],
+            ['assigned', 'work_completed'], ['in_progress', 'closed'], ['in_progress', 'approved'],
+            ['work_completed', 'approved'], ['disapproved', 'approved'], ['disapproved', 'reopened'],
+            ['closed', 'in_progress'], ['closed', 'cancelled'],
+        ];
+        foreach ($skips as [$from, $to]) {
+            $this->assertFalse(TicketStatus::from($from)->canTransitionTo(TicketStatus::from($to)), "{$from} -> {$to}");
+        }
+    }
+
+    public function test_cancel_is_only_possible_before_the_ticket_is_assigned(): void
+    {
+        $canCancel = array_filter(TicketStatus::cases(), fn (TicketStatus $s) => $s->canTransitionTo(TicketStatus::Cancelled));
+
+        $this->assertEqualsCanonicalizing(
+            ['submitted', 'pending_authorization', 'approved', 'waiting_for_user', 'escalated'],
+            array_values(array_map(fn (TicketStatus $s) => $s->value, $canCancel))
+        );
+    }
+
+    public function test_reopen_is_only_for_completed_or_closed_work(): void
+    {
+        $fromReopenable = array_filter(
+            TicketStatus::cases(),
+            fn (TicketStatus $s) => $s->canTransitionTo(TicketStatus::Reopened) && ! in_array($s, [TicketStatus::WaitingForUser, TicketStatus::Escalated], true)
+        );
+
+        $this->assertEqualsCanonicalizing(
+            ['work_completed', 'closed'],
+            array_values(array_map(fn (TicketStatus $s) => $s->value, $fromReopenable))
+        );
+    }
+
+    public function test_waiting_and_escalated_are_never_entered_from_finished_work(): void
+    {
+        foreach ([TicketStatus::WorkCompleted, TicketStatus::Closed, TicketStatus::Disapproved, TicketStatus::Cancelled] as $status) {
+            $this->assertFalse($status->canTransitionTo(TicketStatus::WaitingForUser), $status->value);
+            $this->assertFalse($status->canTransitionTo(TicketStatus::Escalated), $status->value);
+        }
+    }
+
+    public function test_waiting_for_user_can_always_go_back_to_where_it_came_from(): void
+    {
+        foreach (TicketStatus::cases() as $status) {
+            if ($status->canTransitionTo(TicketStatus::WaitingForUser)) {
+                $this->assertTrue(TicketStatus::WaitingForUser->canTransitionTo($status), "back to {$status->value}");
+            }
+        }
+    }
+
+    public function test_every_status_can_be_reached_from_submitted(): void
+    {
+        $seen = [TicketStatus::Submitted];
+        $queue = [TicketStatus::Submitted];
+
+        while ($queue) {
+            foreach (array_shift($queue)->allowedNext() as $next) {
+                if (! in_array($next, $seen, true)) {
+                    $seen[] = $next;
+                    $queue[] = $next;
+                }
+            }
+        }
+
+        $this->assertCount(count(TicketStatus::cases()), $seen);
+    }
+
+    public function test_pending_completed_and_final_groups_do_not_overlap_wrongly(): void
+    {
+        $this->assertFalse(TicketStatus::Cancelled->isPending());
+        $this->assertFalse(TicketStatus::Cancelled->isCompleted());
+        $this->assertTrue(TicketStatus::Reopened->isPending());
+        $this->assertTrue(TicketStatus::WaitingForUser->isPending());
+        $this->assertTrue(TicketStatus::Escalated->isPending());
+
+        foreach (TicketStatus::cases() as $status) {
+            $this->assertFalse($status->isPending() && $status->isCompleted(), $status->value);
+            $this->assertFalse($status->isPending() && $status->isTerminal(), $status->value);
+        }
+    }
+
+    public function test_a_ticket_can_wait_for_the_requester_and_come_back(): void
+    {
+        $this->seedBase();
+        $staff = $this->user('maintenance@lcctanauan.edu.ph');
+        $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
+
+        TicketWorkflow::transition($ticket, TicketStatus::WaitingForUser, $staff, 'Which room exactly?');
+        $this->assertSame(TicketStatus::WaitingForUser, $ticket->fresh()->status);
+
+        TicketWorkflow::transition($ticket, TicketStatus::Submitted, $staff, 'Answered.');
+        TicketWorkflow::transition($ticket, TicketStatus::PendingAuthorization, $staff);
+
+        $this->assertSame(
+            ['submitted', 'waiting_for_user', 'submitted', 'pending_authorization'],
+            $ticket->statusLogs()->pluck('to_status')->all()
+        );
+    }
+
+    public function test_a_waiting_or_escalated_ticket_cannot_be_approved_or_sent_for_authorization_yet(): void
+    {
+        $this->seedBase();
+        $staff = $this->user('maintenance@lcctanauan.edu.ph');
+        $president = $this->user('president@lcctanauan.edu.ph');
+
+        foreach ([TicketStatus::WaitingForUser, TicketStatus::Escalated] as $status) {
+            $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
+            TicketWorkflow::transition($ticket, $status, $staff);
+
+            foreach ([
+                fn () => TicketWorkflow::authorize($ticket, $president, 'OK'),
+                fn () => TicketWorkflow::disapprove($ticket, $president, 'No'),
+                fn () => TicketWorkflow::sendForAuthorization($ticket, $staff),
+            ] as $attempt) {
+                try {
+                    $attempt();
+                    $this->fail("{$status->value}: the action should have been refused.");
+                } catch (DomainException) {
+                    // expected
+                }
+            }
+
+            $this->assertSame($status, $ticket->fresh()->status);
+            $this->assertNotContains(TicketActions::APPROVE, TicketActions::for($ticket->fresh(), $president));
+            $this->assertNotContains(TicketActions::SEND_FOR_AUTHORIZATION, TicketActions::for($ticket->fresh(), $staff));
+        }
+    }
+
+    public function test_a_cancelled_ticket_is_final(): void
+    {
+        $this->seedBase();
+        $requester = $this->user('requester@lcctanauan.edu.ph');
+        $staff = $this->user('maintenance@lcctanauan.edu.ph');
+        $ticket = TicketWorkflow::open($requester, $this->data());
+
+        TicketWorkflow::transition($ticket, TicketStatus::Cancelled, $requester, 'Not needed anymore.');
+        $ticket->refresh();
+
+        $this->assertSame(TicketStatus::Cancelled, $ticket->status);
+        $this->assertSame([], TicketActions::for($ticket, $staff));
+
+        foreach ([
+            fn () => TicketWorkflow::transition($ticket, TicketStatus::Submitted, $staff),
+            fn () => TicketWorkflow::transition($ticket, TicketStatus::Reopened, $staff),
+            fn () => TicketWorkflow::addNote($ticket, $staff, 'hello'),
+            fn () => TicketWorkflow::flagEmergency($ticket, $staff, 'Water'),
+        ] as $attempt) {
+            try {
+                $attempt();
+                $this->fail('A cancelled ticket accepted a change.');
+            } catch (DomainException) {
+                // expected
+            }
+        }
+    }
+
+    public function test_the_model_guard_also_covers_the_new_statuses(): void
+    {
+        $this->seedBase();
+        $ticket = $this->forceStatus($this->ticketAt(now()), TicketStatus::Assigned);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('cannot move from "Assigned" to "Cancelled"');
+
+        $ticket->update(['status' => TicketStatus::Cancelled]);
+    }
+
+    public function test_a_finished_ticket_can_be_reopened_and_worked_again(): void
+    {
+        $this->seedBase();
+        $staff = $this->user('maintenance@lcctanauan.edu.ph');
+        $ticket = TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data());
+
+        TicketWorkflow::authorize($ticket, $this->user('president@lcctanauan.edu.ph'), 'OK');
+        TicketWorkflow::startWork($ticket, $staff);
+        TicketWorkflow::markWorkCompleted($ticket, $staff);
+        TicketWorkflow::close($ticket, $staff);
+
+        // Closed ticket: the normal ticket actions stay off, only the reopen move exists
+        $this->assertSame([], TicketActions::for($ticket->fresh(), $staff));
+
+        TicketWorkflow::transition($ticket, TicketStatus::Reopened, $staff, 'Leak came back.');
+        TicketWorkflow::transition($ticket, TicketStatus::InProgress, $staff);
+        TicketWorkflow::transition($ticket, TicketStatus::WorkCompleted, $staff);
+
+        $this->assertSame(TicketStatus::WorkCompleted, $ticket->fresh()->status);
+        $this->assertContains('reopened', $ticket->statusLogs()->pluck('to_status')->all());
+    }
+
+    public function test_pending_scope_counts_the_new_open_statuses_but_not_cancelled(): void
+    {
+        $this->seedBase();
+
+        foreach (TicketStatus::cases() as $status) {
+            $this->forceStatus($this->ticketAt(now()), $status);
+        }
+
+        $this->assertSame(count(TicketStatus::pendingCases()), MaintenanceRequest::pending()->count());
+        $this->assertSame(0, MaintenanceRequest::pending()->where('status', 'cancelled')->count());
+        $this->assertSame(0, MaintenanceRequest::query()->completed()->where('status', 'reopened')->count());
+    }
+
+    public function test_pages_render_for_every_status_with_a_badge_and_tracker(): void
+    {
+        $this->withoutVite();
+        $this->seedBase();
+        $admin = $this->user('maintenance@lcctanauan.edu.ph');
+
+        $expect = [
+            'waiting_for_user' => ['Waiting for User', 'st-awaiting-reply', 'Waiting for the requester'],
+            'escalated' => ['Escalated', 'st-escalation', 'Waiting for the President'],
+            'cancelled' => ['Cancelled', 'st-cancelled', 'This ticket was cancelled'],
+            'reopened' => ['Reopened', 'st-reopen', 'Sent back for more work'],
+        ];
+
+        foreach ($expect as $value => [$label, $class, $trackerText]) {
+            $ticket = $this->forceStatus(TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data()), TicketStatus::from($value));
+
+            $this->actingAs($admin)->get(route('tickets.show', $ticket))
+                ->assertOk()->assertSee($label)->assertSee($class)->assertSee($trackerText);
+
+            $this->actingAs($admin)->get(route('tickets.index', ['status' => [$value]]))
+                ->assertOk()->assertSee($ticket->ticket_no)->assertSee($class);
+        }
+
+        $this->actingAs($admin)->get(route('reports.index'))->assertOk();
+        $this->actingAs($this->user('requester@lcctanauan.edu.ph'))->get(route('requester.dashboard'))->assertOk();
+    }
+
+    public function test_the_board_keeps_waiting_escalated_and_reopened_tickets_visible_without_buttons(): void
+    {
+        $this->withoutVite();
+        $this->seedBase();
+        $admin = $this->user('maintenance@lcctanauan.edu.ph');
+
+        $shown = [];
+        foreach ([TicketStatus::WaitingForUser, TicketStatus::Escalated, TicketStatus::Reopened] as $status) {
+            $shown[] = $this->forceStatus(TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data()), $status)->ticket_no;
+        }
+        $cancelled = $this->forceStatus(TicketWorkflow::open($this->user('requester@lcctanauan.edu.ph'), $this->data()), TicketStatus::Cancelled)->ticket_no;
+
+        $response = $this->actingAs($admin)->get(route('maintenance.board.cards'))->assertOk();
+
+        foreach ($shown as $no) {
+            $response->assertSee($no);
+        }
+        $response->assertDontSee($cancelled)->assertDontSee('ACCEPT TASK')->assertDontSee('MARK COMPLETED');
+    }
+
+    public function test_saved_tickets_in_the_old_statuses_are_untouched(): void
+    {
+        $this->seed();   // the sample data uses the original statuses only
+
+        $old = ['submitted', 'pending_authorization', 'approved', 'assigned', 'in_progress', 'work_completed', 'closed', 'disapproved'];
+
+        $this->assertSame(0, DB::table('requests')->whereNotIn('status', $old)->count());
+        $this->assertSame(
+            DB::table('requests')->count(),
+            MaintenanceRequest::all()->filter(fn ($t) => $t->status instanceof TicketStatus)->count()
+        );
+    }
+
     // ---- sample data & pages -------------------------------------------------------------------
 
     public function test_the_seeder_builds_sample_tickets_for_every_status_and_month(): void
@@ -401,8 +762,16 @@ class TicketFoundationTest extends TestCase
         $this->assertCount(40, $tickets);
         $this->assertCount(40, $tickets->pluck('ticket_no')->unique());
 
+        // The sample data is the ORIGINAL 8 statuses on purpose (fixed seed: other tests count on it).
+        // The four Phase 7 statuses get sample tickets when Phases 8-10 build their actions.
+        $phase7 = ['waiting_for_user', 'escalated', 'cancelled', 'reopened'];
         $seen = $tickets->map(fn ($t) => $t->status->value)->unique()->all();
         foreach (TicketStatus::cases() as $status) {
+            if (in_array($status->value, $phase7, true)) {
+                $this->assertNotContains($status->value, $seen);
+
+                continue;
+            }
             $this->assertContains($status->value, $seen, "No sample ticket in status {$status->value}");
         }
 

@@ -534,3 +534,10 @@ a.bell-btn,a.bell-btn:hover{text-decoration:none}
 .badge-solid-red{color:#fff;background:var(--red);border-color:var(--red);text-transform:uppercase;letter-spacing:.03em}
 .badge-solid-dark{color:#fff;background:var(--navy);border-color:var(--navy);text-transform:uppercase;letter-spacing:.03em}
 .badge-row{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
+
+/* Phase 7: colours for the new statuses (the old st-* classes above are already taken by older statuses) */
+.st-awaiting-reply{color:#b4400f;background:#ffeadd;border-color:#f6c7a8}
+.st-escalation{color:#a3236b;background:#fbe9f3;border-color:#efc2dc}
+.st-reopen{color:#0f766e;background:#e0f5f2;border-color:#a7e0d8}
+.badge.st-cancelled{border-style:dashed}
+.trk-steps li.now.st-off .dot{background:#8795ab;border-color:#8795ab;animation:none}

@@ -14,6 +14,11 @@
         'work_completed' => 'st-resolved',
         'closed' => 'st-closed',
         'disapproved' => 'st-escalated',
+        // Phase 7: own colours (st-escalated / st-waitingforuser / st-reopened above are already used by the old statuses)
+        'waiting_for_user' => 'st-awaiting-reply',
+        'escalated' => 'st-escalation',
+        'cancelled' => 'st-cancelled',
+        'reopened' => 'st-reopen',
     ];
 
     // "Due in ..." / "Overdue by ...": only for tickets that are still pending

@@ -40,13 +40,14 @@ class TicketActions
         $status = $ticket->status;
 
         if ($status->isTerminal()) {
-            return [];   // Closed / Disapproved: nothing more can happen
+            return [];   // Closed / Disapproved / Cancelled: nothing more can happen
         }
 
         $can = fn (string $ability) => Gate::forUser($user)->allows($ability, $ticket);
         $actions = [];
 
-        if ($status->canTransitionTo(TicketStatus::PendingAuthorization) && $can('sendForAuthorization')) {
+        // Only a Submitted ticket is sent for authorization (Phase 7: Waiting for User / Escalated may also move to Pending Authorization, but only through their own actions)
+        if ($status === TicketStatus::Submitted && $can('sendForAuthorization')) {
             $actions[] = self::SEND_FOR_AUTHORIZATION;
         }
 

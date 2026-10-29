@@ -25,8 +25,12 @@ class DashboardController extends Controller
         // A department head's dashboard also covers the department, so its list link adds ?mine=1
         $own = fn (array $statuses = []) => route('tickets.index', ['mine' => 1] + ($statuses ? ['status' => $statuses] : []));
 
-        $waiting = [TicketStatus::Submitted->value, TicketStatus::PendingAuthorization->value];
-        $active = [TicketStatus::Approved->value, TicketStatus::Assigned->value, TicketStatus::InProgress->value, TicketStatus::WorkCompleted->value];
+        // Phase 7: Escalated waits for the authorizer; Waiting for User and Reopened count as "in progress".
+        $waiting = [TicketStatus::Submitted->value, TicketStatus::PendingAuthorization->value, TicketStatus::Escalated->value];
+        $active = [
+            TicketStatus::Approved->value, TicketStatus::Assigned->value, TicketStatus::InProgress->value, TicketStatus::WorkCompleted->value,
+            TicketStatus::WaitingForUser->value, TicketStatus::Reopened->value,
+        ];
 
         return $this->show('Requester Dashboard', [
             'My tickets' => $this->card((clone $mine)->count(), $own()),
