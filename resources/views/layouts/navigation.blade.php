@@ -15,42 +15,11 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
-                        {{ __('Tickets') }}
-                    </x-nav-link>
-                    @if (auth()->user()->canAuthorize())
-                        <x-nav-link :href="route('approvals.index')" :active="request()->routeIs('approvals.*')">
-                            {{ __('Approvals') }}
-                        </x-nav-link>
-                    @endif
-                    @can('create', \App\Models\MaintenanceRequest::class)
-                        <x-nav-link :href="route('repairs.create')" :active="request()->routeIs('repairs.*')">
-                            {{ __('New request') }}
-                        </x-nav-link>
-                    @endcan
-                    @if (auth()->user()->can_do('view_analytics'))
-                        <x-nav-link :href="route('reports.index')" :active="request()->routeIs('reports.*')">
-                            {{ __('Reports') }}
-                        </x-nav-link>
-                    @endif
-                    @if (auth()->user()->can_do('manage_settings'))
-                        <x-nav-link :href="route('admin.settings.edit')" :active="request()->routeIs('admin.settings.*')">
-                            {{ __('Settings') }}
-                        </x-nav-link>
-                    @endif
-                    @if (auth()->user()->can_do('view_audit_logs'))
-                        <x-nav-link :href="route('admin.audit-logs.index')" :active="request()->routeIs('admin.audit-logs.*')">
-                            {{ __('Audit log') }}
-                        </x-nav-link>
-                    @endif
                 </div>
             </div>
 
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
-                <a href="{{ route('notifications.index') }}" class="relative me-3 rounded-full p-2 text-xl hover:bg-gray-100" title="Notifications">
-                    🔔<span id="lcct-badge" class="hidden absolute -top-1 -end-1 min-w-[1.25rem] rounded-full bg-red-600 px-1 text-center text-xs font-bold text-white">0</span>
-                </a>
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
@@ -100,37 +69,6 @@
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')" class="min-h-[44px] py-3">
-                {{ __('Tickets') }}
-            </x-responsive-nav-link>
-            @if (auth()->user()->canAuthorize())
-                <x-responsive-nav-link :href="route('approvals.index')" :active="request()->routeIs('approvals.*')" class="min-h-[44px] py-3">
-                    {{ __('Approvals') }}
-                </x-responsive-nav-link>
-            @endif
-            @can('create', \App\Models\MaintenanceRequest::class)
-                <x-responsive-nav-link :href="route('repairs.create')" :active="request()->routeIs('repairs.*')" class="min-h-[44px] py-3">
-                    {{ __('New request') }}
-                </x-responsive-nav-link>
-            @endcan
-            @if (auth()->user()->can_do('view_analytics'))
-                <x-responsive-nav-link :href="route('reports.index')" :active="request()->routeIs('reports.*')" class="min-h-[44px] py-3">
-                    {{ __('Reports') }}
-                </x-responsive-nav-link>
-            @endif
-            @if (auth()->user()->can_do('manage_settings'))
-                <x-responsive-nav-link :href="route('admin.settings.edit')" :active="request()->routeIs('admin.settings.*')" class="min-h-[44px] py-3">
-                    {{ __('Settings') }}
-                </x-responsive-nav-link>
-            @endif
-            @if (auth()->user()->can_do('view_audit_logs'))
-                <x-responsive-nav-link :href="route('admin.audit-logs.index')" :active="request()->routeIs('admin.audit-logs.*')" class="min-h-[44px] py-3">
-                    {{ __('Audit log') }}
-                </x-responsive-nav-link>
-            @endif
-            <x-responsive-nav-link :href="route('notifications.index')" :active="request()->routeIs('notifications.*')">
-                🔔 {{ __('Notifications') }}
             </x-responsive-nav-link>
         </div>
 

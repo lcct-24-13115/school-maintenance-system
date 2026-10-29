@@ -109,11 +109,11 @@
                         <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-6 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
                             @php
                                 $demoRoles = [
-                                    ['requester', 'Requester', 'fa-user-pen', 'requester@lcctanauan.edu.ph'],
-                                    ['maintenance', 'Maintenance', 'fa-screwdriver-wrench', 'maintenance@lcctanauan.edu.ph'],
-                                    ['finance', 'Finance', 'fa-coins', 'finance@lcctanauan.edu.ph'],
-                                    ['custodian', 'Custodian', 'fa-boxes-stacked', 'custodian@lcctanauan.edu.ph'],
-                                    ['president', 'President', 'fa-user-shield', 'president@lcctanauan.edu.ph'],
+                                    ['requester', 'Requester', 'fa-user-pen', 'requester@school.test'],
+                                    ['maintenance', 'Maintenance', 'fa-screwdriver-wrench', 'maintenance@school.test'],
+                                    ['finance', 'Finance', 'fa-coins', 'finance@school.test'],
+                                    ['custodian', 'Custodian', 'fa-boxes-stacked', 'custodian@school.test'],
+                                    ['president', 'President', 'fa-user-shield', 'president@school.test'],
                                 ];
                             @endphp
                             @foreach ($demoRoles as $i => [$key, $label, $icon, $email])
@@ -173,7 +173,7 @@
                 </div>
 
                 <div class="mt-6 pt-5 border-t border-slate-200 text-xs text-slate-500">
-                    @if (Route::has('register') && config('school.allow_public_registration'))
+                    @if (Route::has('register'))
                         No account yet?
                         <a href="{{ route('register') }}" class="text-lcct-light hover:underline font-semibold">Register as Requester</a>
                     @endif

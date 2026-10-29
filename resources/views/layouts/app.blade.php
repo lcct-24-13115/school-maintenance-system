@@ -32,7 +32,5 @@
                 {{ $slot }}
             </main>
         </div>
-
-        @include('partials.alerts')
     </body>
 </html>
