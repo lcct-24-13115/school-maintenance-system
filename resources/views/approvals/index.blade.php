@@ -69,7 +69,7 @@
             </article>
         @empty
             <div class="card">
-                <div class="empty"><i class="fa-regular fa-circle-check"></i>Nothing is waiting for your authorization.</div>
+                <x-empty-state icon="fa-regular fa-circle-check" title="All clear.">Nothing is waiting for your authorization.</x-empty-state>
             </div>
         @endforelse
 

@@ -5,21 +5,7 @@
     Usage: @include('tickets._badges', ['ticket' => $ticket])
 --}}
 @php
-    $stClass = [
-        'submitted' => 'st-open',
-        'pending_authorization' => 'st-waitingforuser',
-        'approved' => 'st-reopened',
-        'assigned' => 'st-open',
-        'in_progress' => 'st-inprogress',
-        'work_completed' => 'st-resolved',
-        'closed' => 'st-closed',
-        'disapproved' => 'st-escalated',
-        // Phase 7: own colours (st-escalated / st-waitingforuser / st-reopened above are already used by the old statuses)
-        'waiting_for_user' => 'st-awaiting-reply',
-        'escalated' => 'st-escalation',
-        'cancelled' => 'st-cancelled',
-        'reopened' => 'st-reopen',
-    ];
+    // Phase 18: one colour per status, decided by TicketStatus::badgeClass()
 
     // "Due in ..." / "Overdue by ...": only for tickets that are still pending
     $paused = $ticket->status === \App\Enums\TicketStatus::WaitingForUser;   // Phase 9: SLA clock paused
@@ -27,7 +13,7 @@
     $isOverdue = $showDue && $ticket->due_at->isPast();
     $dueSpan = $showDue ? $ticket->due_at->diffForHumans(null, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2) : '';
 @endphp
-<span class="badge {{ $stClass[$ticket->status->value] ?? 'st-closed' }}">{{ $ticket->status->label() }}</span>
+<span class="badge {{ $ticket->status->badgeClass() }}">{{ $ticket->status->label() }}</span>
 @if ($ticket->is_emergency)
     <span class="badge" style="background:var(--red);border-color:var(--red);color:#fff;font-weight:800"><i class="fa-solid fa-triangle-exclamation"></i> Emergency</span>
 @endif

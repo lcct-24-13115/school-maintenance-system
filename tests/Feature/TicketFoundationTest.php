@@ -699,10 +699,10 @@ class TicketFoundationTest extends TestCase
         $admin = $this->user('maintenance@lcctanauan.edu.ph');
 
         $expect = [
-            'waiting_for_user' => ['Waiting for User', 'st-awaiting-reply', 'Waiting for the requester'],
-            'escalated' => ['Escalated', 'st-escalation', 'Waiting for the President'],
-            'cancelled' => ['Cancelled', 'st-cancelled', 'This ticket was cancelled'],
-            'reopened' => ['Reopened', 'st-reopen', 'Sent back for more work'],
+            'waiting_for_user' => ['Waiting for User', 'stx-waiting-for-user', 'Waiting for the requester'],
+            'escalated' => ['Escalated', 'stx-escalated', 'Waiting for the President'],
+            'cancelled' => ['Cancelled', 'stx-cancelled', 'This ticket was cancelled'],
+            'reopened' => ['Reopened', 'stx-reopened', 'Sent back for more work'],
         ];
 
         foreach ($expect as $value => [$label, $class, $trackerText]) {

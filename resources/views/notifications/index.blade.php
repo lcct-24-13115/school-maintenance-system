@@ -41,7 +41,7 @@
                     </div>
                 </article>
             @empty
-                <div class="card"><div class="empty"><i class="fa-regular fa-bell"></i>No notifications yet.</div></div>
+                <div class="card"><x-empty-state icon="fa-regular fa-bell" title="No notifications yet.">New alerts will show up here as they come in.</x-empty-state></div>
             @endforelse
         </div>
 

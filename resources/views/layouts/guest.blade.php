@@ -2,6 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     @include('partials.head')
+    @include('partials.ui-assets')
     <title>{{ config('app.name', 'LCCT') }} - Maintenance Ticketing System</title>
 </head>
 <body class="auth-body">

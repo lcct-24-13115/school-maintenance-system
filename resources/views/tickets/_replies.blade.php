@@ -46,7 +46,7 @@
                 @endforeach
             </div>
         @empty
-            <div class="empty" style="padding:22px 16px"><i class="fa-regular fa-comments"></i>No messages yet.</div>
+            <x-empty-state icon="fa-regular fa-comments" class="compact">No messages yet.</x-empty-state>
         @endforelse
     </div>
 

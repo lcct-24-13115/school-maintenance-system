@@ -28,9 +28,6 @@
                 <i class="fa-solid fa-lock ic"></i>
                 <input id="password" type="password" name="password" required autocomplete="current-password"
                     placeholder="••••••••">
-                <button type="button" id="togglePassword" class="eye-btn" aria-label="Show or hide password">
-                    <i id="eyeIcon" class="fa-solid fa-eye"></i>
-                </button>
             </div>
         </div>
 
@@ -47,18 +44,4 @@
             Log In to System <i class="fa-solid fa-arrow-right"></i>
         </button>
     </form>
-
-    @push('scripts')
-    <script>
-        // Show / hide password
-        document.getElementById('togglePassword').addEventListener('click', function () {
-            var input = document.getElementById('password');
-            var icon = document.getElementById('eyeIcon');
-            var show = input.type === 'password';
-            input.type = show ? 'text' : 'password';
-            icon.classList.toggle('fa-eye', !show);
-            icon.classList.toggle('fa-eye-slash', show);
-        });
-    </script>
-    @endpush
 </x-guest-layout>

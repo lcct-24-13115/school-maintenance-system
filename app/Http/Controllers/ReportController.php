@@ -44,7 +44,7 @@ class ReportController extends Controller
                 ? TicketActions::assignableStaff()
                 : collect(),
             'charts' => [
-                'status' => $this->series($metrics['by_status']),
+                'status' => $this->series($metrics['by_status']) + ['keys' => array_column($metrics['by_status'], 'key')],
                 'category' => $this->series($metrics['by_category']) + ['active' => array_column($metrics['by_category'], 'active')],
                 'department' => $this->series($metrics['by_department']),
                 'monthly' => $this->series($metrics['monthly']),

@@ -57,6 +57,15 @@ enum TicketStatus: string
         };
     }
 
+    /**
+     * Phase 18: the ONE badge colour class of this status (defined in public/css/phase6.css, e.g. "stx-in-progress").
+     * Every page that shows a status badge uses this, so a status has the same colour everywhere.
+     */
+    public function badgeClass(): string
+    {
+        return 'stx-'.str_replace('_', '-', $this->value);
+    }
+
     /** @return list<self> */
     public function allowedNext(): array
     {

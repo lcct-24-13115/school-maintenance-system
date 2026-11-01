@@ -16,6 +16,7 @@
          then the LCCT design system, so the LCCT styles win any conflict. --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="{{ asset('css/style.css') }}?v={{ @filemtime(public_path('css/style.css')) }}">
+    @include('partials.ui-assets')
 </head>
 <body>
     <div x-data="{ sb: false }" @keydown.escape.window="sb = false">

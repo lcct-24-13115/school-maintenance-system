@@ -11,12 +11,6 @@
     $rate = $metrics['resolution_rate'];
     $rateBase = $metrics['total'] - $metrics['cancelled'];
 
-    // same colours as tickets/_badges.blade.php
-    $stClass = [
-        'submitted' => 'st-open', 'pending_authorization' => 'st-waitingforuser', 'approved' => 'st-reopened', 'assigned' => 'st-open',
-        'in_progress' => 'st-inprogress', 'work_completed' => 'st-resolved', 'closed' => 'st-closed', 'disapproved' => 'st-escalated',
-        'waiting_for_user' => 'st-awaiting-reply', 'escalated' => 'st-escalation', 'cancelled' => 'st-cancelled', 'reopened' => 'st-reopen',
-    ];
     $whyStyle = [
         'overdue' => 'color:var(--red);border-color:var(--red);background:var(--red-dim)',
         'unassigned' => 'color:#8a4a06;border-color:#f1d78f;background:var(--amber-dim)',
@@ -163,7 +157,7 @@
                                         @endforeach
                                     </div>
                                 </td>
-                                <td data-label="Status"><span class="badge {{ $stClass[$t->status->value] ?? 'st-closed' }}">{{ $t->status->label() }}</span></td>
+                                <td data-label="Status"><span class="badge {{ $t->status->badgeClass() }}">{{ $t->status->label() }}</span></td>
                                 <td data-label="Assigned to">{{ $t->assignee?->name ?? 'Not assigned' }}</td>
                                 <td data-label="{{ $canAssign ? 'Quick assign' : '' }}">
                                     @if ($canAssign && $item['unassigned'])

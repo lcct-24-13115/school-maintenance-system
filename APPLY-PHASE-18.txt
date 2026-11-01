@@ -1,0 +1,89 @@
+PHASE 18 - Branding at UI polish
+================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+
+  cd C:\laragon\www\school-maintenance-system
+  git add -A ; git commit -m "Before Phase 18 UI polish"
+  tar -xf "$env:USERPROFILE\Downloads\phase18-ui-polish-patch.zip" -C .
+  npm run build
+  php artisan view:clear
+  php artisan config:clear
+  php artisan test --filter=TicketStatusBadgeTest
+  php artisan test --filter=UiPolishTest
+  php artisan test
+
+DI MO MA-EXTRACT ANG ZIP? Gamitin ang terminal (piliin ang isa), sa loob ng project folder:
+  A) tar -xf "$env:USERPROFILE\Downloads\phase18-ui-polish-patch.zip" -C .
+  B) Expand-Archive -Path "$env:USERPROFILE\Downloads\phase18-ui-polish-patch.zip" -DestinationPath . -Force
+Kung nasa ibang folder ang zip, palitan ang path (hal. "C:\Users\ikaw\Desktop\phase18-ui-polish-patch.zip").
+Pagkatapos, i-refresh ang browser nang Ctrl+F5 (para mag-load ang bagong CSS/JS).
+
+WALANG MIGRATION. WALANG "npm install" (walang bagong package).
+MAY "npm run build": nagbago ang resources/js/reports.js (kulay ng status chart). Kung "npm run dev" ang gamit mo, hindi na kailangan ang build.
+
+ANO ANG NAGAWA
+  1. SEAL / FONTS: nandoon na sa nav at login ang LCCT seal at ang Fraunces + Nunito Sans (mula pa sa naunang phase),
+     kaya hindi ginalaw. Bago: ang seal na ang favicon at apple-touch-icon (pag nag-"Add to Home screen" sa phone),
+     at theme-color na navy sa phone browser.
+  2. THEMED SELECT (cselect): lahat ng dropdown ay may bagong itsura. Sa phone, bottom sheet; sa laptop, dropdown na bumubukas
+     pataas kung walang espasyo sa ibaba. Hindi ginalaw ang form: ang totoong <select> pa rin ang isinusumite.
+     Hindi ina-upgrade: <select multiple>, mga select sa loob ng table (reports > assign), at may data-native.
+  3. PASSWORD SHOW/HIDE: lahat ng password field (login, register, reset, force-password, profile, delete account)
+     ay may eye button na. Inalis ang sariling script sa login.blade.php (iisa na lang ang code).
+  4. EMPTY STATES: bagong <x-empty-state icon="..." title="...">teksto</x-empty-state>. Ginamit sa Tickets, Approvals,
+     Notifications, Messages, Maintenance board. Ang ibang lumang ".empty" (users, audit logs, categories, QR, reports)
+     ay gumanda rin sa CSS lang.
+  5. KULAY NG STATUS: iisang kulay na bawat status sa lahat ng pahina (badge sa listahan, ticket page, reports table
+     at ang status chart). Dati magkaiba ang mapping sa status-badge, _badges at reports. Ngayon galing sa
+     TicketStatus::badgeClass().
+        Submitted = asul          Pending Authorization = dilaw     Approved = indigo
+        Assigned = cyan           In Progress = kahel               Work Completed = berde
+        Closed = abo              Disapproved = pula                Waiting for User = lila
+        Escalated = magenta       Cancelled = kulay-abo (putol-putol na guhit)    Reopened = teal
+  6. PHONE / LAPTOP: mas malaking tap targets sa touch screen, safe-area sa iPhone, mas maliit na title sa napakaliit
+     na phone, nakikitang focus ring sa keyboard.
+
+Bago / ino-overwrite:
+  public/js/cselect.js                                   <- BAGO (themed dropdown, walang build)
+  public/js/pwtoggle.js                                  <- BAGO (eye button, walang build)
+  public/css/phase6.css                                  <- dagdag sa dulo na "PHASE 18" (style.css HINDI ginalaw)
+  public/images/favicon-32.png                           <- BAGO (galing sa seal)
+  public/images/apple-touch-icon.png                     <- BAGO (galing sa seal)
+  resources/views/partials/ui-assets.blade.php           <- BAGO (phase6.css + scripts + icons, para sa lahat ng layout)
+  resources/views/components/empty-state.blade.php       <- BAGO
+  resources/views/layouts/app.blade.php                  <- 1 linya: @include('partials.ui-assets')
+  resources/views/layouts/guest.blade.php                <- 1 linya: @include('partials.ui-assets')
+  resources/views/auth/login.blade.php                   <- inalis ang sariling eye button/script
+  resources/views/components/status-badge.blade.php      <- gamit na ang badgeClass()
+  resources/views/tickets/_badges.blade.php              <- gamit na ang badgeClass()
+  resources/views/reports/index.blade.php                <- gamit na ang badgeClass()
+  resources/views/tickets/index.blade.php                <- x-empty-state
+  resources/views/tickets/_replies.blade.php             <- x-empty-state
+  resources/views/approvals/index.blade.php              <- x-empty-state
+  resources/views/notifications/index.blade.php          <- x-empty-state
+  resources/views/maintenance/_cards.blade.php           <- x-empty-state
+  app/Enums/TicketStatus.php                             <- bagong badgeClass()
+  app/Http/Controllers/ReportController.php              <- dagdag na 'keys' sa status chart
+  resources/js/reports.js                                <- kulay ng status chart = kulay ng badge
+  tests/Unit/TicketStatusBadgeTest.php                   <- BAGO
+  tests/Feature/UiPolishTest.php                         <- BAGO
+
+PAANO SUBUKAN SA BROWSER (Ctrl+F5 muna)
+  Laptop:
+   1. /login: may seal, Fraunces na pamagat, at eye button sa password. Pindutin: lalabas ang password; pindutin ulit: itatago.
+   2. Mag-login. Tickets > Filters: pindutin ang Status / Category. Dapat themed ang listahan (hindi ang pangit na default).
+      Pumili ng isa at Apply: gumagana pa rin ang filter. Subukan ang arrow keys, Enter, Esc.
+   3. New request: palitan ang "Request type"; ang "Maintenance category" ay dapat mag-iba ng laman at tama ang nakasulat.
+   4. Admin > QR codes > Make a QR code > "Opens": ang "Register page" ay malabo (disabled) kung sarado ang registration.
+   5. Profile: tatlong password field, bawat isa ay may eye button.
+   6. Tingnan ang magkakaparehong status sa Tickets, ticket page at Reports (hal. In Progress ay kahel sa lahat; ang chart ay pareho ng kulay).
+   7. Walang tickets / notifications: dapat may bilog na icon at pamagat.
+  Phone (o Chrome F12 > Toggle device toolbar, 390px):
+   8. Pindutin ang dropdown: bottom sheet na may X. Pindutin ang labas o X para isara.
+   9. Walang pahalang na scroll sa login, Tickets at New request. Ang eye button ay madaling pindutin.
+  10. Reports page: ang "Assign" na select sa table ay NORMAL (native) pa rin, sinadya ito.
+
+KUNG MAY MASIRA
+  Dropdown: idagdag ang  data-native  sa <select> na gusto mong ibalik sa dati, hal. <select data-native ...>.
+  Rollback: git checkout -- .   (at burahin ang mga BAGONG file sa listahan sa itaas kung gusto)

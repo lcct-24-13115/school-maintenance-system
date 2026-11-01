@@ -115,14 +115,12 @@
 
     @if ($tickets->isEmpty())
         <div class="card">
-            <div class="empty">
-                <i class="fa-regular fa-folder-open"></i>
-                <b style="display:block;font-size:17px;color:var(--navy);margin-bottom:4px">No tickets found.</b>
+            <x-empty-state icon="fa-regular fa-folder-open" title="No tickets found.">
                 {{ $hasFilters ? 'Try a different search or clear the filters.' : ($isHistory ? 'No ticket has been closed, cancelled or disapproved yet.' : 'There are no active tickets you can see.') }}
                 @if ($hasFilters)
-                    <div style="margin-top:14px"><a href="{{ route($listRoute) }}" class="btn btn-sm">Clear filters</a></div>
+                    <br><a href="{{ route($listRoute) }}" class="btn btn-sm">Clear filters</a>
                 @endif
-            </div>
+            </x-empty-state>
         </div>
     @else
         <p class="hint" style="margin:0 0 10px">{{ $tickets->total() }} ticket(s) · {{ $isHistory ? 'most recently finished first' : 'emergencies first, then oldest first' }}</p>

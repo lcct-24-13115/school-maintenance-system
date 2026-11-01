@@ -15,6 +15,12 @@ Chart.register(
 const PALETTE = ['#2F5D95', '#5E94CF', '#F2B705', '#c8372d', '#1f8a4c', '#6d4fc2', '#a8590a', '#1B3355', '#8795ab', '#bcd5ee'];
 Chart.defaults.font.family = "'Nunito Sans', system-ui, sans-serif";
 Chart.defaults.color = '#5b6b84';
+// Phase 18: the same text colours as the status badges (public/css/phase6.css, .stx-*)
+const STATUS_COLORS = {
+    submitted: '#2F5D95', pending_authorization: '#d9a400', approved: '#4a55c4', assigned: '#17a2c9',
+    in_progress: '#e6791a', work_completed: '#1f8a4c', closed: '#8795ab', disapproved: '#c8372d',
+    waiting_for_user: '#8a6be0', escalated: '#c43d8a', cancelled: '#c3ccd8', reopened: '#14a094',
+};
 const colors = (n) => Array.from({ length: n }, (_, i) => PALETTE[i % PALETTE.length]);
 const whole = { beginAtZero: true, ticks: { precision: 0 } };   // ticket counts are whole numbers
 
@@ -47,7 +53,7 @@ export default function initReports() {
 
     draw('chart-status', (s) => ({
         type: 'doughnut',
-        data: { labels: s.labels, datasets: [{ data: s.data, backgroundColor: colors(s.data.length), borderColor: '#fff', borderWidth: 2 }] },
+        data: { labels: s.labels, datasets: [{ data: s.data, backgroundColor: s.keys ? s.keys.map((k, i) => STATUS_COLORS[k] || PALETTE[i % PALETTE.length]) : colors(s.data.length), borderColor: '#fff', borderWidth: 2 }] },
         options: { ...common, plugins: { legend: { position: 'bottom' } } },
     }));
 

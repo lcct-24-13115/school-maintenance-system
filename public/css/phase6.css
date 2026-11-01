@@ -102,3 +102,88 @@ td.p6-desc{min-width:260px;word-break:break-word}
 .p6-qa select{min-width:150px;max-width:240px}
 .p6-why .badge{text-transform:none}
 @media(max-width:900px){.p6-wide{grid-column:auto}}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHASE 18 - branding and UI polish. Loads AFTER style.css on every page (partials/ui-assets).
+   Only adds or overrides; every colour comes from the style.css variables. style.css is not touched.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. ONE colour per ticket status (TicketStatus::badgeClass() gives the class name) ──
+   Cool = early, warm = being worked, green = done, grey = finished, red = stopped.
+   reports.js uses the same text colours for the status chart. */
+.badge.stx-submitted{color:#2F5D95;background:#e6f0fa;border-color:#bcd5ee}
+.badge.stx-pending-authorization{color:#8a6100;background:#fff6d6;border-color:#f1dd8f}
+.badge.stx-approved{color:#4a55c4;background:#eceefd;border-color:#ccd0f5}
+.badge.stx-assigned{color:#17708f;background:#e3f4fa;border-color:#b9e0ee}
+.badge.stx-in-progress{color:#b4540a;background:#ffedd9;border-color:#f6cfa3}
+.badge.stx-work-completed{color:#1f8a4c;background:#e6f6ec;border-color:#bfe6cc}
+.badge.stx-closed{color:#5b6b84;background:#edf1f6;border-color:#d9e1ec}
+.badge.stx-disapproved{color:#c8372d;background:#fdeceb;border-color:#f3c9c5}
+.badge.stx-waiting-for-user{color:#6b4fc4;background:#efeafc;border-color:#d6caf5}
+.badge.stx-escalated{color:#a3236b;background:#fbe9f3;border-color:#efc2dc}
+.badge.stx-cancelled{color:#8795ab;background:#f3f5f8;border-color:#e0e6ee;border-style:dashed}
+.badge.stx-reopened{color:#0f766e;background:#e0f5f2;border-color:#a7e0d8}
+
+/* ── 2. Empty states: soft round icon, bold title, small helper line ── */
+.empty{padding:48px 18px}
+.empty>i:first-child{display:grid;place-items:center;width:72px;height:72px;margin:0 auto 14px;border-radius:50%;
+  background:var(--sky);color:var(--deep);font-size:28px;opacity:1;box-shadow:0 0 0 8px rgba(94,148,207,.1)}
+.empty>b{display:block;font-family:var(--font-display);font-size:19px;font-weight:600;letter-spacing:-.01em;color:var(--navy);margin-bottom:4px}
+.empty>span{display:block;max-width:420px;margin:0 auto;line-height:1.55}
+.empty.compact{padding:24px 16px}
+.empty.compact>i:first-child{width:52px;height:52px;font-size:21px;margin-bottom:10px;box-shadow:none}
+.empty .btn{margin-top:14px}
+.p6-empty{padding:48px 12px}
+
+/* ── 3. Themed dropdown (cselect.js): match the field look used inside cards and modals ── */
+.card .cs-btn,.modal .cs-btn{background:#f6f9fd;border-color:var(--line)}
+.card .cs-btn:hover,.modal .cs-btn:hover{background:#edf4fb}
+.card .cs-btn:focus-visible,.card .cs.open .cs-btn,.modal .cs-btn:focus-visible,.modal .cs.open .cs-btn{background:#fff;border-color:var(--blue);box-shadow:0 0 0 4px rgba(94,148,207,.22)}
+.card .cs-btn.cs-bad,.modal .cs-btn.cs-bad,.cs-btn.cs-bad{border-color:var(--red);box-shadow:0 0 0 4px rgba(200,55,45,.12)}
+.cs-btn:disabled{opacity:.6;cursor:not-allowed}
+.cs-list li.cs-off{opacity:.45;cursor:not-allowed}
+.cs-list li.cs-ph{display:none}
+.cs-list::-webkit-scrollbar{width:6px}.cs-list::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
+.cs .cs-native{pointer-events:none}
+.filters .cs{flex:1 1 160px;min-width:150px}
+@media(min-width:641px){
+  .cs.up .cs-panel{top:auto;bottom:calc(100% + 6px)}
+  .cs.up.open .cs-panel{animation:none}
+}
+
+/* ── 4. Password eye: a real round tap target, vertically centred in the field ── */
+.pw-wrap,.input-wrap{position:relative}
+.pw-wrap .eye-btn,.input-wrap .eye-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);color:var(--text-3)}
+.eye-btn:hover{color:var(--deep)}
+.eye-btn[aria-pressed=true]{color:var(--deep)}
+
+/* ── 5. Keyboard focus that is visible everywhere (links, buttons, menu items) ── */
+a:focus-visible,button:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.btn:focus-visible{outline-offset:3px}
+
+/* ── 6. Phone and laptop polish ── */
+.sb-head img,.hero-m img,.auth-logo img{object-fit:contain}
+.auth-logo img{filter:drop-shadow(0 8px 16px rgba(27,51,85,.22))}
+.sb-head{padding-top:max(22px,env(safe-area-inset-top))}
+@media(pointer:coarse){
+  .btn{min-height:44px}
+  .btn-sm{min-height:38px}
+  .nav a{min-height:46px}
+  .eye-btn{width:40px;height:40px}
+  input[type=checkbox],input[type=radio]{min-width:20px;min-height:20px}
+}
+@media(max-width:575.98px){
+  .page-title{font-size:27px}
+  .form-title{font-size:23px}
+  .card{padding:18px}
+  .modal{padding:22px}
+  .modal-acts{flex-wrap:wrap}
+  .modal-acts .btn{flex:1 1 auto}
+}
+@media(max-width:380px){
+  .auth-card{padding-left:18px;padding-right:18px}
+  .stats{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+  .cs-btn,.cs-chev{transition:none}
+}

@@ -68,7 +68,7 @@
                         </div>
                     </article>
                 @empty
-                    <div class="card" style="margin:0"><div class="empty" style="padding:26px 16px"><i class="fa-regular fa-face-smile"></i>Nothing here</div></div>
+                    <div class="card" style="margin:0"><x-empty-state icon="fa-regular fa-face-smile" class="compact">Nothing here</x-empty-state></div>
                 @endforelse
             </div>
         </section>
