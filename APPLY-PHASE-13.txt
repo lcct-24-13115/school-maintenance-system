@@ -1,0 +1,74 @@
+PHASE 13 - Email notifications (queued)
+=======================================
+
+KAILANGAN MUNA ANG PHASE 1 (Brevo SMTP + branded email layout). Nasa project mo na iyon.
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 13 emails"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase13-email-notifications-patch.zip" -DestinationPath . -Force
+  php artisan view:clear
+  php artisan config:clear
+  php artisan test --filter=TicketEmailTest
+  php artisan test
+
+WALANG migration. (Ang "jobs" table ng queue ay matagal nang nasa database mo.)
+
+BAGO MAGPADALA: ANG QUEUE
+  Queued ang mga email, ibig sabihin hindi sila lalabas habang naglo-load ang page; may "worker" na magpapadala.
+  Tingnan ang QUEUE_CONNECTION sa .env mo:
+    QUEUE_CONNECTION=database   Kailangang tumatakbo ito sa ISANG BAGONG terminal (iwanang bukas):
+                                  php artisan queue:work
+                                Kapag hindi tumatakbo, naghihintay lang ang mga email sa "jobs" table.
+                                Ang nakabinbin:  php artisan queue:monitor   (o tingnan ang jobs table)
+                                Ang pumalya:     php artisan queue:failed
+                                Pagkatapos ng pagbabago ng code: php artisan queue:restart
+    QUEUE_CONNECTION=sync       Walang worker na kailangan: ipinapadala agad habang naglo-load ang page.
+                                Pinakamadali kung maliit lang ang gamit (at sa hosting na walang worker).
+
+SUBUKAN (walang Brevo, nasa log lang):
+  1. .env:  MAIL_MAILER=log   (at QUEUE_CONNECTION=sync para agad)
+  2. php artisan config:clear
+  3. Mag-file ng ticket bilang requester. Buksan ang storage/logs/laravel.log: nandoon ang email para sa
+     bawat Maintenance Admin.
+  Totoong email: ayusin ang MAIL_* ayon sa APPLY-PHASE-1.txt, at ilagay ang tamang APP_URL sa .env
+  (doon kinukuha ang link na "Open ticket" sa email).
+
+PATAYIN LAHAT NG TICKET EMAIL:  TICKET_EMAILS=false sa .env  (+ php artisan config:clear)
+  Hindi apektado ang mga in-app alert (kampana).
+
+Bago / ino-overwrite:
+  app/Mail/TicketNotificationMail.php          <- BAGO: ang queued na email (isa bawat tao bawat pangyayari)
+  app/Services/TicketMailer.php                <- BAGO: nagpapasya kung SINO ang tatanggap at ANO ang sasabihin
+  resources/views/emails/ticket.blade.php      <- BAGO: ang email (gamit ang layout ng Phase 1)
+  app/Services/TicketWorkflow.php              <- 3 hook: open(), apply(), addReply()
+  config/school.php                            <- ticket_emails (TICKET_EMAILS)
+  .env.example                                 <- TICKET_EMAILS + paliwanag sa queue
+  docs/OPEN_QUESTIONS.md                       <- rows 42-46
+  tests/Feature/TicketEmailTest.php            <- BAGO (Mail::fake)
+  APPLY-PHASE-13.txt
+
+ANG MGA RULE (hindi kailanman: ang gumawa ng aksyon, at hindi ang internal note)
+  Bagong ticket                  Maintenance Admins
+  Sent for authorization         President
+  Approved / Disapproved         Requester + Maintenance Admins (kasama ang dahilan ng disapproval)
+  Assigned / Reassigned          Ang bagong assignee + requester
+  Work started / Work completed  Requester ("pakikumpirma kung ayos na")
+  Kailangan ng impormasyon       Requester (kasama ang tanong)
+  Sumagot ang requester          Maintenance Admins + assignee
+  Reopened                       Maintenance Admins + assignee
+  Cancelled (pati auto-close)    Requester, Maintenance Admins, assignee
+  Closed                         Requester, Maintenance Admins, assignee
+  Escalated (auto o manual)      President + Maintenance Admins
+  Bagong mensahe                 Ang kabilang panig ng usapan. WALANG laman ng mensahe sa email, link lang.
+  Internal note                  WALANG email, kahit kanino.
+  Confidential na ticket         Ticket no., status at link lang. Walang lokasyon, paglalarawan o note.
+  Hindi pinadadalhan             Hindi active na user, o user na hindi pinapayagang makakita ng ticket.
+  Pumalyang email                Hindi nito haharangin o babawiin ang aksyon sa ticket (nasa log ang error).
+
+PAALALA
+  - Walang email para sa "emergency flag" at sa pag-attach ng file (wala sa listahan ng Phase 13).
+  - Kapag nagpalitan ng maraming mensahe, bawat mensahe ay may email. Walang pagsasama-sama (digest) pa.
+  - Sa hosting na humaharang sa SMTP (hal. InfinityFree), hindi aabot ang email kahit tama ang setup: tingnan ang
+    APPLY-PHASE-1.txt.
+
+Rollback: git checkout -- .   (walang database na babalikan; burahin ang 3 bagong file kung gusto)

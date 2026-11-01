@@ -97,6 +97,13 @@ return [
     ],
 
     /*
+    | Email notifications for tickets (Phase 13). One switch for all of them: TICKET_EMAILS=false in .env stops every
+    | ticket email (the in-app alerts are not affected). The emails are QUEUED: a queue worker must be running
+    | (php artisan queue:work) unless QUEUE_CONNECTION=sync. See APPLY-PHASE-13.txt.
+    */
+    'ticket_emails' => (bool) env('TICKET_EMAILS', true),
+
+    /*
     | File attachments (Phase 3). One set of rules used EVERYWHERE files are accepted
     | (App\Rules\ValidAttachment + App\Services\AttachmentService).
     |

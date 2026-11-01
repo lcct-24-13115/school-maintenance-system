@@ -126,6 +126,8 @@ class TicketWorkflow
             self::auditUpload($ticket, $ticket->attachments, $requester, RequestAttachment::KIND_REQUEST);
         }
 
+        TicketMailer::submitted($ticket, $requester);   // Phase 13: queued email to the maintenance staff (never throws)
+
         return $ticket;
     }
 
@@ -791,6 +793,9 @@ class TicketWorkflow
             self::auditUpload($ticket, $reply->attachments, $by, RequestAttachment::KIND_REPLY);   // once per reply, after saving
         }
 
+        // Phase 13: queued email for a PUBLIC message. An internal note is never emailed (TicketMailer refuses it).
+        TicketMailer::replied($ticket, $by, $internal);
+
         return $reply;
     }
 
@@ -931,7 +936,12 @@ class TicketWorkflow
 
         self::auditChange($ticket, $from, $to, $action, $by, $meta, $log);
 
-        return $ticket->refresh();
+        $ticket->refresh();
+
+        // Phase 13: queued emails for the status change / assignment (never throws, so it can never block the action)
+        TicketMailer::changed($ticket, $from, $to, $action, $by, $note, $meta);
+
+        return $ticket;
     }
 
     // ---- audit trail (Merge Phase M3) ------------------------------------------------------------
