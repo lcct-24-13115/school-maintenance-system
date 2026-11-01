@@ -73,6 +73,23 @@ class FormNotifier
     }
 
     /**
+     * Phase 12: a ticket was escalated. The authorizers (the President) and the Maintenance Admin are alerted.
+     * $actor is null when the tickets:escalate command did it (the alert then says "System"); a person who
+     * escalated by hand is not alerted about their own action (see send()).
+     */
+    public static function escalated(MaintenanceRequest $ticket, ?User $actor = null): void
+    {
+        $recipients = self::usersWithRole(Role::MAINTENANCE_ADMIN);
+
+        foreach ((array) config('school.workflow.authorizers', []) as $slug) {
+            $recipients = $recipients->merge(self::usersWithRole((string) $slug));
+        }
+
+        self::send($recipients, $ticket, 'ticket_escalated', $actor,
+            $actor ? 'escalated a ticket to the authorizer' : 'escalated a ticket that passed its target date');
+    }
+
+    /**
      * Phase 10: a message in the conversation. When the requester wrote it, the assignee and the maintenance staff
      * are alerted; when someone else wrote it, the requester and the assignee are (never the writer, see send()).
      */
@@ -114,10 +131,10 @@ class FormNotifier
 
     // ---------------------------------------------------------------------------------------------
 
-    private static function send(Collection $recipients, Model $form, string $event, User $actor, string $text): void
+    private static function send(Collection $recipients, Model $form, string $event, ?User $actor, string $text): void
     {
         $recipients = $recipients->filter()->unique('id')
-            ->reject(fn (User $u) => $u->id === $actor->id)
+            ->reject(fn (User $u) => $actor !== null && $u->id === $actor->id)   // Phase 12: $actor is null for the system
             ->filter(fn (User $u) => $u->is_active)
             // an alert carries the location and description, so never send it to someone who may not see the ticket
             ->filter(fn (User $u) => ! $form instanceof MaintenanceRequest || $form->isVisibleTo($u));
@@ -127,6 +144,8 @@ class FormNotifier
         }
 
         $urgent = ($form instanceof MaintenanceRequest || $form instanceof RepairRequest) && $form->isEmergency();
+
+        $actorName = $actor?->name ?? 'System';
 
         $payload = [
             'event' => $event,
@@ -138,8 +157,8 @@ class FormNotifier
             'department' => $form->department?->name,
             'location' => ($form instanceof RepairRequest || $form instanceof MaintenanceRequest) ? $form->location : null,
             'urgent' => $urgent,
-            'actor_name' => $actor->name,
-            'title' => ($urgent ? 'EMERGENCY: ' : '').$actor->name.' '.$text,
+            'actor_name' => $actorName,
+            'title' => ($urgent ? 'EMERGENCY: ' : '').$actorName.' '.$text,
             'message' => self::summary($form),
         ];
 

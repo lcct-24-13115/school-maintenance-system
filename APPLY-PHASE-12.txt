@@ -1,0 +1,49 @@
+PHASE 12 - Auto-escalation
+==========================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 12 escalation"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase12-escalation-patch.zip" -DestinationPath . -Force
+  php artisan view:clear
+  php artisan route:clear
+  php artisan config:clear
+  php artisan test --filter=TicketEscalationTest
+  php artisan test
+
+WALANG migration at WALANG "php artisan migrate". Walang bagong column.
+
+Subukan agad (walang hinihintay):
+  php artisan tickets:escalate --dry-run      (listahan lang, walang binabago)
+  php artisan tickets:escalate
+  php artisan schedule:list                   (dapat may tickets:autoclose AT tickets:escalate, parehong hourly)
+Para tumakbo kada oras sa totoo: parehong scheduler ng Phase 9 (php artisan schedule:work, o Task Scheduler bawat 1 minuto).
+
+Bago / ino-overwrite:
+  app/Console/Commands/EscalateTickets.php            <- BAGO: tickets:escalate (--dry-run)
+  routes/console.php                                  <- Schedule::command('tickets:escalate')->hourly()
+  app/Services/TicketWorkflow.php                     <- escalatableStatuses(), escalateBlocker(), escalate(), autoEscalate()
+  app/Services/FormNotifier.php                       <- escalated(); send() tumatanggap na ng walang user ("System")
+  app/Policies/TicketPolicy.php                       <- escalate
+  app/Services/TicketActions.php                      <- ESCALATE
+  app/Http/Controllers/TicketActionController.php     <- escalate
+  routes/web.php                                      <- tickets.escalate
+  resources/views/tickets/_actions.blade.php          <- "Escalate" na form
+  docs/OPEN_QUESTIONS.md                              <- rows 38-41
+  tests/Feature/TicketEscalationTest.php              <- BAGO
+  APPLY-PHASE-12.txt
+
+ANG MGA RULE
+  Auto            Bawat oras: ticket na lampas sa due_at at Submitted / Pending Authorization / Approved / Assigned /
+                  In Progress / Reopened = nagiging Escalated. History line na walang user: "Auto-escalated: ..."
+                  (nasa meta ang escalated_from).
+  Hindi ina-escalate  Waiting for User (naka-pause ang SLA), Escalated na (walang pangalawang alerto), Work Completed,
+                  Closed, Disapproved, Cancelled.
+  Alerto          Ang President (school.workflow.authorizers) at lahat ng active na Maintenance Admin. Hindi ang requester.
+                  Kapag manual, hindi aalertuhan ang nag-escalate mismo.
+  Manual          Button na "Escalate" sa Actions ng ticket: Maintenance Admin lang (capability `escalate`), kailangan ng dahilan.
+                  Hindi puwede habang Waiting for User, at hindi puwede ulit kung Escalated na.
+
+PAALALA (hindi pa ginagawa): wala pang paraan para ibalik / aprubahan / i-disapprove ng President ang Escalated na ticket.
+Nananatili itong Escalated at hindi gumagalaw ang due_at. Tingnan ang row 41 ng docs/OPEN_QUESTIONS.md.
+
+Rollback: git checkout -- .   (walang database na babalikan)

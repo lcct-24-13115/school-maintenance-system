@@ -46,6 +46,9 @@ class TicketActions
 
     public const RESPOND_INFO = 'respond_info';
 
+    // Phase 12: hand the ticket up to the authorizer
+    public const ESCALATE = 'escalate';
+
     /** @return list<string> */
     public static function for(MaintenanceRequest $ticket, User $user): array
     {
@@ -99,6 +102,11 @@ class TicketActions
         }
         if ($status === TicketStatus::WaitingForUser && $can('respondToInfo')) {
             $actions[] = self::RESPOND_INFO;
+        }
+
+        // Phase 12: escalate (not while waiting for the requester, not when already escalated)
+        if (TicketWorkflow::escalateBlocker($ticket) === null && $can('escalate')) {
+            $actions[] = self::ESCALATE;
         }
 
         // Phase 8: the requester's own actions (policy = who, TicketWorkflow = which status / window)

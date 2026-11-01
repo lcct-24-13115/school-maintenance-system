@@ -120,6 +120,12 @@ class TicketPolicy
         return $this->can($user, $ticket, 'request_info');
     }
 
+    /** Phase 12: hand the ticket up to the President (escalate = Maintenance Admin). The status rule is in TicketWorkflow. */
+    public function escalate(User $user, MaintenanceRequest $ticket): bool
+    {
+        return $this->can($user, $ticket, 'escalate');
+    }
+
     /** Phase 9: answer a question about YOUR OWN ticket. */
     public function respondToInfo(User $user, MaintenanceRequest $ticket): bool
     {

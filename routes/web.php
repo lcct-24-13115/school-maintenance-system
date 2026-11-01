@@ -79,6 +79,8 @@ Route::middleware('auth')->group(function () {
         // Phase 9: ask for information / answer
         Route::post('/request-info', [TicketActionController::class, 'requestInfo'])->name('request-info');
         Route::post('/respond-info', [TicketActionController::class, 'respondToInfo'])->name('respond-info');
+        // Phase 12: escalate to the authorizer
+        Route::post('/escalate', [TicketActionController::class, 'escalate'])->name('escalate');
     });
 
     // ---- Authorizer inbox (school.workflow.authorizers only; others get 403) ----

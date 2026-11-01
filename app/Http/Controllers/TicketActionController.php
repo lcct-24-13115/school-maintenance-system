@@ -116,6 +116,19 @@ class TicketActionController extends Controller
             'Thank you. Your answer was sent and the work continues.');
     }
 
+    /** Phase 12: staff hand the ticket up to the President. The President and the Maintenance Admin are alerted. */
+    public function escalate(Request $request, MaintenanceRequest $ticket): RedirectResponse
+    {
+        return $this->act($request, $ticket, 'escalate', 'escalate', [
+            'escalate_reason' => ['required', 'string', 'max:500'],
+        ], ['escalate_reason.required' => 'Escalating a ticket needs a reason.'],
+            function (array $data) use ($request, $ticket) {
+                TicketWorkflow::escalate($ticket, $request->user(), $data['escalate_reason']);
+                FormNotifier::escalated($ticket->refresh(), $request->user());
+            },
+            'Escalated. The President and the Maintenance Admin were alerted.');
+    }
+
     /** Phase 8: the requester cancels their own ticket, before it is Assigned. */
     public function cancel(Request $request, MaintenanceRequest $ticket): RedirectResponse
     {

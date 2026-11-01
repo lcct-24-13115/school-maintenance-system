@@ -582,6 +582,105 @@ class TicketWorkflow
         );
     }
 
+    // ---- Phase 12: escalation ---------------------------------------------------------------------
+    // A ticket is escalated by hand (staff with the `escalate` capability, a reason is required) or by the
+    // tickets:escalate command when it is past due_at. Both end in the same status, Escalated, and alert the
+    // President (school.workflow.authorizers) and the Maintenance Admin. A ticket that is Waiting for User is
+    // never escalated: its SLA clock is paused. The status it came from is kept in the history line
+    // (meta.escalated_from).
+
+    /**
+     * The statuses the tickets:escalate command may move: open statuses the status table lets go to Escalated,
+     * except Waiting for User (paused) and Escalated itself. Closed, Work Completed, Disapproved and Cancelled never qualify.
+     *
+     * @return list<TicketStatus>
+     */
+    public static function escalatableStatuses(): array
+    {
+        return array_values(array_filter(
+            TicketStatus::pendingCases(),
+            fn (TicketStatus $s) => $s !== TicketStatus::WaitingForUser && $s->canTransitionTo(TicketStatus::Escalated),
+        ));
+    }
+
+    /** @return list<string> */
+    public static function escalatableValues(): array
+    {
+        return array_map(fn (TicketStatus $s) => $s->value, self::escalatableStatuses());
+    }
+
+    /** Why $ticket cannot be escalated right now (by anyone, by hand or by the command), or null when it can. */
+    public static function escalateBlocker(MaintenanceRequest $ticket): ?string
+    {
+        if ($ticket->status === TicketStatus::Escalated) {
+            return "Ticket {$ticket->ticket_no} is already escalated.";
+        }
+
+        if ($ticket->status === TicketStatus::WaitingForUser) {
+            return "Ticket {$ticket->ticket_no} is waiting for the requester. Its target time is paused, so it cannot be escalated.";
+        }
+
+        if (! in_array($ticket->status, self::escalatableStatuses(), true)) {
+            return "Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\" and can no longer be escalated.";
+        }
+
+        return null;
+    }
+
+    /** Staff (escalate capability) hand the ticket up to the authorizer. A reason is required. */
+    public static function escalate(MaintenanceRequest $ticket, User $by, string $reason): MaintenanceRequest
+    {
+        if (! $by->is_active || ! $by->can_do('escalate')) {
+            throw new DomainException('Only maintenance staff can escalate a ticket.');
+        }
+
+        if (blank($reason)) {
+            throw new DomainException('Escalating a ticket needs a reason.');
+        }
+
+        if ($error = self::escalateBlocker($ticket)) {
+            throw new DomainException($error);
+        }
+
+        return self::apply(
+            $ticket,
+            TicketStatus::Escalated,
+            [],
+            RequestStatusLog::ACTION_STATUS,
+            $by,
+            'Escalated to the authorizer: '.trim($reason),
+            ['escalated' => true, 'escalated_from' => $ticket->status->value],
+        );
+    }
+
+    /**
+     * Called by tickets:escalate. Moves a ticket that is past its target date to Escalated (no user: the history
+     * line says it was automatic). It refuses a ticket that is not yet due, is paused, finished or already escalated,
+     * so calling it directly can never skip a rule.
+     */
+    public static function autoEscalate(MaintenanceRequest $ticket): MaintenanceRequest
+    {
+        if ($ticket->due_at === null || $ticket->due_at->greaterThanOrEqualTo(now())) {
+            throw new DomainException("Ticket {$ticket->ticket_no} is not past its target date yet.");
+        }
+
+        if ($error = self::escalateBlocker($ticket)) {
+            throw new DomainException($error);
+        }
+
+        $due = $ticket->due_at->copy()->timezone(config('app.timezone'))->format('M j, Y g:i A');
+
+        return self::apply(
+            $ticket,
+            TicketStatus::Escalated,
+            [],
+            RequestStatusLog::ACTION_STATUS,
+            null,
+            "Auto-escalated: the ticket passed its target date ({$due}).",
+            ['escalated' => true, 'auto_escalated' => true, 'escalated_from' => $ticket->status->value, 'due_at' => $ticket->due_at->toIso8601String()],
+        );
+    }
+
     /** Raise an emergency flag. The reason is required. Who may flag is enforced in Phase 2. */
     public static function flagEmergency(MaintenanceRequest $ticket, User $by, string $reason): MaintenanceRequest
     {

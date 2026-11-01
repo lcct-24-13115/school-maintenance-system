@@ -8,7 +8,7 @@
 @endphp
 
 {{-- Action panel (Phase 4A logic, Phase 4 design). Each action shows ONLY when the status allows it AND the user has the capability;
-     the controllers check both again. Errors go to one bag per form (approve, disapprove, assign, flag, clear, note). --}}
+     the controllers check both again. Errors go to one bag per form (approve, disapprove, assign, flag, clear, note, escalate). --}}
 <section class="card" id="actions">
     <div class="card-h"><h3>Actions</h3></div>
 
@@ -170,6 +170,21 @@
                 </div>
                 <p class="hint" style="margin:0 0 12px">The ticket waits for the answer and its target time is paused. It goes back to where it is now when the requester answers.</p>
                 <button class="btn btn-primary" style="background:var(--gold);border-color:var(--gold);color:var(--navy)">Ask the requester</button>
+            </form>
+        @endif
+
+        {{-- Staff (Phase 12): hand the ticket up to the President --}}
+        @if ($has(A::ESCALATE))
+            <form method="POST" action="{{ route('tickets.escalate', $ticket) }}" style="{{ $box('#d9c9ee') }}">
+                @csrf
+                <div class="lbl" style="font-size:16px"><i class="fa-solid fa-arrow-up-right-dots"></i> Escalate</div>
+                <div class="field">
+                    <label for="escalate_reason" class="lbl">Why does this need the President? (required)</label>
+                    <textarea id="escalate_reason" name="escalate_reason" rows="2" required style="{{ $area }}">{{ old('escalate_reason') }}</textarea>
+                    @if ($errors->escalate->has('escalate_reason'))<p class="field-err">{{ $errors->escalate->first('escalate_reason') }}</p>@endif
+                </div>
+                <p class="hint" style="margin:0 0 12px">The President and the Maintenance Admin are alerted. A ticket that passes its target date is also escalated automatically (every hour).</p>
+                <button class="btn btn-primary" onclick="return confirm('Escalate this ticket to the President?')">Escalate ticket</button>
             </form>
         @endif
 
