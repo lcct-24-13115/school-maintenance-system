@@ -28,6 +28,7 @@
 |   cancel_own         cancel YOUR OWN ticket, before it is Assigned (Merge Phase M2). Every role has it.
 |   reopen_own         reopen YOUR OWN Work Completed / Closed ticket inside reopen_window_days (M2). Every role has it.
 |   request_info       ask the requester for information: ticket goes to Waiting for User (M2)
+|   manage_qr_codes    open /admin/qr-codes: make, edit, print and delete QR codes for Login / Register / New repair request / any link (Phase 17)
 |   view_audit_logs    open /admin/audit-logs, the read-only audit trail (Merge Phase M3)
 |   escalate           escalate to the President / authorizer (M2). Handing it back is the authorizer's
 |                      (school.workflow.authorizers), like approve/disapprove.
@@ -41,7 +42,7 @@ return [
     // maintenance_admin is the proposal's "Admin".
     'maintenance_admin' => [
         'view_all_tickets', 'view_confidential', 'flag_emergency', 'clear_emergency',
-        'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users', 'manage_settings', 'manage_categories',
+        'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users', 'manage_settings', 'manage_categories', 'manage_qr_codes',
         'cancel_own', 'reopen_own', 'request_info', 'escalate', 'view_audit_logs',
     ],
 

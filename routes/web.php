@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\QrCodeController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ApprovalController;
@@ -122,6 +123,15 @@ Route::middleware('auth')->group(function () {
         Route::patch('/{category}/visibility', [CategoryController::class, 'toggle'])->name('toggle');
         Route::post('/{category}/move', [CategoryController::class, 'move'])->name('move');
         Route::delete('/{category}', [CategoryController::class, 'destroy'])->name('destroy');
+    });
+
+    // ---- QR codes (Phase 17). Capability manage_qr_codes is checked in the controller (others get 403) ----
+    Route::prefix('admin/qr-codes')->name('admin.qr-codes.')->group(function () {
+        Route::get('/', [QrCodeController::class, 'index'])->name('index');
+        Route::post('/', [QrCodeController::class, 'store'])->name('store');
+        Route::get('/{qrCode}/print', [QrCodeController::class, 'print'])->name('print');
+        Route::put('/{qrCode}', [QrCodeController::class, 'update'])->name('update');
+        Route::delete('/{qrCode}', [QrCodeController::class, 'destroy'])->name('destroy');
     });
 
     // ---- User / team management (Phase 6). Capability manage_users is checked in the controller (others get 403) ----

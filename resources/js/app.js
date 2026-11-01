@@ -9,3 +9,8 @@ Alpine.start();
 if (document.getElementById('report-charts')) {
     import('./reports').then((m) => m.default());
 }
+
+// QR codes (Phase 17): the npm "qrcode" library draws them in the browser. Loaded only on pages that have a [data-qr] box.
+if (document.querySelector('[data-qr]')) {
+    import('./qr').then((m) => m.default());
+}

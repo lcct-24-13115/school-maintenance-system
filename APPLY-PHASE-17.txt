@@ -1,0 +1,69 @@
+PHASE 17 - QR codes
+===================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+
+  git add -A ; git commit -m "Before Phase 17 QR codes"
+  tar -xf "$env:USERPROFILE\Downloads\phase17-qr-patch.zip" -C .
+  npm install
+  npm run build
+  php artisan migrate
+  php artisan view:clear
+  php artisan route:clear
+  php artisan config:clear
+  php artisan test --filter=QrCodeTest
+  php artisan test
+
+DI MO MA-EXTRACT ANG ZIP? Dalawang paraan (piliin ang isa), sa loob ng project folder:
+  A) tar -xf "$env:USERPROFILE\Downloads\phase17-qr-patch.zip" -C .
+  B) Expand-Archive -Path "$env:USERPROFILE\Downloads\phase17-qr-patch.zip" -DestinationPath . -Force
+Kung nasa ibang folder ang zip, palitan ang path (hal. "C:\Users\ikaw\Desktop\phase17-qr-patch.zip").
+
+MAY MIGRATION (php artisan migrate): bagong table na qr_codes.
+MAY "npm install" ngayon: nagdagdag ng package na "qrcode" sa package.json (kailangan ng internet).
+  Gamitin ang "npm install", HINDI "npm ci" (hindi pa updated ang package-lock.json; ia-update ito ng npm install).
+MAY "npm run build" (bagong resources/js/qr.js). Kung "npm run dev" ang gamit mo, hindi na kailangan ang build.
+
+Bago / ino-overwrite:
+  database/migrations/2026_11_01_000001_create_qr_codes_table.php   <- BAGO
+  app/Models/QrCode.php                                             <- BAGO
+  app/Http/Controllers/Admin/QrCodeController.php                   <- BAGO (index, store, update, destroy, print)
+  resources/views/admin/qr-codes/index.blade.php                    <- BAGO (gumawa, listahan, edit, delete)
+  resources/views/admin/qr-codes/print.blade.php                    <- BAGO (printable na pahina)
+  resources/js/qr.js                                                <- BAGO (gumuguhit ng QR gamit ang npm "qrcode")
+  public/css/phase17.css                                            <- BAGO
+  tests/Feature/QrCodeTest.php                                      <- BAGO
+  resources/js/app.js                                               <- dagdag na 3 linya (nilo-load ang qr.js kapag may QR sa pahina)
+  package.json                                                      <- dagdag na "qrcode": "^1.5.4"
+  routes/web.php                                                    <- bagong /admin/qr-codes routes
+  config/permissions.php                                            <- bagong capability na manage_qr_codes (Maintenance Admin lang)
+  app/Services/AuditLogger.php                                      <- bagong action na qr_code_changed
+  resources/views/layouts/navigation.blade.php                      <- "QR codes" link sa sidebar (Administration)
+  docs/OPEN_QUESTIONS.md                                            <- rows 61-66
+
+BAGO SA .env  (MAHALAGA):
+  Ang QR ay may laman na LINK. Ang Login / Register / New repair request ay galing sa APP_URL.
+  Ang telepono ay HINDI makakabukas ng "localhost" o ng "xxx.test" (Laragon). Ilagay sa .env ang address
+  na talagang ginagamit ng mga tao, hal.:
+      APP_URL=https://repairs.lcct.edu.ph
+      o kung sa loob lang ng school WiFi:  APP_URL=http://192.168.1.20
+  tapos:  php artisan config:clear
+  Kung local pa ang APP_URL, may dilaw na babala sa QR codes page.
+
+  Ang "Register page" ay lalabas lang na mapipili kapag ALLOW_PUBLIC_REGISTRATION=true (naka-close ito ngayon).
+
+PAANO SUBUKAN SA BROWSER
+  1. Mag-login bilang Maintenance Admin. Sa sidebar > Administration > "QR codes".
+  2. "Make a QR code": Title "Front gate", Opens "Login page", pumili ng madilim na kulay > Make QR code.
+     Lalabas ang QR sa listahan.
+  3. I-scan ng telepono (camera app). Dapat bumukas ang login page. (Kailangan tama ang APP_URL, tingnan sa itaas.)
+  4. Pindutin ang "Print": bubukas ang bagong tab na may title at malaking QR. Pindutin ang Print doon (o Ctrl+P).
+  5. Subukan ang "Custom link" (hal. https://www.google.com), "Edit", "SVG" (download) at "Delete".
+  6. Subukan ang napakaliwanag na kulay (dilaw): dapat may error na "too light to scan".
+  7. Mag-login bilang Finance o Requester: walang "QR codes" sa sidebar, at 403 kapag binuksan ang /admin/qr-codes.
+  8. Audit log: may "Qr Code Changed" sa bawat gawa / edit / delete.
+
+Rollback:
+  php artisan migrate:rollback --step=1
+  git checkout -- .
+  (burahin ang mga BAGONG file sa listahan sa itaas kung gusto)
