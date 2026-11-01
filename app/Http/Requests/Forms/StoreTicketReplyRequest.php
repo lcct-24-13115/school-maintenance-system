@@ -17,13 +17,19 @@ class StoreTicketReplyRequest extends FormRequest
     {
         $ticket = $this->route('ticket');
 
-        return $ticket instanceof MaintenanceRequest && ($this->user()?->can('reply', $ticket) ?? false);
+        if (! $ticket instanceof MaintenanceRequest || ! ($this->user()?->can('reply', $ticket) ?? false)) {
+            return false;
+        }
+
+        // Phase 11: an internal note needs the staff permission (a requester who posts the flag gets a 403)
+        return ! $this->boolean('is_internal') || $this->user()->can('addInternalNote', $ticket);
     }
 
     public function rules(): array
     {
         return [
             'body' => ['nullable', 'string', 'max:'.TicketReply::BODY_MAX],
+            'is_internal' => ['nullable', 'boolean'],
             'files' => ['nullable', 'array', 'max:'.AttachmentService::maxFiles()],
             'files.*' => [new ValidAttachment],
         ];

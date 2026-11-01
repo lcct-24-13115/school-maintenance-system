@@ -76,8 +76,19 @@ class FormNotifier
      * Phase 10: a message in the conversation. When the requester wrote it, the assignee and the maintenance staff
      * are alerted; when someone else wrote it, the requester and the assignee are (never the writer, see send()).
      */
-    public static function replied(MaintenanceRequest $ticket, User $actor): void
+    public static function replied(MaintenanceRequest $ticket, User $actor, bool $internal = false): void
     {
+        if ($internal) {   // Phase 11: staff only. The requester is never told, not even that a note exists.
+            self::send(
+                self::usersWithRole(Role::MAINTENANCE_ADMIN)->push($ticket->assignee)
+                    ->reject(fn (?User $u) => $u === null || (int) $u->id === (int) $ticket->requester_id)
+                    ->filter(fn (User $u) => $u->can('viewInternalNotes', $ticket)),
+                $ticket, 'ticket_internal_note', $actor, 'added an internal note on a ticket'
+            );
+
+            return;
+        }
+
         $recipients = (int) $ticket->requester_id === (int) $actor->id
             ? self::usersWithRole(Role::MAINTENANCE_ADMIN)->push($ticket->assignee)
             : collect([$ticket->requester, $ticket->assignee]);

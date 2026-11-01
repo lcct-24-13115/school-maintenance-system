@@ -21,14 +21,16 @@ class TicketReplyController extends Controller
     {
         $back = route('tickets.show', $ticket).'#replies';
 
+        $internal = $request->boolean('is_internal');
+
         try {
-            TicketWorkflow::addReply($ticket, $request->user(), $request->input('body'), $request->file('files', []));
+            TicketWorkflow::addReply($ticket, $request->user(), $request->input('body'), $request->file('files', []), $internal);
         } catch (DomainException $e) {
             return redirect()->to($back)->withErrors(['body' => $e->getMessage()], 'thread')->withInput();
         }
 
-        FormNotifier::replied($ticket->refresh(), $request->user());
+        FormNotifier::replied($ticket->refresh(), $request->user(), $internal);
 
-        return redirect()->to($back)->with('status', 'Message sent.');
+        return redirect()->to($back)->with('status', $internal ? 'Internal note added. The requester cannot see it.' : 'Message sent.');
     }
 }

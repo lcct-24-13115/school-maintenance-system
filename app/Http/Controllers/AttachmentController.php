@@ -23,6 +23,9 @@ class AttachmentController extends Controller
     {
         Gate::authorize('view', $attachment->request);
 
+        // Phase 11: a file that belongs to an internal note is for staff only (hidden = 404, like a missing file)
+        abort_if($attachment->reply?->is_internal && ! $request->user()->can('viewInternalNotes', $attachment->request), 404);
+
         $disk = Storage::disk($attachment->storageDisk());
         abort_unless($disk->exists($attachment->path), 404);
 

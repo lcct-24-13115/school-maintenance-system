@@ -79,6 +79,21 @@ class TicketPolicy
     }
 
     /**
+     * Phase 11: read and write INTERNAL notes: the staff side of the conversation (the assignee, the authorizers, the
+     * working roles). Never the requester of the ticket, even when that person also has a staff role.
+     * Dept. head, treasurer, custodian and finance can read the public conversation only. CONFIRM WITH CLIENT.
+     */
+    public function viewInternalNotes(User $user, MaintenanceRequest $ticket): bool
+    {
+        return (int) $ticket->requester_id !== (int) $user->id && $this->takesPart($user, $ticket);
+    }
+
+    public function addInternalNote(User $user, MaintenanceRequest $ticket): bool
+    {
+        return $this->viewInternalNotes($user, $ticket);
+    }
+
+    /**
      * Phase 8: cancel YOUR OWN ticket (cancel_own, every role). "Before Assigned" is a STATE rule:
      * TicketWorkflow::cancelBlocker().
      */

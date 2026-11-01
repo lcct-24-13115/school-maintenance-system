@@ -1,0 +1,44 @@
+PHASE 11 - Internal notes (staff only)
+======================================
+
+KAILANGAN MUNA ANG PHASE 10 (ang reply thread). Kung hindi pa naka-apply, i-apply muna ang APPLY-PHASE-10.txt.
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 11 internal notes"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase11-internal-notes-patch.zip" -DestinationPath . -Force
+  php artisan migrate
+  php artisan view:clear
+  php artisan route:clear
+  php artisan config:clear
+  php artisan test --filter=TicketInternalNoteTest
+  php artisan test
+
+MAY MIGRATION: "php artisan migrate" (additive): ticket_replies.is_internal, default false.
+Ang lahat ng dating reply ay nananatiling public.
+
+Bago / ino-overwrite:
+  database/migrations/2026_10_31_000001_add_is_internal_to_ticket_replies.php  <- BAGO
+  tests/Feature/TicketInternalNoteTest.php                                     <- BAGO (11 tests)
+  app/Models/TicketReply.php                    <- is_internal, scope public() at visibleTo($user, $ticket)
+  app/Models/MaintenanceRequest.php             <- replies() = PUBLIC lang; conversationFor($user)
+  app/Policies/TicketPolicy.php                 <- viewInternalNotes, addInternalNote
+  app/Services/TicketWorkflow.php               <- addReply(..., internal: true)
+  app/Services/FormNotifier.php                 <- alerto para sa staff lang
+  app/Http/Requests/Forms/StoreTicketReplyRequest.php, app/Http/Controllers/TicketReplyController.php
+  app/Http/Controllers/TicketController.php     <- naglo-load ng usapan ayon sa nagbabasa
+  app/Http/Controllers/AttachmentController.php <- pangalawang lock para sa file ng internal note
+  resources/views/tickets/_replies.blade.php    <- checkbox, naka-dashed na bubble
+  docs/OPEN_QUESTIONS.md                        <- rows 35-37
+  APPLY-PHASE-11.txt
+
+ANG MGA RULE
+  Sino ang nagsusulat/nagbabasa  Assigned staff, President, Maintenance Admin. HINDI ang requester ng ticket (kahit staff
+                                 pa siya sa ibang ticket). Finance, Dept. Head, Treasurer, Custodian: public lang.
+  Paano nakatago                 Hindi lang sa page: ang relation na replies() ay public lang kaya hindi makakalusot ang
+                                 note kahit makalimutan ng bagong code (export, report). Ang conversationFor($user) /
+                                 scope visibleTo() ang nagpapasya kung ilalabas.
+  Files                          Walang file ang internal note. Kailangan ng file? Normal na mensahe.
+  Alerto/email                   Ang requester ay walang alerto tungkol sa internal note. Staff lang, hindi ang sumulat,
+                                 at walang laman ng note sa alerto. Wala namang email na lumalabas para sa mga reply.
+
+Rollback: php artisan migrate:rollback --step=1   tapos   git checkout -- .

@@ -86,8 +86,11 @@ class TicketController extends Controller
 
         $ticket->load([
             'requester.department', 'department', 'category', 'assignee', 'president', 'emergencyFlagger',
-            'items', 'attachments', 'statusLogs.user', 'replies.author', 'replies.attachments',
+            'items', 'attachments', 'statusLogs.user',
         ]);
+
+        // Phase 11: the conversation as THIS user may read it (internal notes only for staff)
+        $ticket->setRelation('replies', $ticket->conversationFor(request()->user())->with(['author', 'attachments'])->get());
 
         $actions = TicketActions::for($ticket, request()->user());
 

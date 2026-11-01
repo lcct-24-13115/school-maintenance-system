@@ -354,10 +354,19 @@ class MaintenanceRequest extends Model
         return $this->hasMany(RequestAttachment::class, 'request_id');
     }
 
-    /** Phase 10: the conversation (oldest first). Read it only after TicketPolicy@view passed. */
+    /**
+     * Phase 10: the PUBLIC conversation (oldest first). Internal notes (Phase 11) are never in this relation, so
+     * code that forgets about them cannot leak them. Read it only after TicketPolicy@view passed.
+     */
     public function replies(): HasMany
     {
-        return $this->hasMany(TicketReply::class, 'request_id')->oldest('id');
+        return $this->hasMany(TicketReply::class, 'request_id')->public()->oldest('id');
+    }
+
+    /** Phase 11: the conversation as $user may read it: with the internal notes for staff, without them for the requester. */
+    public function conversationFor(User $user): HasMany
+    {
+        return $this->hasMany(TicketReply::class, 'request_id')->visibleTo($user, $this)->oldest('id');
     }
 
     /** Full change history (oldest first). */

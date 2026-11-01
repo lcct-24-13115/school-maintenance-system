@@ -17,6 +17,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -626,9 +627,12 @@ class TicketWorkflow
      * A reply is plain text (shown escaped) and/or files. It does NOT change the status; answering a question
      * from staff (Waiting for User) is still respondToInfo(). WHO may reply is TicketPolicy@reply.
      *
+     * Phase 11: $internal makes it an internal note: staff only (TicketPolicy@addInternalNote), text only (a file
+     * would have to be hidden from the requester too, so internal notes carry none).
+     *
      * @param  array<int, UploadedFile>  $files
      */
-    public static function addReply(MaintenanceRequest $ticket, User $by, ?string $body, array $files = []): TicketReply
+    public static function addReply(MaintenanceRequest $ticket, User $by, ?string $body, array $files = [], bool $internal = false): TicketReply
     {
         $body = trim((string) $body);
         $files = array_values(array_filter($files));
@@ -638,6 +642,12 @@ class TicketWorkflow
         }
         if (mb_strlen($body) > TicketReply::BODY_MAX) {
             throw new DomainException('A reply can be at most '.TicketReply::BODY_MAX.' characters.');
+        }
+        if ($internal && $files !== []) {
+            throw new DomainException('An internal note cannot carry files. Send the file in a normal message, or leave it out.');
+        }
+        if ($internal && ! Gate::forUser($by)->allows('addInternalNote', $ticket)) {
+            throw new DomainException('Only staff can write internal notes.');
         }
         if ($ticket->status->isTerminal()) {
             throw new DomainException("Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\" and the conversation is closed.");
@@ -649,8 +659,13 @@ class TicketWorkflow
         $stored = [];
 
         try {
-            $reply = DB::transaction(function () use ($ticket, $by, $body, $files, &$stored) {
-                $reply = $ticket->replies()->create(['user_id' => $by->id, 'body' => $body === '' ? null : $body]);
+            $reply = DB::transaction(function () use ($ticket, $by, $body, $files, $internal, &$stored) {
+                $reply = TicketReply::create([
+                    'request_id' => $ticket->getKey(),
+                    'user_id' => $by->id,
+                    'body' => $body === '' ? null : $body,
+                    'is_internal' => $internal,
+                ]);
 
                 foreach ($files as $file) {
                     $meta = AttachmentService::store($file);
