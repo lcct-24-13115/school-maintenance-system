@@ -73,6 +73,19 @@ class FormNotifier
     }
 
     /**
+     * Phase 10: a message in the conversation. When the requester wrote it, the assignee and the maintenance staff
+     * are alerted; when someone else wrote it, the requester and the assignee are (never the writer, see send()).
+     */
+    public static function replied(MaintenanceRequest $ticket, User $actor): void
+    {
+        $recipients = (int) $ticket->requester_id === (int) $actor->id
+            ? self::usersWithRole(Role::MAINTENANCE_ADMIN)->push($ticket->assignee)
+            : collect([$ticket->requester, $ticket->assignee]);
+
+        self::send($recipients, $ticket, 'ticket_reply', $actor, 'sent a message on a ticket');
+    }
+
+    /**
      * Phase 8: the requester cancelled, reopened or confirmed (closed) their own ticket.
      * The assignee and the maintenance staff are alerted (never the actor, see send()).
      */

@@ -1,0 +1,51 @@
+PHASE 10 - Reply thread (usapan ng requester at staff sa ticket page)
+=====================================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 10 reply thread"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\phase10-reply-thread-patch.zip" -DestinationPath . -Force
+  php artisan migrate
+  php artisan view:clear
+  php artisan route:clear
+  php artisan config:clear
+  php artisan test --filter=TicketReplyTest
+  php artisan test
+
+MAY BAGONG MIGRATION: "php artisan migrate" (additive lang, walang binabagong data):
+  - bagong table  ticket_replies
+  - bagong nullable column  request_attachments.reply_id   (ang dating files ay reply_id = NULL, hindi gumagalaw)
+
+Bago / ino-overwrite:
+  database/migrations/2026_10_30_000001_create_ticket_replies_table.php   <- BAGO
+  app/Models/TicketReply.php                                              <- BAGO
+  app/Http/Controllers/TicketReplyController.php                          <- BAGO: POST /tickets/{ticket}/replies
+  app/Http/Requests/Forms/StoreTicketReplyRequest.php                     <- BAGO (error bag: "thread")
+  resources/views/tickets/_replies.blade.php                              <- BAGO: ang "Conversation" na bubbles + form
+  tests/Feature/TicketReplyTest.php                                       <- BAGO (17 tests)
+  app/Models/RequestAttachment.php                                        <- reply_id, KIND_REPLY (wala sa KINDS)
+  app/Models/MaintenanceRequest.php                                       <- replies()
+  app/Services/TicketWorkflow.php                                         <- addReply()
+  app/Policies/TicketPolicy.php                                           <- reply (kapareho ng addNote)
+  app/Services/FormNotifier.php                                           <- replied()
+  app/Http/Controllers/TicketController.php                               <- naglo-load ng replies
+  resources/views/tickets/show.blade.php                                  <- @include('tickets._replies'); ticket files lang ang nasa Attachments
+  routes/web.php                                                          <- tickets.replies.store (throttle 30/min)
+  docs/OPEN_QUESTIONS.md                                                  <- rows 31-34
+  APPLY-PHASE-10.txt
+
+ANG MGA RULE
+  Sino ang nagsusulat   Requester ng ticket, ang assigned staff, at ang working roles (kapareho ng "add note"):
+                        Maintenance Admin at President. Finance, Dept. Head, Treasurer, Custodian ay NAKAKABASA lang,
+                        walang form (403 kapag pinilit).
+  Sino ang nakakabasa   Lahat ng puwedeng makakita ng ticket, at wala nang iba. Hidden ticket = 404, pati ang files.
+  Reply                 Text (hanggang 2000 characters) at/o hanggang 5 files (gamit ang AttachmentService: type ayon sa
+                        laman, 5 MB bawat isa). Text lang, file lang, o pareho. Hindi nagbabago ang status.
+  Files                 Private disk, binubuksan lang sa attachments.show. Wala sa "Attachments" card ng ticket
+                        (nasa bubble), at hindi nagiging photo sa maintenance board.
+  Tapos na ticket       Closed / Cancelled / Disapproved: sarado na ang usapan (may paliwanag sa page).
+  Waiting for User      Puwedeng mag-usap, PERO ang Answer box (Phase 9) pa rin ang nagpapatuloy ng ticket.
+                        Ang mensahe sa thread ay hindi humihinto sa auto-close. Sinasabi ito sa requester sa page.
+  Alerto                Requester ang sumulat -> assignee at maintenance staff. Iba ang sumulat -> requester at assignee.
+                        Hindi kailanman ang sumulat mismo.
+
+Rollback: php artisan migrate:rollback --step=1   tapos   git checkout -- .

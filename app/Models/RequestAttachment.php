@@ -21,10 +21,13 @@ class RequestAttachment extends Model
 
     public const KIND_WORK_PHOTO = 'work_photo';
 
+    /** Phase 10: a file sent inside a reply. NOT in KINDS on purpose, so the "Add files" form can never choose it. */
+    public const KIND_REPLY = 'reply';
+
     public const KINDS = [self::KIND_REQUEST, self::KIND_SIGNED_EVIDENCE, self::KIND_WORK_PHOTO];
 
     protected $fillable = [
-        'request_id', 'uploaded_by', 'path', 'disk', 'kind', 'original_name', 'mime_type', 'size_bytes',
+        'request_id', 'reply_id', 'uploaded_by', 'path', 'disk', 'kind', 'original_name', 'mime_type', 'size_bytes',
     ];
 
     protected function casts(): array
@@ -114,6 +117,11 @@ class RequestAttachment extends Model
     public function request(): BelongsTo
     {
         return $this->belongsTo(MaintenanceRequest::class, 'request_id');
+    }
+
+    public function reply(): BelongsTo
+    {
+        return $this->belongsTo(TicketReply::class, 'reply_id');
     }
 
     public function uploader(): BelongsTo

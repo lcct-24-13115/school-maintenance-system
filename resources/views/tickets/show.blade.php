@@ -128,11 +128,12 @@
             </section>
         @endif
 
-        {{-- Attachments: opened only through the authorized route (private storage) --}}
+        {{-- Attachments: opened only through the authorized route (private storage). Files sent inside a reply (Phase 10) show in the conversation instead. --}}
+        @php $ticketFiles = $ticket->attachments->whereNull('reply_id'); @endphp
         <section class="card" id="attachments">
-            <div class="card-h"><h3>Attachments <span class="hint" style="font-family:var(--font-body);font-weight:400">({{ $ticket->attachments->count() }})</span></h3></div>
+            <div class="card-h"><h3>Attachments <span class="hint" style="font-family:var(--font-body);font-weight:400">({{ $ticketFiles->count() }})</span></h3></div>
 
-            @forelse ($ticket->attachments as $file)
+            @forelse ($ticketFiles as $file)
                 <div class="pf-row" style="flex-wrap:wrap">
                     <div style="min-width:0;flex:1">
                         <a href="{{ $file->url() }}" @if ($file->isInline()) target="_blank" rel="noopener" @endif style="word-break:break-all">
@@ -184,6 +185,8 @@
         </section>
 
         @include('tickets._actions')
+
+        @include('tickets._replies')
 
         {{-- Full history --}}
         <section class="card">

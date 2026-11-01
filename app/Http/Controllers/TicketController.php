@@ -86,7 +86,7 @@ class TicketController extends Controller
 
         $ticket->load([
             'requester.department', 'department', 'category', 'assignee', 'president', 'emergencyFlagger',
-            'items', 'attachments', 'statusLogs.user',
+            'items', 'attachments', 'statusLogs.user', 'replies.author', 'replies.attachments',
         ]);
 
         $actions = TicketActions::for($ticket, request()->user());

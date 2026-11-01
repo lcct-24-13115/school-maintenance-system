@@ -15,6 +15,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketActionController;
 use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\TicketReplyController;
 use App\Http\Middleware\CheckRole;
 use App\Models\Role;
 use Illuminate\Support\Facades\Route;
@@ -59,6 +60,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets/create', [RepairRequestController::class, 'create'])->name('tickets.create');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
     Route::post('/tickets/{ticket}/attachments', [TicketAttachmentController::class, 'store'])->name('tickets.attachments.store');
+    // Phase 10: the conversation on the ticket page (text + files)
+    Route::post('/tickets/{ticket}/replies', [TicketReplyController::class, 'store'])->middleware('throttle:30,1')->name('tickets.replies.store');
 
     // ---- Ticket actions (Phase 4A). {ticket} hidden = 404; no capability = 403; wrong status = flash error ----
     Route::prefix('tickets/{ticket}')->name('tickets.')->group(function () {

@@ -6,6 +6,7 @@ use App\Enums\TicketStatus;
 use App\Models\MaintenanceRequest;
 use App\Models\RequestAttachment;
 use App\Models\RequestStatusLog;
+use App\Models\TicketReply;
 use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
@@ -617,6 +618,66 @@ class TicketWorkflow
             'emergency_flagged_by' => null,
             'emergency_flagged_at' => null,
         ], RequestStatusLog::ACTION_EMERGENCY, $by, $note ?: 'Emergency flag removed.', ['flagged' => false]);
+    }
+
+    /**
+     * Phase 10: one message in the conversation on a ticket, with its files (0..max_files), saved together:
+     * if a file is refused or saving fails, no reply is left behind and files already saved are removed again.
+     * A reply is plain text (shown escaped) and/or files. It does NOT change the status; answering a question
+     * from staff (Waiting for User) is still respondToInfo(). WHO may reply is TicketPolicy@reply.
+     *
+     * @param  array<int, UploadedFile>  $files
+     */
+    public static function addReply(MaintenanceRequest $ticket, User $by, ?string $body, array $files = []): TicketReply
+    {
+        $body = trim((string) $body);
+        $files = array_values(array_filter($files));
+
+        if ($body === '' && $files === []) {
+            throw new DomainException('Write a message or attach a file.');
+        }
+        if (mb_strlen($body) > TicketReply::BODY_MAX) {
+            throw new DomainException('A reply can be at most '.TicketReply::BODY_MAX.' characters.');
+        }
+        if ($ticket->status->isTerminal()) {
+            throw new DomainException("Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\" and the conversation is closed.");
+        }
+        if ($files !== [] && ($error = AttachmentService::checkMany($files))) {
+            throw new DomainException($error);
+        }
+
+        $stored = [];
+
+        try {
+            $reply = DB::transaction(function () use ($ticket, $by, $body, $files, &$stored) {
+                $reply = $ticket->replies()->create(['user_id' => $by->id, 'body' => $body === '' ? null : $body]);
+
+                foreach ($files as $file) {
+                    $meta = AttachmentService::store($file);
+                    $stored[] = [$meta['disk'], $meta['path']];
+
+                    $reply->attachments()->create($meta + [
+                        'request_id' => $ticket->getKey(),
+                        'uploaded_by' => $by->id,
+                        'kind' => RequestAttachment::KIND_REPLY,
+                    ]);
+                }
+
+                return $reply;
+            });
+        } catch (Throwable $e) {
+            AttachmentService::discard($stored);
+
+            throw $e;
+        }
+
+        $reply->load('attachments');
+
+        if ($reply->attachments->isNotEmpty()) {
+            self::auditUpload($ticket, $reply->attachments, $by, RequestAttachment::KIND_REPLY);   // once per reply, after saving
+        }
+
+        return $reply;
     }
 
     /** A free-text action note on the history. */

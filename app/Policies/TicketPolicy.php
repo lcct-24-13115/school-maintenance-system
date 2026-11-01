@@ -64,26 +64,18 @@ class TicketPolicy
      */
     public function addNote(User $user, MaintenanceRequest $ticket): bool
     {
-        if (! $ticket->isVisibleTo($user)) {
-            return false;
-        }
+        return $this->takesPart($user, $ticket);
+    }
 
-        if ((int) $ticket->requester_id === (int) $user->id
-            || ($ticket->assigned_to !== null && (int) $ticket->assigned_to === (int) $user->id)) {
-            return true;
-        }
-
-        if ($user->canAuthorize()) {
-            return true;
-        }
-
-        foreach (['assign', 'work', 'close', 'flag_emergency', 'clear_emergency', 'send_for_authorization'] as $capability) {
-            if ($user->can_do($capability)) {
-                return true;
-            }
-        }
-
-        return false;
+    /**
+     * Phase 10: write in the conversation on the ticket page. The same people as addNote: the requester, the
+     * assignee and the working roles. Everyone who may SEE the ticket may READ the conversation (it is part of
+     * the ticket page), so a view-only role reads it but gets no reply form. The status rule (a finished
+     * ticket takes no more replies) is in TicketWorkflow::addReply().
+     */
+    public function reply(User $user, MaintenanceRequest $ticket): bool
+    {
+        return $this->takesPart($user, $ticket);
     }
 
     /**
@@ -153,6 +145,31 @@ class TicketPolicy
         }
 
         return (int) $ticket->requester_id === (int) $user->id && ! $ticket->status->isTerminal();
+    }
+
+    /** The requester, the assignee, or someone with a working role - and the ticket must be visible to them. */
+    private function takesPart(User $user, MaintenanceRequest $ticket): bool
+    {
+        if (! $ticket->isVisibleTo($user)) {
+            return false;
+        }
+
+        if ((int) $ticket->requester_id === (int) $user->id
+            || ($ticket->assigned_to !== null && (int) $ticket->assigned_to === (int) $user->id)) {
+            return true;
+        }
+
+        if ($user->canAuthorize()) {
+            return true;
+        }
+
+        foreach (['assign', 'work', 'close', 'flag_emergency', 'clear_emergency', 'send_for_authorization'] as $capability) {
+            if ($user->can_do($capability)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function ownTicket(User $user, MaintenanceRequest $ticket): bool

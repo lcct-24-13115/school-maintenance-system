@@ -354,6 +354,12 @@ class MaintenanceRequest extends Model
         return $this->hasMany(RequestAttachment::class, 'request_id');
     }
 
+    /** Phase 10: the conversation (oldest first). Read it only after TicketPolicy@view passed. */
+    public function replies(): HasMany
+    {
+        return $this->hasMany(TicketReply::class, 'request_id')->oldest('id');
+    }
+
     /** Full change history (oldest first). */
     public function statusLogs(): HasMany
     {
