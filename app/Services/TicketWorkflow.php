@@ -259,6 +259,12 @@ class TicketWorkflow
         return self::apply($ticket, TicketStatus::Disapproved, [], RequestStatusLog::ACTION_AUTHORIZATION, $by, $reason);
     }
 
+    /** Phase 16: the statuses a ticket may be assigned in (also used by the Reports "Needs attention" list). @return list<TicketStatus> */
+    public static function assignableStatuses(): array
+    {
+        return [TicketStatus::Approved, TicketStatus::Assigned, TicketStatus::InProgress, TicketStatus::Reopened];
+    }
+
     /**
      * Assign (or reassign) to an active maintenance staff member.
      * A reassignment needs a note. An Approved ticket becomes Assigned; other statuses keep theirs.
@@ -270,7 +276,7 @@ class TicketWorkflow
         }
 
         $status = $ticket->status;
-        if (! in_array($status, [TicketStatus::Approved, TicketStatus::Assigned, TicketStatus::InProgress, TicketStatus::Reopened], true)) {
+        if (! in_array($status, self::assignableStatuses(), true)) {
             throw new DomainException("Ticket {$ticket->ticket_no} is \"{$status->label()}\". It must be Approved before it can be assigned.");
         }
 

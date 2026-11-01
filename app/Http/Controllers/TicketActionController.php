@@ -211,6 +211,16 @@ class TicketActionController extends Controller
             return redirect()->route('approvals.index');
         }
 
+        // Phase 16: the quick-assign buttons on /reports come back to /reports (same dates). Only for people who may open it.
+        if ($request->input('return') === 'reports' && $request->user()->can_do('view_analytics')) {
+            $dates = array_filter(
+                $request->only(['from', 'to']),
+                fn ($d) => is_string($d) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) === 1
+            );
+
+            return redirect()->route('reports.index', $dates);
+        }
+
         return redirect()->to(route('tickets.show', $ticket).'#actions');
     }
 }

@@ -60,6 +60,16 @@ return [
         'requester', 'department_head', 'treasurer', 'custodian', 'maintenance_admin', 'finance', 'president',
     ],
 
+    // Phase 16 (Reports): CONFIRM WITH CLIENT
+    //   stale_days      a pending ticket with no activity for this many days is listed as "stale"
+    //   attention_limit how many rows the "Needs attention" list shows (the total is always shown)
+    //   daily_days      how many days the "Tickets per day" bars cover
+    'reports' => [
+        'stale_days' => 3,
+        'attention_limit' => 25,
+        'daily_days' => 30,
+    ],
+
     /*
     | Default values for the editable settings page (/admin/settings, Merge Phase M1).
     | The database table `settings` overrides these; this array is only the fallback.

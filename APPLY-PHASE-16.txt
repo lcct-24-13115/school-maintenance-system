@@ -1,0 +1,58 @@
+PHASE 16 - Reports upgrade
+==========================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+
+  git add -A ; git commit -m "Before Phase 16 reports"
+  tar -xf "$env:USERPROFILE\Downloads\phase16-reports-patch.zip" -C .
+  npm run build
+  php artisan view:clear
+  php artisan route:clear
+  php artisan config:clear
+  php artisan test --filter=ReportOverviewTest
+  php artisan test --filter=ReportTest
+  php artisan test
+
+DI MO MA-EXTRACT ANG ZIP? Dalawang paraan (piliin ang isa), sa loob ng project folder:
+  A) tar -xf "$env:USERPROFILE\Downloads\phase16-reports-patch.zip" -C .
+  B) Expand-Archive -Path "$env:USERPROFILE\Downloads\phase16-reports-patch.zip" -DestinationPath . -Force
+Kung nasa ibang folder ang zip, palitan ang path (hal. "C:\Users\ikaw\Desktop\phase16-reports-patch.zip").
+Pareho lang ang resulta: ang mga file ay napupunta sa tamang folder at ino-overwrite ang luma.
+
+WALANG migration.
+MAY "npm run build" ngayon (hindi tulad ng Phase 15): nagbago ang resources/js/reports.js (dagdag na charts).
+Kung gumagamit ka ng "npm run dev", hindi na kailangan ang build.
+
+Bago / ino-overwrite:
+  app/Services/ReportMetrics.php                      <- BAGONG laman: first response, resolution rate, backlog, daily, attention
+  app/Http/Controllers/ReportController.php           <- ipinapasa ang attention list, staff list at daily/category charts
+  app/Http/Controllers/TicketActionController.php     <- backTo(): ang quick-assign ay bumabalik sa /reports (kasama ang dates)
+  app/Services/TicketWorkflow.php                     <- assignableStatuses() (parehong listahan ang gamit ng assign at ng reports)
+  resources/views/reports/index.blade.php             <- bagong cards, "Needs attention", daily chart, Overdue column
+  resources/js/reports.js                             <- category (All vs Active), daily bars, walang laman = "No tickets"
+  public/css/phase6.css                               <- dagdag na ilang linya sa dulo (.p6-wide, .p6-why, .p6-qa)
+  config/school.php                                   <- 'reports' => stale_days, attention_limit, daily_days
+  docs/OPEN_QUESTIONS.md                              <- rows 53-60
+  tests/Feature/ReportOverviewTest.php                <- BAGO
+
+ANO ANG IBIG SABIHIN NG MGA NUMERO (lahat nasa docs/OPEN_QUESTIONS.md, rows 53-60)
+  Avg. first response   submitted -> unang aksyon ng IBANG tao (hindi ang requester): history line o public na message.
+                        Hindi kasama: automatic na aksyon at internal note. Ang hindi pa nasasagot ay wala sa average.
+  Resolution rate       (Work Completed + Closed) / (lahat - Cancelled). Ang Disapproved ay kasama sa bilang sa ibaba.
+  Overdue now           lampas na sa target date at pending pa (hindi kasama ang Waiting for User, naka-pause ang SLA).
+  Backlog               pending pa: hindi pa Work Completed / Closed / Disapproved / Cancelled.
+  Category (active)     kapareho ng backlog. "All" = lahat ng ticket sa range.
+  Needs attention       overdue, WALANG naka-assign (Approved/Assigned/In Progress/Reopened), o 3 araw na walang galaw.
+                        Hindi sinusunod ang From/To dates (tungkol ito sa ngayon). Nakaayos: emergency, pinakamaraming dahilan, pinakamatagal.
+
+PAANO SUBUKAN SA BROWSER
+  1. Mag-login bilang Maintenance Admin at buksan ang Reports.
+  2. Sa "Needs attention": pumili ng staff sa ticket na "Unassigned" at pindutin ang Assign.
+     Babalik ka sa Reports (nasa parehong dates), may berdeng "Assigned.", at wala na ang ticket sa listahan.
+  3. Mag-login bilang Finance o President: makikita ang listahan pero WALANG Assign box (Open ticket lang).
+  4. Finance: walang kumpidensyal na ticket sa bilang, sa listahan o sa pahina.
+
+PAGBABAGO NG MGA LIMIT  (config/school.php -> 'reports', tapos  php artisan config:clear)
+  stale_days = 3    attention_limit = 25    daily_days = 30
+
+Rollback: git checkout -- .   (burahin ang tests/Feature/ReportOverviewTest.php kung gusto)

@@ -5,13 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\MaintenanceRequest;
 use App\Services\AuditLogger;
 use App\Services\ReportMetrics;
+use App\Services\TicketActions;
 use App\Support\Csv;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * /reports (Merge Phase M4): charts + numbers, and the CSV export of the same filtered list.
+ * /reports (Merge Phase M4, upgraded in Phase 16): charts + numbers, the "Needs attention" list with quick-assign,
+ * and the CSV export of the same filtered list.
  *
  *   view_analytics  -> the page        export_reports -> the CSV      (others get 403, like the settings page)
  *
@@ -27,16 +29,26 @@ class ReportController extends Controller
         $this->authorizeCapability($request, 'view_analytics');
         $filters = $this->filters($request);
 
-        $metrics = (new ReportMetrics($request->user(), $filters['from'], $filters['to']))->all();
+        $report = new ReportMetrics($request->user(), $filters['from'], $filters['to']);
+        $metrics = $report->all();
+        $attention = $report->attention();   // about NOW: the dates above do not apply to it
+        $canAssign = (bool) $request->user()->can_do('assign');
 
         return view('reports.index', [
             'filters' => $filters,
             'metrics' => $metrics,
+            'attention' => $attention,
+            'canAssign' => $canAssign,
+            // only loaded when a quick-assign form can be shown
+            'staff' => $canAssign && collect($attention['items'])->contains('unassigned', true)
+                ? TicketActions::assignableStaff()
+                : collect(),
             'charts' => [
                 'status' => $this->series($metrics['by_status']),
-                'category' => $this->series($metrics['by_category']),
+                'category' => $this->series($metrics['by_category']) + ['active' => array_column($metrics['by_category'], 'active')],
                 'department' => $this->series($metrics['by_department']),
                 'monthly' => $this->series($metrics['monthly']),
+                'daily' => $this->series($metrics['daily']),
             ],
             'canExport' => (bool) $request->user()->can_do('export_reports'),
         ]);
