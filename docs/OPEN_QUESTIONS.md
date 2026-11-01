@@ -50,4 +50,4 @@ Each one is marked `// CONFIRM WITH CLIENT` in the code. Add new rows as later p
 | 43 | 13 | Is the person who did the action emailed? | No, never. Inactive users and users who may not see the ticket are skipped too. | `TicketMailer::deliver()` |
 | 44 | 13 | Are internal notes emailed? | Never, to anybody. A normal message is emailed, but without its text (only "sent a message" and a link). | `TicketMailer::replied()` |
 | 45 | 13 | What does an email of a confidential ticket show? | Only the ticket number, the status and a link: no location, description or note text. | `TicketMailer::payload()` |
-| 46 | 13 | When is the email sent? | Queued after the change is saved (a queue worker is needed unless QUEUE_CONNECTION=sync). `TICKET_EMAILS=false` turns all ticket emails off. A failed email never blocks or undoes the ticket action. | `config/school.php` (`ticket_emails`), `.env` |
+| 46 | 13 | When is the email sent? | Queued right after the change (a queue worker is needed unless QUEUE_CONNECTION=sync). `TICKET_EMAILS=false` turns all ticket emails off. A failed email never blocks or undoes the ticket action. | `config/school.php` (`ticket_emails`), `.env` |

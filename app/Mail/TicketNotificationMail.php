@@ -24,7 +24,10 @@ class TicketNotificationMail extends Mailable implements ShouldQueue
      */
     public function __construct(public string $event, public array $data)
     {
-        $this->afterCommit();   // a rolled-back change never sends an email
+        // Deliberately NOT afterCommit(): with QUEUE_CONNECTION=sync the email would then be built when the outer
+        // transaction commits, outside TicketMailer's try/catch, and a broken email could stop the ticket action.
+        // With the database queue the job row is written in the same transaction anyway, so a rolled-back change
+        // takes its email with it.
     }
 
     public function envelope(): Envelope
