@@ -219,6 +219,18 @@ class MaintenanceRequest extends Model
         return $statuses;
     }
 
+    /** Phase 14: still active = everything except Closed, Disapproved and Cancelled (those live in Ticket History). */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->whereNotIn('status', TicketStatus::terminalValues());
+    }
+
+    /** Phase 14: finished tickets only (Closed, Disapproved, Cancelled). */
+    public function scopeHistory(Builder $query): Builder
+    {
+        return $query->whereIn('status', TicketStatus::terminalValues());
+    }
+
     /** Work Completed or Closed. */
     public function scopeCompleted(Builder $query): Builder
     {

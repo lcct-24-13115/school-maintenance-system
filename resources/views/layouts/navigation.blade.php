@@ -17,8 +17,12 @@
             <i class="fa-solid fa-gauge-high"></i> Dashboard
         </a>
 
-        <a href="{{ route('tickets.index') }}" class="{{ request()->routeIs('tickets.*') ? 'active' : '' }}">
-            <i class="fa-solid fa-ticket"></i> Tickets
+        <a href="{{ route('tickets.index') }}" class="{{ request()->routeIs('tickets.*') && ! request()->routeIs('tickets.history') ? 'active' : '' }}">
+            <i class="fa-solid fa-ticket"></i> My Tickets
+        </a>
+
+        <a href="{{ route('tickets.history') }}" class="{{ request()->routeIs('tickets.history') ? 'active' : '' }}">
+            <i class="fa-solid fa-clock-rotate-left"></i> Ticket History
         </a>
 
         @can('create', \App\Models\MaintenanceRequest::class)

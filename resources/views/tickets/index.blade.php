@@ -2,13 +2,22 @@
     $fmt = fn ($d) => $d?->format('M j, Y g:i A') ?? '—';
     // open the filter panel when any filter besides the search box is active
     $otherFilters = collect($filters)->except('q')->filter()->isNotEmpty();
+    $isHistory = $mode === 'history';
 @endphp
 
 <x-app-layout>
     <x-slot name="header">Tickets</x-slot>
 
+    {{-- Phase 14: My Tickets (active) | Ticket History (Closed / Cancelled / Disapproved) --}}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" role="tablist" aria-label="Ticket lists">
+        <a href="{{ route('tickets.index') }}" role="tab" aria-selected="{{ $isHistory ? 'false' : 'true' }}"
+           class="btn {{ $isHistory ? '' : 'btn-primary' }}"><i class="fa-solid fa-ticket"></i> My Tickets</a>
+        <a href="{{ route('tickets.history') }}" role="tab" aria-selected="{{ $isHistory ? 'true' : 'false' }}"
+           class="btn {{ $isHistory ? 'btn-primary' : '' }}"><i class="fa-solid fa-clock-rotate-left"></i> Ticket History</a>
+    </div>
+
     {{-- Search + filters (GET, so every result page can be bookmarked and pagination keeps them) --}}
-    <form method="GET" action="{{ route('tickets.index') }}" class="card"
+    <form method="GET" action="{{ route($listRoute) }}" class="card"
           x-data="{ open: {{ $otherFilters ? 'true' : 'false' }} }">
         <div class="filters" style="margin-bottom:0">
             <input type="search" name="q" value="{{ $filters['q'] }}" aria-label="Search tickets"
@@ -51,6 +60,7 @@
                     </div>
                 @endif
 
+                @unless ($isHistory)
                 <div class="field" style="margin:0">
                     <label class="lbl" for="f-category">Category</label>
                     <select id="f-category" name="category_id">
@@ -79,11 +89,14 @@
                         @endforeach
                     </select>
                 </div>
+                @endunless
             </div>
 
             <div style="display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:16px">
-                <label class="check"><input type="checkbox" name="emergency" value="1" @checked($filters['emergency'])> Emergency only</label>
-                <label class="check"><input type="checkbox" name="overdue" value="1" @checked($filters['overdue'])> Overdue only</label>
+                @unless ($isHistory)
+                    <label class="check"><input type="checkbox" name="emergency" value="1" @checked($filters['emergency'])> Emergency only</label>
+                    <label class="check"><input type="checkbox" name="overdue" value="1" @checked($filters['overdue'])> Overdue only</label>
+                @endunless
                 <label class="check"><input type="checkbox" name="mine" value="1" @checked($filters['mine'])> Only tickets I filed</label>
             </div>
         </div>
@@ -91,7 +104,7 @@
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px">
             <button class="btn btn-primary">Apply</button>
             @if ($hasFilters)
-                <a href="{{ route('tickets.index') }}" class="btn btn-danger">Clear filters</a>
+                <a href="{{ route($listRoute) }}" class="btn btn-danger">Clear filters</a>
             @endif
         </div>
 
@@ -105,14 +118,14 @@
             <div class="empty">
                 <i class="fa-regular fa-folder-open"></i>
                 <b style="display:block;font-size:17px;color:var(--navy);margin-bottom:4px">No tickets found.</b>
-                {{ $hasFilters ? 'Try a different search or clear the filters.' : 'There are no tickets you can see yet.' }}
+                {{ $hasFilters ? 'Try a different search or clear the filters.' : ($isHistory ? 'No ticket has been closed, cancelled or disapproved yet.' : 'There are no active tickets you can see.') }}
                 @if ($hasFilters)
-                    <div style="margin-top:14px"><a href="{{ route('tickets.index') }}" class="btn btn-sm">Clear filters</a></div>
+                    <div style="margin-top:14px"><a href="{{ route($listRoute) }}" class="btn btn-sm">Clear filters</a></div>
                 @endif
             </div>
         </div>
     @else
-        <p class="hint" style="margin:0 0 10px">{{ $tickets->total() }} ticket(s) · emergencies first, then oldest first</p>
+        <p class="hint" style="margin:0 0 10px">{{ $tickets->total() }} ticket(s) · {{ $isHistory ? 'most recently finished first' : 'emergencies first, then oldest first' }}</p>
 
         {{-- Desktop: table. Phones: the .stack rule in style.css turns every row into a card. --}}
         <div class="table-wrap">
@@ -126,7 +139,7 @@
                         <th>Requester</th>
                         <th>Assigned to</th>
                         <th>Submitted</th>
-                        <th>Completed</th>
+                        <th>{{ $isHistory ? 'Closed / completed' : 'Completed' }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -141,7 +154,7 @@
                             <td data-label="Requester">{{ $t->requester->name }}<div class="sub">{{ $t->department?->name }}</div></td>
                             <td data-label="Assigned to">{{ $t->assignee?->name ?? '—' }}</td>
                             <td data-label="Submitted" class="mono" style="white-space:nowrap">{{ $fmt($t->submitted_at) }}</td>
-                            <td data-label="Completed" class="mono" style="white-space:nowrap">{{ $fmt($t->completed_at) }}</td>
+                            <td data-label="Completed" class="mono" style="white-space:nowrap">{{ $fmt($isHistory ? ($t->closed_at ?? $t->completed_at) : $t->completed_at) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

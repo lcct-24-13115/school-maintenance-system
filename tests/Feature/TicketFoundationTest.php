@@ -711,7 +711,9 @@ class TicketFoundationTest extends TestCase
             $this->actingAs($admin)->get(route('tickets.show', $ticket))
                 ->assertOk()->assertSee($label)->assertSee($class)->assertSee($trackerText);
 
-            $this->actingAs($admin)->get(route('tickets.index', ['status' => [$value]]))
+            // Phase 14: a finished status (Cancelled) is listed in Ticket History, the others in My Tickets
+            $listRoute = TicketStatus::from($value)->isTerminal() ? 'tickets.history' : 'tickets.index';
+            $this->actingAs($admin)->get(route($listRoute, ['status' => [$value]]))
                 ->assertOk()->assertSee($ticket->ticket_no)->assertSee($class);
         }
 

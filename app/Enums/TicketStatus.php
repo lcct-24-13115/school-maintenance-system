@@ -114,6 +114,29 @@ enum TicketStatus: string
         ];
     }
 
+    /** @return list<self> The finished tickets (Ticket History). Same list isTerminal() uses. */
+    public static function terminalCases(): array
+    {
+        return [self::Closed, self::Disapproved, self::Cancelled];
+    }
+
+    /** @return list<string> */
+    public static function terminalValues(): array
+    {
+        return array_map(fn (self $s) => $s->value, self::terminalCases());
+    }
+
+    /** value => label for the finished statuses only (Ticket History filter). */
+    public static function terminalOptions(): array
+    {
+        $out = [];
+        foreach (self::terminalCases() as $case) {
+            $out[$case->value] = $case->label();
+        }
+
+        return $out;
+    }
+
     /** @return list<self> */
     public static function completedCases(): array
     {

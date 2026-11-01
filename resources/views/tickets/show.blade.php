@@ -22,7 +22,7 @@
     <div style="max-width:1000px">
 
         <p style="margin-bottom:16px">
-            <a href="{{ route('tickets.index') }}" class="btn btn-sm"><i class="fa-solid fa-arrow-left"></i> Back to tickets</a>
+            <a href="{{ $ticket->status->isTerminal() ? route('tickets.history') : route('tickets.index') }}" class="btn btn-sm"><i class="fa-solid fa-arrow-left"></i> {{ $ticket->status->isTerminal() ? 'Back to ticket history' : 'Back to tickets' }}</a>
         </p>
 
         @if (session('status'))

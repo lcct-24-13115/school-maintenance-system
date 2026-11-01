@@ -1,0 +1,37 @@
+PHASE 14 - Ticket History
+=========================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 14 history"
+  tar -xf "$env:USERPROFILE\Downloads\phase14-ticket-history-patch.zip" -C .
+  php artisan view:clear
+  php artisan route:clear
+  php artisan test --filter=TicketHistoryTest
+  php artisan test
+
+(Kung ayaw gumana ang tar: Right-click sa zip > "Extract All..." tapos kopyahin ang laman sa project folder
+at i-overwrite ang mga file. Kung may Windows PowerShell: Expand-Archive -Path "...zip" -DestinationPath . -Force)
+
+WALANG migration.
+
+Bago / ino-overwrite:
+  app/Enums/TicketStatus.php                       <- terminalCases/terminalValues/terminalOptions
+  app/Models/MaintenanceRequest.php                <- scopeActive(), scopeHistory()
+  app/Http/Controllers/TicketController.php        <- index() = active lang; history() = bago
+  app/Http/Controllers/DashboardController.php     <- "Closed" card -> history; "My tickets" = active lang
+  routes/web.php                                   <- /tickets/history (nasa itaas ng /tickets/{ticket})
+  resources/views/tickets/index.blade.php          <- tabs: My Tickets | Ticket History
+  resources/views/tickets/show.blade.php           <- "Back to ticket history" kapag tapos na ang ticket
+  resources/views/layouts/navigation.blade.php     <- "My Tickets" at "Ticket History" sa menu
+  docs/OPEN_QUESTIONS.md                           <- rows 47-48
+  tests/Feature/TicketHistoryTest.php              <- BAGO
+  APPLY-PHASE-14.txt
+
+Mga rule:
+  My Tickets      lahat maliban sa Closed / Cancelled / Disapproved (ang Work Completed ay nandito pa hanggang ma-close)
+  Ticket History  Closed / Cancelled / Disapproved, pinakabagong natapos muna, 15 bawat page
+  Filters         search, status, petsa (submitted), "Only tickets I filed"
+  Lumang link     /tickets?status[]=closed  ->  awtomatikong napupunta sa /tickets/history
+  Reopened        bumabalik sa My Tickets nang kusa
+
+Rollback: git checkout -- .   (at burahin ang tests/Feature/TicketHistoryTest.php)

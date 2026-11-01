@@ -10,6 +10,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\TicketActions;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -21,7 +22,19 @@ class TicketController extends Controller
 {
     private const PER_PAGE = 15;
 
-    public function index(Request $request): View
+    /** "My Tickets": the active tickets only. Closed / Cancelled / Disapproved are in history(). */
+    public function index(Request $request): View|RedirectResponse
+    {
+        return $this->listing($request, false);
+    }
+
+    /** Phase 14, "Ticket History": Closed / Cancelled / Disapproved, newest first. Same visibleTo() rule as the list. */
+    public function history(Request $request): View|RedirectResponse
+    {
+        return $this->listing($request, true);
+    }
+
+    private function listing(Request $request, bool $history): View|RedirectResponse
     {
         Gate::authorize('viewAny', MaintenanceRequest::class);
 
@@ -43,6 +56,16 @@ class TicketController extends Controller
             array_keys(TicketStatus::options())
         ));
 
+        // An old link such as /tickets?status[]=closed (bookmark, dashboard card) goes to the history page.
+        if (! $history && array_intersect($statuses, TicketStatus::terminalValues()) !== []) {
+            return redirect()->route('tickets.history', $request->query());
+        }
+
+        // Each page only knows its own statuses; the other ones in the URL are ignored.
+        $statusOptions = $history ? TicketStatus::terminalOptions()
+            : array_diff_key(TicketStatus::options(), TicketStatus::terminalOptions());
+        $statuses = array_values(array_intersect($statuses, array_keys($statusOptions)));
+
         $filters = [
             'q' => trim((string) $request->query('q')),
             'from' => $request->query('from'),
@@ -56,24 +79,37 @@ class TicketController extends Controller
             'mine' => $request->boolean('mine'),
         ];
 
+        if ($history) {
+            // History only has search, status, date and "mine". The rest cannot apply to a finished ticket.
+            $filters['category_id'] = $filters['department_id'] = $filters['assigned_to'] = null;
+            $filters['emergency'] = $filters['overdue'] = false;
+        }
+
         $user = $request->user();
 
         $query = MaintenanceRequest::query()
             ->visibleTo($user)   // never list what the user may not see
             ->with(['requester', 'department', 'category', 'assignee']);
 
+        $history ? $query->history() : $query->active();
+
         $this->applyFilters($query, $filters, $user);
 
-        $tickets = $query->queueOrder()->paginate(self::PER_PAGE)->withQueryString();
+        $tickets = ($history
+            ? $query->orderByDesc('updated_at')->orderByDesc('id')   // most recently finished first
+            : $query->queueOrder()
+        )->paginate(self::PER_PAGE)->withQueryString();
 
         return view('tickets.index', [
             'tickets' => $tickets,
+            'mode' => $history ? 'history' : 'active',
+            'listRoute' => $history ? 'tickets.history' : 'tickets.index',
             'filters' => $filters,
             'hasFilters' => $this->hasFilters($filters),
-            'statusOptions' => TicketStatus::options(),
-            'categories' => Category::orderBy('name')->get(['id', 'name']),
-            'departments' => Department::orderBy('name')->get(['id', 'name']),
-            'assignees' => User::query()->where('is_active', true)
+            'statusOptions' => $statusOptions,
+            'categories' => $history ? collect() : Category::orderBy('name')->get(['id', 'name']),
+            'departments' => $history ? collect() : Department::orderBy('name')->get(['id', 'name']),
+            'assignees' => $history ? collect() : User::query()->where('is_active', true)
                 ->whereHas('role', fn ($q) => $q->where('slug', Role::MAINTENANCE_ADMIN))
                 ->orderBy('name')->get(['id', 'name']),
         ]);

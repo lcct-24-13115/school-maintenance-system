@@ -33,10 +33,10 @@ class DashboardController extends Controller
         ];
 
         return $this->show('Requester Dashboard', [
-            'My tickets' => $this->card((clone $mine)->count(), $own()),
+            'My tickets' => $this->card((clone $mine)->active()->count(), $own()),   // Phase 14: active only; finished ones are in Ticket History
             'Waiting for authorization' => $this->card((clone $mine)->whereIn('status', $waiting)->count(), $own($waiting)),
             'In progress' => $this->card((clone $mine)->whereIn('status', $active)->count(), $own($active)),
-            'Closed' => $this->card((clone $mine)->where('status', TicketStatus::Closed->value)->count(), $own([TicketStatus::Closed->value])),
+            'Closed' => $this->card((clone $mine)->where('status', TicketStatus::Closed->value)->count(), route('tickets.history', ['mine' => 1, 'status' => [TicketStatus::Closed->value]])),
         ]);
     }
 
@@ -78,7 +78,7 @@ class DashboardController extends Controller
         return $this->show('School President Dashboard', [
             'Waiting for your approval' => $this->card($visible()->awaitingAuthorization()->count(), $user->canAuthorize() ? route('approvals.index') : route('tickets.index', ['status' => [$pending]])),
             'Authorized by you' => $this->card($visible()->whereNotNull('president_approved_at')->count()),
-            'Closed' => $this->card($visible()->where('status', $closed)->count(), route('tickets.index', ['status' => [$closed]])),
+            'Closed' => $this->card($visible()->where('status', $closed)->count(), route('tickets.history', ['status' => [$closed]])),
         ]);
     }
 

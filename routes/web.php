@@ -56,6 +56,8 @@ Route::middleware('auth')->group(function () {
 
     // ---- Ticket list + detail (TicketPolicy / visibleTo decide what each user sees; hidden = 404) ----
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
+    // Phase 14: finished tickets (Closed / Cancelled / Disapproved). MUST stay above /tickets/{ticket}.
+    Route::get('/tickets/history', [TicketController::class, 'history'])->name('tickets.history');
     // Alias of /repairs/create. MUST stay above /tickets/{ticket}, or "create" would be looked up as a ticket.
     Route::get('/tickets/create', [RepairRequestController::class, 'create'])->name('tickets.create');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
