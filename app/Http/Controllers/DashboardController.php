@@ -90,6 +90,13 @@ class DashboardController extends Controller
 
     private function show(string $title, array $cards): View
     {
-        return view('dashboards.role', compact('title', 'cards'));
+        // Phase 15: the hero's "Last update" = the latest change on a ticket this person may see
+        $lastUpdate = MaintenanceRequest::query()
+            ->visibleTo(request()->user())
+            ->orderByDesc('updated_at')
+            ->first(['updated_at'])
+            ?->updated_at;
+
+        return view('dashboards.role', compact('title', 'cards', 'lastUpdate'));
     }
 }

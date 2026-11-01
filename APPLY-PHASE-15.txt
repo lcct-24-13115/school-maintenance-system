@@ -1,0 +1,39 @@
+PHASE 15 - Dashboards: hero + live refresh
+==========================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before Phase 15 live refresh"
+  tar -xf "$env:USERPROFILE\Downloads\phase15-live-refresh-patch.zip" -C .
+  php artisan view:clear
+  php artisan route:clear
+  php artisan config:clear
+  php artisan test --filter=LiveRefreshTest
+  php artisan test
+
+WALANG migration. WALANG "npm run build": ang script ay nasa Blade partial (hindi sa alerts.js), kaya agad gumagana.
+
+Bago / ino-overwrite:
+  app/Services/LiveSignature.php                   <- BAGO: ang "fingerprint" ng nakikita ng user
+  app/Http/Controllers/LiveController.php          <- BAGO: GET /live  ->  {"sig": "..."}
+  resources/views/partials/live-refresh.blade.php  <- BAGO: ang JS (poll + reload + bantay sa pagta-type)
+  app/Http/Controllers/DashboardController.php     <- "Last update" para sa hero
+  resources/views/dashboards/role.blade.php        <- greeting "Hi <pangalan>, welcome back" + Last update box
+  resources/views/tickets/index.blade.php          <- live refresh (My Tickets at Ticket History)
+  resources/views/tickets/show.blade.php           <- live refresh ng isang ticket
+  routes/web.php                                   <- /live
+  config/school.php, .env.example                  <- live_refresh_seconds (LIVE_REFRESH_SECONDS)
+  docs/OPEN_QUESTIONS.md                           <- rows 49-52
+  tests/Feature/LiveRefreshTest.php                <- BAGO
+
+PAANO SUBUKAN SA BROWSER
+  1. Buksan ang dashboard/My Tickets bilang Maintenance Admin sa isang browser, at bilang Requester sa isa pa (incognito).
+  2. Mag-file ng bagong ticket bilang requester. Sa loob ng ~8 segundo, mag-re-refresh ang bukas na pahina ng admin.
+  3. Sa pahina ng admin, mag-click sa search box at mag-type ng kahit ano, tapos mag-file ulit ng ticket sa kabila:
+     HINDI mag-re-refresh. May lalabas na "This page has new updates. Tap to refresh." sa ibaba.
+
+PAGBABAGO NG BILIS / PAGPATAY
+  .env:  LIVE_REFRESH_SECONDS=8   (0 = patay)   tapos  php artisan config:clear
+
+Hindi kasama: ang maintenance board (may sarili na itong refresh), ang Approvals inbox, at mga admin page.
+
+Rollback: git checkout -- .   (burahin ang 3 bagong file kung gusto)

@@ -14,6 +14,10 @@ return [
     // How often (seconds) every open page checks for new alerts. Works without WebSockets.
     'poll_seconds' => 5,
 
+    // Phase 15: how often (seconds) an open dashboard / ticket list / ticket page asks "anything new?" and reloads
+    // itself when there is (never while someone is typing in a form). 0 turns the auto-refresh off.
+    'live_refresh_seconds' => (int) env('LIVE_REFRESH_SECONDS', 8),
+
     // Public self-registration at /register (always creates a Requester). Set false to turn it off.
     // CONFIRM WITH CLIENT: should the school allow anyone to self-register in production?
     // Phase 2: the controller now really reads this switch. Default is CLOSED (registration was already closed by

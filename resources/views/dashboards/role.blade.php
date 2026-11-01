@@ -29,7 +29,7 @@
         <div class="hero-in">
             <div class="hero-txt">
                 <span class="hero-eye">{{ $title }}</span>
-                <h2>Welcome, {{ $user->name }}</h2>
+                <h2>Hi {{ \Illuminate\Support\Str::of($user->name)->before(' ') }}, welcome back</h2>
                 <p>Signed in as <b>{{ $user->role->name }}</b>. Open a number below to see the tickets behind it.</p>
                 <div class="hero-act">
                     @if ($canFile)
@@ -37,6 +37,13 @@
                     @endif
                     <a href="{{ route('tickets.index') }}" class="btn"><i class="fa-solid fa-list-check"></i> View tickets</a>
                 </div>
+            </div>
+
+            {{-- Phase 15: when a ticket you can see last changed (the page reloads itself when something new happens) --}}
+            <div class="hero-last">
+                <span class="hl-k"><i class="fa-regular fa-clock"></i> Last update</span>
+                <b>{{ $lastUpdate ? $lastUpdate->format('M j, Y g:i A') : '—' }}</b>
+                <small>{{ $lastUpdate ? $lastUpdate->diffForHumans() : 'No tickets yet' }}</small>
             </div>
         </div>
     </section>
@@ -69,4 +76,8 @@
             @endforeach
         </div>
     @endif
+
+    @push('scripts')
+        @include('partials.live-refresh')
+    @endpush
 </x-app-layout>

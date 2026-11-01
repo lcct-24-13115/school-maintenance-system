@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LiveController;
 use App\Http\Controllers\MaintenanceBoardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
@@ -43,6 +44,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/president/dashboard', [DashboardController::class, 'president'])
         ->middleware(CheckRole::class.':'.Role::PRESIDENT)->name('president.dashboard');
+
+    // ---- Phase 15: "has anything changed?" for the auto-refresh of dashboards, ticket lists and the ticket page ----
+    Route::get('/live', LiveController::class)->middleware('throttle:120,1')->name('live');
 
     // ---- Notifications (bell, pop-up + chime polling) ----
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');

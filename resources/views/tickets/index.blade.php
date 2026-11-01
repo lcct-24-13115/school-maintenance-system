@@ -194,4 +194,8 @@
             </nav>
         @endif
     @endif
+
+    @push('scripts')
+        @include('partials.live-refresh')
+    @endpush
 </x-app-layout>

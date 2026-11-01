@@ -210,4 +210,8 @@
             </div>
         </section>
     </div>
+
+    @push('scripts')
+        @include('partials.live-refresh', ['liveTicket' => $ticket])
+    @endpush
 </x-app-layout>
