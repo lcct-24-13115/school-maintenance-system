@@ -70,6 +70,7 @@
                     <table>
                         <thead>
                             <tr>
+                                <th style="width:34px"><input type="checkbox" aria-label="Select all" onclick="document.querySelectorAll('.bulk-cb').forEach(function (c) { c.checked = this.checked }, this)"></th>
                                 <th>Schedule</th>
                                 <th>Where</th>
                                 <th>Repeats</th>
@@ -83,6 +84,7 @@
                             @foreach ($schedules as $s)
                                 @php $confirm = "Delete the PM schedule \"{$s->title}\"? This cannot be undone."; @endphp
                                 <tr @if (! $s->is_active) style="opacity:.62" @endif>
+                                    <td data-label="Select"><input type="checkbox" class="bulk-cb" name="ids[]" value="{{ $s->id }}" form="bulk-form" aria-label="Select {{ $s->title }}"></td>
                                     <td data-label="Schedule" style="word-break:break-word">
                                         <b>{{ $s->title }}</b>
                                         @if ($s->ticket_priority === 'emergency')<span class="badge nocap ab-fail" style="margin-left:6px">Emergency</span>@endif
@@ -110,6 +112,11 @@
                                             @csrf
                                             <button class="btn btn-sm" title="Make the ticket for the next due date now" @disabled(! $s->is_active || ! $s->next_due_date)><i class="fa-solid fa-ticket"></i> Ticket now</button>
                                         </form>
+                                        <a class="btn btn-sm" href="{{ route('admin.pm-schedules.history', $s) }}" title="Who changed this schedule"><i class="fa-solid fa-clock-rotate-left"></i> History</a>
+                                        <form method="POST" action="{{ route('admin.pm-schedules.duplicate', $s) }}" style="display:inline">
+                                            @csrf
+                                            <button class="btn btn-sm" title="Duplicate" aria-label="Duplicate"><i class="fa-regular fa-copy"></i></button>
+                                        </form>
                                         <a class="btn btn-sm" href="{{ route('admin.pm-schedules.edit', $s) }}"><i class="fa-solid fa-pen"></i> Edit</a>
                                         <form method="POST" action="{{ route('admin.pm-schedules.toggle', $s) }}" style="display:inline">
                                             @csrf
@@ -132,6 +139,14 @@
                 </div>
             @endif
         </div>
+
+        <form id="bulk-form" method="POST" action="{{ route('admin.pm-schedules.bulk') }}" class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            @csrf
+            <span style="font-size:13.5px;color:var(--text-2)">Ticked schedules:</span>
+            <button type="submit" name="action" value="pause" class="btn btn-sm"><i class="fa-solid fa-pause"></i> Pause</button>
+            <button type="submit" name="action" value="resume" class="btn btn-sm"><i class="fa-solid fa-play"></i> Resume</button>
+            @error('ids')<span style="color:var(--red);font-weight:700;font-size:13px">{{ $message }}</span>@enderror
+        </form>
 
         @include('admin.pm-schedules._runs')
 
