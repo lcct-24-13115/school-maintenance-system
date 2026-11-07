@@ -110,6 +110,21 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->is_active && $this->hasRole(...(array) config('school.workflow.authorizers', []));
     }
 
+    /**
+     * PM Scheduler (E2): may this user LOOK at PM schedules, equipment, their history and the maintenance calendar?
+     * manage_pm_schedules includes it. Changing anything still needs manage_pm_schedules.
+     */
+    public function canViewPm(): bool
+    {
+        return $this->can_do('manage_pm_schedules') || $this->can_do('view_pm_schedules');
+    }
+
+    /** PM Scheduler (E3): may this user open the PM compliance report? manage_pm_schedules includes it. */
+    public function canViewPmReports(): bool
+    {
+        return $this->can_do('manage_pm_schedules') || $this->can_do('view_pm_reports');
+    }
+
     /** Route name of this user's dashboard (used after login). */
     public function dashboardRoute(): string
     {

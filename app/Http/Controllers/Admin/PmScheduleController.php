@@ -23,7 +23,7 @@ class PmScheduleController extends Controller
 {
     public function index(Request $request): View
     {
-        $this->authorizeManage($request);
+        $this->authorizeView($request);
 
         $filters = [
             'q' => trim((string) $request->query('q', '')),
@@ -264,6 +264,12 @@ class PmScheduleController extends Controller
         foreach ($items as $i => $label) {
             $schedule->checklistItems()->create(['label' => $label, 'sort_order' => $i]);
         }
+    }
+
+    /** Read-only pages (list): view_pm_schedules or manage_pm_schedules. Everything that changes data uses authorizeManage(). */
+    private function authorizeView(Request $request): void
+    {
+        abort_unless($request->user()?->canViewPm(), 403, 'You do not have access to this page.');
     }
 
     private function authorizeManage(Request $request): void
