@@ -5,7 +5,7 @@
         <h2 class="page-title">Notifications</h2>
     </x-slot>
 
-    <div class="content p6-narrow">
+    <div class="content">
         <div class="p6-bar" style="margin:0 0 18px">
             <p class="p6-note" style="margin:0">
                 @php
