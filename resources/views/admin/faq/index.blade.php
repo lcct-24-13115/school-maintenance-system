@@ -1,6 +1,6 @@
 @php
     $roleName = fn (string $slug) => $roleLabels[$slug] ?? \Illuminate\Support\Str::headline($slug);
-    $filtered = $filters['topic'] !== '' || $filters['status'] !== '' || $filters['q'] !== '';
+    $filtered = $filters['topic'] !== '' || $filters['status'] !== '' || $filters['public'] !== '' || $filters['q'] !== '';
 @endphp
 
 <x-app-layout>
@@ -50,6 +50,14 @@
                         <option value="">Published and hidden</option>
                         <option value="published" @selected($filters['status'] === 'published')>Published only</option>
                         <option value="hidden" @selected($filters['status'] === 'hidden')>Hidden only</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label for="f-public">Before sign-in</label>
+                    <select id="f-public" name="public">
+                        <option value="">Any</option>
+                        <option value="yes" @selected($filters['public'] === 'yes')>Public (shown on the login page)</option>
                     </select>
                 </div>
 

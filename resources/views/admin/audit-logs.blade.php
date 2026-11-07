@@ -1,10 +1,16 @@
 @php
+    $label = fn (string $action) => str_replace('Faq', 'FAQ', \Illuminate\Support\Str::headline($action));
     $badge = fn (string $action) => match (true) {
         $action === 'login_failed' => 'ab-fail',
         in_array($action, ['login', 'logout', 'registered', 'password_reset'], true) => 'ab-auth',
         str_starts_with($action, 'user_') || $action === 'role_changed' => 'ab-user',
         str_starts_with($action, 'ticket_') => 'ab-ticket',
         str_starts_with($action, 'attachment_') => 'ab-file',
+        $action === 'faq_deleted' => 'ab-fail',
+        $action === 'faq_hidden' => 'ab-file',
+        $action === 'faq_updated' => 'ab-ticket',
+        $action === 'faq_reordered' => 'ab-auth',
+        str_starts_with($action, 'faq_') => 'ab-ok',
         default => 'ab-ok',
     };
 @endphp
@@ -19,7 +25,7 @@
     <div class="content p6-wrap">
 
         <p class="p6-note">
-            A read-only record of sign-ins, account changes, settings changes and ticket activity.
+            A read-only record of sign-ins, account changes, settings changes, FAQ changes and ticket activity.
             Ticket notes and reasons are not copied here; they stay on the ticket history.
         </p>
 
@@ -40,7 +46,7 @@
                     <select id="f-action" name="action">
                         <option value="">All actions</option>
                         @foreach ($actions as $a)
-                            <option value="{{ $a }}" @selected(($filters['action'] ?? '') === $a)>{{ \Illuminate\Support\Str::headline($a) }}</option>
+                            <option value="{{ $a }}" @selected(($filters['action'] ?? '') === $a)>{{ $label($a) }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -93,7 +99,7 @@
                                     @endif
                                 </td>
                                 <td data-label="Action">
-                                    <span class="badge nocap {{ $badge($log->action) }}">{{ \Illuminate\Support\Str::headline($log->action) }}</span>
+                                    <span class="badge nocap {{ $badge($log->action) }}">{{ $label($log->action) }}</span>
                                 </td>
                                 <td data-label="Description" class="p6-desc">
                                     @if (isset($ticketLinks[$log->id]))

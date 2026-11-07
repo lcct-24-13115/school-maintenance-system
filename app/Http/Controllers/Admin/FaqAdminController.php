@@ -30,6 +30,7 @@ class FaqAdminController extends Controller
         $filters = $request->validate([
             'topic' => ['nullable', 'string', 'max:60'],
             'status' => ['nullable', Rule::in(['published', 'hidden'])],
+            'public' => ['nullable', Rule::in(['yes'])],
             'q' => ['nullable', 'string', 'max:100'],
         ]);
 
@@ -39,6 +40,7 @@ class FaqAdminController extends Controller
             ->when($filters['topic'] ?? null, fn ($w, $topic) => $w->where('topic', $topic))
             ->when(($filters['status'] ?? null) === 'published', fn ($w) => $w->where('is_published', true))
             ->when(($filters['status'] ?? null) === 'hidden', fn ($w) => $w->where('is_published', false))
+            ->when(($filters['public'] ?? null) === 'yes', fn ($w) => $w->where('is_public', true))
             ->when($q !== '', function ($w) use ($q) {
                 $like = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($q)).'%';
                 $w->where(function ($x) use ($like) {
@@ -55,7 +57,7 @@ class FaqAdminController extends Controller
         return view('admin.faq.index', [
             'faqs' => $faqs,
             'total' => $total,
-            'filters' => ['topic' => $filters['topic'] ?? '', 'status' => $filters['status'] ?? '', 'q' => $q],
+            'filters' => ['topic' => $filters['topic'] ?? '', 'status' => $filters['status'] ?? '', 'public' => $filters['public'] ?? '', 'q' => $q],
             'topics' => $this->topics(),
             'roleLabels' => $this->roleLabels(),
             // the neighbours inside the same topic decide which arrow buttons are disabled (whole topic, not the filtered page)

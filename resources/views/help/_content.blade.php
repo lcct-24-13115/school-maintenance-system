@@ -19,6 +19,11 @@
         <p class="help-intro">Answers for everyone. <a href="{{ route('login') }}">Sign in</a> to see the answers made for your role.</p>
     @else
         <p class="help-intro">Quick answers about sending and following repair requests. Pick a topic or type a few words.</p>
+        @if (auth()->user()?->canManageFaq())
+            <p class="help-manage" style="margin:0 0 14px">
+                <a class="btn btn-primary btn-sm" href="{{ route('admin.faq.index') }}"><i class="fa-solid fa-pen-to-square"></i> Manage FAQ</a>
+            </p>
+        @endif
     @endif
 
     {{-- Works without JavaScript: a plain GET form. The instant filter (Phase 2E) only adds to it. --}}
