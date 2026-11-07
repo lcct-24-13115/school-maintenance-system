@@ -82,7 +82,11 @@ class PmScheduleController extends Controller
             return back()->withInput()->withErrors($errors);
         }
 
+        $items = $this->checklistLines($data);
+        unset($data['checklist']);
+
         $schedule = PmSchedule::create($data + ['created_by' => $request->user()->id]);
+        $this->syncChecklist($schedule, $items);
 
         AuditLogger::log(
             AuditLogger::PM_SCHEDULE_CHANGED,
@@ -112,9 +116,15 @@ class PmScheduleController extends Controller
             return back()->withInput()->withErrors($errors);
         }
 
+        // read the checklist first: it is not a column of the schedule
+        $items = $this->checklistLines($data);
+        unset($data['checklist']);
+
         $pmSchedule->fill($data);
         $changed = array_keys($pmSchedule->getDirty());
         $pmSchedule->save();
+
+        $this->syncChecklist($pmSchedule, $items);
 
         if ($changed !== []) {
             AuditLogger::log(
@@ -181,6 +191,8 @@ class PmScheduleController extends Controller
             'start_date' => ['required', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'lead_time_days' => ['required', 'integer', 'min:0', 'max:365'],
+            'schedule_basis' => ['nullable', Rule::in(array_keys(PmSchedule::basisLabels()))],
+            'checklist' => ['nullable', 'string', 'max:6000'],
         ], [
             'title.required' => 'Type a title, for example "Aircon Cleaning".',
             'facility_id.required' => 'Choose the facility.',
@@ -190,6 +202,10 @@ class PmScheduleController extends Controller
         ]);
 
         $data['title'] = trim($data['title']);
+
+        if (blank($data['schedule_basis'] ?? null)) {
+            unset($data['schedule_basis']);   // not sent: keep what is saved (new schedules get "fixed" from the database)
+        }
         $data['is_active'] = $request->boolean('is_active');
 
         return $data;
@@ -222,6 +238,32 @@ class PmScheduleController extends Controller
             'frequencies' => PmSchedule::frequencyLabels(),
             'priorities' => PmSchedule::priorityLabels(),
         ];
+    }
+
+    /** @return list<string> one task per line; blank lines, "- " / bullet marks and repeats are dropped; at most 30 */
+    private function checklistLines(array $data): array
+    {
+        $items = [];
+
+        foreach (preg_split('/\R/', (string) ($data['checklist'] ?? '')) ?: [] as $line) {
+            $line = trim((string) preg_replace('/^[\s\-\*\x{2022}]+/u', '', $line));
+
+            if ($line !== '') {
+                $items[] = mb_substr($line, 0, 200);
+            }
+        }
+
+        return array_slice(array_values(array_unique($items)), 0, 30);
+    }
+
+    /** Replace the template. Tickets that were already made keep their own copy. */
+    private function syncChecklist(PmSchedule $schedule, array $items): void
+    {
+        $schedule->checklistItems()->delete();
+
+        foreach ($items as $i => $label) {
+            $schedule->checklistItems()->create(['label' => $label, 'sort_order' => $i]);
+        }
     }
 
     private function authorizeManage(Request $request): void

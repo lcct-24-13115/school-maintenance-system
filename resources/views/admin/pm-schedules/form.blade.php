@@ -145,6 +145,25 @@
                 </label>
             </div>
 
+            <div class="row2">
+                <div class="field">
+                    <label for="schedule_basis">Next due date is based on</label>
+                    <select id="schedule_basis" name="schedule_basis">
+                        @foreach ($schedule::basisLabels() as $value => $label)
+                            <option value="{{ $value }}" @selected(old('schedule_basis', $schedule->schedule_basis ?? 'fixed') === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <div class="hint">Fixed keeps the original rhythm (every 1st of the month). Floating counts from the day the ticket is closed. It takes effect when PM tickets are closed (next phase).</div>
+                    @error('schedule_basis')<div class="field-err">{{ $message }}</div>@enderror
+                </div>
+            </div>
+
+            <div class="field">
+                <label for="checklist">Checklist <span class="hint" style="display:inline">(optional, one task per line, copied into every ticket)</span></label>
+                <textarea id="checklist" name="checklist" rows="6" maxlength="6000" placeholder="Clean the filter&#10;Check the refrigerant&#10;Test the thermostat">{{ old('checklist', $schedule->exists ? $schedule->checklistItems->pluck('label')->implode("\n") : '') }}</textarea>
+                @error('checklist')<div class="field-err">{{ $message }}</div>@enderror
+            </div>
+
             <div class="p6-save">
                 <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> {{ $isNew ? 'Create schedule' : 'Save changes' }}</button>
                 <a href="{{ route('admin.pm-schedules.index') }}" class="btn">Cancel</a>

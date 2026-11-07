@@ -32,9 +32,13 @@ class PmSchedule extends Model
 
     public const PRIORITY_EMERGENCY = 'emergency';
 
+    public const BASIS_FIXED = 'fixed';
+
+    public const BASIS_FLOATING = 'floating';
+
     protected $fillable = [
         'title', 'description', 'facility_id', 'equipment_id', 'category_id', 'ticket_priority', 'assigned_to',
-        'frequency_type', 'frequency_interval', 'start_date', 'end_date', 'next_due_date', 'lead_time_days',
+        'frequency_type', 'frequency_interval', 'start_date', 'end_date', 'next_due_date', 'lead_time_days', 'schedule_basis',
         'is_active', 'created_by',
     ];
 
@@ -127,6 +131,26 @@ class PmSchedule extends Model
         $count = $n * $times;
 
         return $count === 1 ? "Every {$unit}" : "Every {$count} {$unit}s";
+    }
+
+    /** The checklist template: copied into every ticket this schedule makes. */
+    public function checklistItems(): HasMany
+    {
+        return $this->hasMany(PmChecklistItem::class, 'pm_schedule_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function isFloating(): bool
+    {
+        return $this->schedule_basis === self::BASIS_FLOATING;
+    }
+
+    /** @return array<string, string> */
+    public static function basisLabels(): array
+    {
+        return [
+            self::BASIS_FIXED => 'The original schedule (fixed)',
+            self::BASIS_FLOATING => 'The day the work is actually completed (floating)',
+        ];
     }
 
     public function facility(): BelongsTo

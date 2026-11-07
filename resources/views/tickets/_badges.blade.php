@@ -14,6 +14,9 @@
     $dueSpan = $showDue ? $ticket->due_at->diffForHumans(null, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2) : '';
 @endphp
 <span class="badge {{ $ticket->status->badgeClass() }}">{{ $ticket->status->label() }}</span>
+@if ($ticket->isPmGenerated())
+    <span class="badge" style="background:#0f766e;border-color:#0f766e;color:#fff;font-weight:800"><i class="fa-solid fa-calendar-check"></i> Preventive Maintenance</span>
+@endif
 @if ($ticket->is_emergency)
     <span class="badge" style="background:var(--red);border-color:var(--red);color:#fff;font-weight:800"><i class="fa-solid fa-triangle-exclamation"></i> Emergency</span>
 @endif

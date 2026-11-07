@@ -249,6 +249,8 @@ class PmTicketGenerator
             ['pm_schedule_id' => $s->id, 'pm_due_date' => $due],
         );
 
+        self::copyChecklist($s, $ticket);
+
         if ($emergency) {
             $ticket->logEvent(RequestStatusLog::ACTION_EMERGENCY, null, $ticket->emergency_reason, meta: ['flagged' => true]);
         }
@@ -263,6 +265,14 @@ class PmTicketGenerator
         }
 
         return $ticket;
+    }
+
+    /** Copy the schedule's checklist template onto the new ticket. */
+    private static function copyChecklist(PmSchedule $s, MaintenanceRequest $ticket): void
+    {
+        foreach ($s->checklistItems as $i => $item) {
+            $ticket->pmChecklist()->create(['label' => $item->label, 'sort_order' => $i]);
+        }
     }
 
     /** Who files the ticket: the schedule's creator, its assignee, or the first active maintenance admin. */
