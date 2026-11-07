@@ -39,7 +39,27 @@
         @endif
 
         <form method="GET" action="{{ route('reports.index') }}" class="card">
-            <div class="p6-grid p6-filters">
+            @php
+            $today = now()->toDateString();
+            $presets = [
+                '1 week'   => [now()->subDays(6)->toDateString(), $today],
+                '1 month'  => [now()->subMonthNoOverflow()->addDay()->toDateString(), $today],
+                '3 months' => [now()->subMonthsNoOverflow(3)->addDay()->toDateString(), $today],
+                '6 months' => [now()->subMonthsNoOverflow(6)->addDay()->toDateString(), $today],
+                '1 year'   => [now()->subYearNoOverflow()->addDay()->toDateString(), $today],
+            ];
+        @endphp
+        <div class="p6-bar" style="margin-top:0;margin-bottom:14px">
+            <span style="font-size:12.5px;font-weight:700;color:var(--text-3)">Quick range:</span>
+            @foreach ($presets as $label => [$pFrom, $pTo])
+                <a href="{{ route('reports.index', ['from' => $pFrom, 'to' => $pTo]) }}"
+                   class="btn btn-sm {{ ($filters['from'] === $pFrom && $filters['to'] === $pTo) ? 'btn-primary' : '' }}">{{ $label }}</a>
+            @endforeach
+            <a href="{{ route('reports.index') }}"
+               class="btn btn-sm {{ (! $filters['from'] && ! $filters['to']) ? 'btn-primary' : '' }}">All time</a>
+        </div>
+
+        <div class="p6-grid p6-filters">
                 <div class="field">
                     <label for="from">From (submitted)</label>
                     <input id="from" type="date" name="from" value="{{ $filters['from'] }}">
