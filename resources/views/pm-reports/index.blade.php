@@ -106,7 +106,7 @@
                 <section class="card" style="padding:0">
                     <div style="padding:16px 18px 6px">
                         <h3 class="p6-card-t" style="margin:0">Overdue now ({{ $overdueTotal }})</h3>
-                        <p class="p6-note" style="margin:6px 0 0">Longest overdue first@if ($overdueTotal > count($overdue)). Showing {{ count($overdue) }} of {{ $overdueTotal }}. The CSV has all of them.@endif</p>
+                        <p class="p6-note" style="margin:6px 0 0">Longest overdue first{{ $overdueTotal > count($overdue) ? '. Showing '.count($overdue).' of '.$overdueTotal.'. The CSV has all of them.' : '' }}</p>
                     </div>
                     <div class="table-wrap">
                         <table>
@@ -165,7 +165,7 @@
             <section class="card" style="padding:0">
                 <div style="padding:16px 18px 6px">
                     <h3 class="p6-card-t" style="margin:0">PM tickets</h3>
-                    <p class="p6-note" style="margin:6px 0 0">Latest due date first@if ($rowsTotal > count($rows)). Showing {{ count($rows) }} of {{ $rowsTotal }}. The CSV has all of them.@endif</p>
+                    <p class="p6-note" style="margin:6px 0 0">Latest due date first{{ $rowsTotal > count($rows) ? '. Showing '.count($rows).' of '.$rowsTotal.'. The CSV has all of them.' : '' }}</p>
                 </div>
                 <div class="table-wrap">
                     <table>

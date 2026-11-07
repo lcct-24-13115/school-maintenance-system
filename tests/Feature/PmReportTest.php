@@ -71,6 +71,9 @@ class PmReportTest extends TestCase
         [, $ticket] = PmTicketGenerator::generate($schedule, '2026-11-08', true);
         $this->assertNotNull($ticket, "the ticket for {$title} was not made");
 
+        // The generator rolls a past start date forward to the next occurrence, so pin the due date back.
+        DB::table('requests')->where('id', $ticket->id)->update(['pm_due_date' => $due]);
+
         $this->setState($ticket, $state);
 
         return $ticket->fresh();
