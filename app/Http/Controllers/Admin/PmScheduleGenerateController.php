@@ -33,6 +33,10 @@ class PmScheduleGenerateController extends Controller
             return back()->with('error', 'The ticket could not be made: '.$e->getMessage());
         }
 
+        if ($outcome === 'created') {
+            \App\Services\PmNotifier::newTickets();   // never throws
+        }
+
         $errors = $outcome === 'no_requester' ? ["{$pmSchedule->title}: there is no active maintenance staff to file the ticket."] : [];
         PmTicketGenerator::logRun('manual', $request->user(), 1, $outcome === 'created' ? 1 : 0, $outcome === 'created' ? 0 : 1, $errors);
 

@@ -19,12 +19,26 @@ class UserSeeder extends Seeder
             [Role::FINANCE, 'Finance', 'finance@lcctanauan.edu.ph', 'FIN'],
         ];
 
+        // Retired roles: seeded only under phpunit, because the older tests still use them.
+        if (app()->environment('testing')) {
+            $accounts = array_merge($accounts, [
+                [Role::REQUESTER, 'Test Requester', 'requester@lcctanauan.edu.ph', 'FIRST'],
+                [Role::DEPARTMENT_HEAD, 'Test Dept Head', 'depthead@lcctanauan.edu.ph', 'FIRST'],
+                [Role::TREASURER, 'Test Treasurer', 'treasurer@lcctanauan.edu.ph', 'FIN'],
+                [Role::PRESIDENT, 'Test President', 'president@lcctanauan.edu.ph', null],
+            ]);
+        }
+
         foreach ($accounts as [$slug, $name, $email, $deptCode]) {
             User::updateOrCreate(['email' => $email], [
                 'name' => $name,
                 'password' => Hash::make('password'),
                 'role_id' => Role::where('slug', $slug)->firstOrFail()->id,
-                'department_id' => $deptCode ? Department::where('code', $deptCode)->value('id') : null,
+                'department_id' => match (true) {
+                    $deptCode === 'FIRST' => Department::query()->orderBy('id')->value('id'),
+                    (bool) $deptCode => Department::where('code', $deptCode)->value('id'),
+                    default => null,
+                },
                 'email_verified_at' => now(),
             ]);
         }

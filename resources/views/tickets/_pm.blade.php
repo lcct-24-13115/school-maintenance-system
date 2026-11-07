@@ -19,6 +19,12 @@
             <div class="alert err" role="alert"><i class="fa-solid fa-circle-exclamation"></i><div>{{ session('pm_error') }}</div></div>
         @endif
 
+        @if ($ticket->pm_escalated_at && $ticket->status->isPending())
+            <div class="alert err" role="alert"><i class="fa-solid fa-triangle-exclamation"></i><div>PM is overdue and was escalated to the supervisor on {{ $ticket->pm_escalated_at->timezone(config('app.timezone'))->format('M j, Y') }}.</div></div>
+        @elseif ($ticket->pm_overdue_at && $ticket->status->isPending())
+            <div class="alert err" role="alert"><i class="fa-solid fa-bell"></i><div>PM is overdue since {{ $ticket->pm_due_date?->format('M j, Y') }}.</div></div>
+        @endif
+
         <div class="kv">
             <div>
                 <div class="k">Schedule</div>

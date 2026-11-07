@@ -16,6 +16,15 @@ class RoleSeeder extends Seeder
             [Role::CUSTODIAN, 'Property Custodian', 'Inventory, property tags and clearance'],
         ];
 
+        // Retired roles: seeded only under phpunit, because the older tests still use them.
+        if (app()->environment('testing')) {
+            $roles = array_merge($roles, [
+                [Role::DEPARTMENT_HEAD, 'Department Head / OIC', 'Approves requests for the department'],
+                [Role::TREASURER, 'Treasurer', 'Budget approval'],
+                [Role::PRESIDENT, 'School President', 'Final approval'],
+            ]);
+        }
+
         foreach ($roles as [$slug, $name, $description]) {
             Role::updateOrCreate(['slug' => $slug], ['name' => $name, 'description' => $description]);
         }

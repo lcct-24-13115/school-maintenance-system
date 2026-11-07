@@ -17,6 +17,9 @@
 @if ($ticket->isPmGenerated())
     <span class="badge" style="background:#0f766e;border-color:#0f766e;color:#fff;font-weight:800"><i class="fa-solid fa-calendar-check"></i> Preventive Maintenance</span>
 @endif
+@if ($ticket->pm_escalated_at && $ticket->status->isPending())
+    <span class="badge pr-urgent" title="Overdue PM: the supervisor was told"><i class="fa-solid fa-arrow-up-right-dots"></i> Escalated to supervisor</span>
+@endif
 @if ($ticket->is_emergency)
     <span class="badge" style="background:var(--red);border-color:var(--red);color:#fff;font-weight:800"><i class="fa-solid fa-triangle-exclamation"></i> Emergency</span>
 @endif
