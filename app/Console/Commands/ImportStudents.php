@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Console\Command;
@@ -22,9 +21,6 @@ class ImportStudents extends Command
 
     protected $description = 'Import students from BED / College CSV files as Student accounts';
 
-    /** BED section code => department code (see DepartmentSeeder). */
-    private const BED_DEPARTMENTS = ['KS' => 'ELEM', 'LS' => 'ELEM', 'MS' => 'HS', 'JHS' => 'HS', 'SHS' => 'SHS'];
-
     public function handle(): int
     {
         // Lower bcrypt cost keeps a ~2,000 row import fast; students must change this password at first sign-in anyway.
@@ -32,10 +28,9 @@ class ImportStudents extends Command
 
         $roleId = Role::where('slug', Role::REQUESTER)->value('id');
         $domain = config('school.registration.email_domain') ?: 'lcctanauan.edu.ph';
-        $departments = Department::pluck('id', 'code');
 
-        if (! $roleId || $departments->isEmpty()) {
-            $this->error('Run "php artisan db:seed" first (roles and departments are missing).');
+        if (! $roleId) {
+            $this->error('Run "php artisan db:seed" first (roles are missing).');
 
             return self::FAILURE;
         }
@@ -67,10 +62,6 @@ class ImportStudents extends Command
                 }
                 $seen[$studnum] = true;
 
-                $deptCode = isset($r['subjsect'])
-                    ? (self::BED_DEPARTMENTS[strtoupper($r['degree'] ?? '')] ?? 'ELEM')
-                    : 'COLLEGE';
-
                 $mi = ($r['mi'] ?? '') !== '' ? ' '.mb_strtoupper(mb_substr($r['mi'], 0, 1)).'.' : '';
                 $name = mb_convert_case(($r['fname'] ?? '').$mi.' '.($r['lname'] ?? ''), MB_CASE_TITLE, 'UTF-8');
                 $name = preg_replace('/\s+/', ' ', trim($name));
@@ -78,7 +69,7 @@ class ImportStudents extends Command
                 $user = User::where('email', "{$studnum}@{$domain}")->first();
 
                 if ($user) {
-                    $user->update(['name' => $name, 'employee_no' => $studnum, 'department_id' => $departments[$deptCode] ?? null]);
+                    $user->update(['name' => $name, 'employee_no' => $studnum]);
                     $updated++;
 
                     continue;
@@ -86,7 +77,6 @@ class ImportStudents extends Command
 
                 $user = new User([
                     'role_id' => $roleId,
-                    'department_id' => $departments[$deptCode] ?? null,
                     'employee_no' => $studnum,
                     'name' => $name,
                     'email' => "{$studnum}@{$domain}",

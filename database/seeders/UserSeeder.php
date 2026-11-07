@@ -14,8 +14,8 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $accounts = [
-            [Role::MAINTENANCE_ADMIN, 'Head of Maintenance', 'maintenance@lcctanauan.edu.ph', 'MNT'],
-            [Role::CUSTODIAN, 'Property Custodian', 'custodian@lcctanauan.edu.ph', 'ADMIN'],
+            [Role::MAINTENANCE_ADMIN, 'Head of Maintenance', 'maintenance@lcctanauan.edu.ph', null],
+            [Role::CUSTODIAN, 'Property Custodian', 'custodian@lcctanauan.edu.ph', null],
             [Role::FINANCE, 'Finance / Bookkeeper', 'finance@lcctanauan.edu.ph', 'FIN'],
         ];
 
@@ -24,7 +24,7 @@ class UserSeeder extends Seeder
                 'name' => $name,
                 'password' => Hash::make('password'),
                 'role_id' => Role::where('slug', $slug)->firstOrFail()->id,
-                'department_id' => Department::where('code', $deptCode)->value('id'),
+                'department_id' => $deptCode ? Department::where('code', $deptCode)->value('id') : null,
                 'email_verified_at' => now(),
             ]);
         }

@@ -5,19 +5,23 @@ namespace Database\Seeders;
 use App\Models\Department;
 use Illuminate\Database\Seeder;
 
-// Placeholder departments: edit the names to match your school.
+// The 11 offices a request can come from.
 class DepartmentSeeder extends Seeder
 {
     public function run(): void
     {
         $departments = [
-            'ELEM' => 'Elementary Department',
-            'HS' => 'High School Department',
-            'SHS' => 'Senior High School Department',
-            'COLLEGE' => 'College Department',
-            'ADMIN' => 'Administration',
-            'FIN' => 'Finance Office',
-            'MNT' => 'Maintenance Office',
+            'ITDC' => 'ITDC',
+            'DSA' => 'Discipline Office/Student Affairs',
+            'GUID' => 'Guidance',
+            'FIN' => 'Finance',
+            'REG' => 'Registrar',
+            'ACAD' => 'Academic',
+            'LIB' => 'Library',
+            'AEA' => 'Alumni/External Affairs',
+            'ADMS' => 'Admission and Scholarship',
+            'HR' => 'HR',
+            'MKT' => 'Marketing',
         ];
 
         foreach ($departments as $code => $name) {

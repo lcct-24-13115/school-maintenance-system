@@ -154,7 +154,7 @@
                     <input type="checkbox" name="is_confidential" value="1" @checked(old('is_confidential')) style="margin-top:4px">
                     <span>
                         <span style="display:block;font-size:15px;font-weight:700;color:var(--navy)"><i class="fa-solid fa-lock"></i> Mark as confidential</span>
-                        <span style="display:block;font-size:13px;font-weight:400;color:var(--text-2)">Only you, the School President, Maintenance Administrators and the staff member assigned to it can see this ticket and its files.</span>
+                        <span style="display:block;font-size:13px;font-weight:400;color:var(--text-2)">Only you, the Head of Maintenance and the staff member assigned to it can see this ticket and its files.</span>
                     </span>
                 </label>
 
@@ -165,7 +165,7 @@
             <aside class="card" style="align-self:start">
                 <div class="card-h"><h3>What happens next</h3></div>
                 <div class="pf-row"><span class="k">1. Filed</span><span class="mono">You get a ticket number</span></div>
-                <div class="pf-row"><span class="k">2. Authorized</span><span class="mono">The School President approves</span></div>
+                <div class="pf-row"><span class="k">2. Authorized</span><span class="mono">The Head of Maintenance approves</span></div>
                 <div class="pf-row"><span class="k">3. Assigned</span><span class="mono">Maintenance picks it up</span></div>
                 <div class="pf-row"><span class="k">4. Done</span><span class="mono">Work is completed and closed</span></div>
                 <p class="hint">You can follow every step on the ticket page.</p>
