@@ -14,6 +14,7 @@ class DepartmentSeeder extends Seeder
             'ELEM' => 'Elementary Department',
             'HS' => 'High School Department',
             'SHS' => 'Senior High School Department',
+            'COLLEGE' => 'College Department',
             'ADMIN' => 'Administration',
             'FIN' => 'Finance Office',
             'MNT' => 'Maintenance Office',

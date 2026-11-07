@@ -101,9 +101,9 @@ return [
     */
     'workflow' => [
         // CONFIRM WITH CLIENT: who the final signatory/authorizer is.
-        'authorizers' => ['president'],
+        'authorizers' => ['maintenance_admin'],
         // CONFIRM WITH CLIENT: who may formally close a ticket.
-        'closers' => ['maintenance_admin', 'president'],
+        'closers' => ['maintenance_admin'],
         // CONFIRM WITH CLIENT: what must be on file before closing.
         'closure_requires' => ['authorization', 'signed_evidence'],
         // CONFIRM WITH CLIENT: may the authorizer approve directly from Submitted?

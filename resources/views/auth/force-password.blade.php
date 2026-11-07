@@ -10,7 +10,7 @@
             <label for="current_password">Temporary password</label>
             <div class="input-wrap">
                 <i class="fa-solid fa-key ic"></i>
-                <input id="current_password" type="password" name="current_password" required autofocus autocomplete="current-password">
+                <input id="current_password" type="password" name="current_password" required autofocus autocomplete="off">
             </div>
             @error('current_password')<div class="field-err">{{ $message }}</div>@enderror
         </div>
