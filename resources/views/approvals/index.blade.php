@@ -6,7 +6,7 @@
 <x-app-layout>
     <x-slot name="header">Approvals</x-slot>
 
-    <div style="max-width:1000px">
+    <div style="max-width:none">
 
         @if (session('status'))
             <div class="alert ok"><i class="fa-solid fa-circle-check"></i><div>{{ session('status') }}</div></div>

@@ -409,7 +409,7 @@ img,svg{max-width:100%}
 @media(prefers-reduced-motion:reduce){.trk-steps li.now .dot{animation:none}}
 
 /* ── Student profile ── */
-.pf{max-width:900px}
+.pf{max-width:none}
 .pf-hero{padding:0;overflow:hidden}
 .pf-cover{height:96px;background:linear-gradient(120deg,var(--navy),var(--deep) 60%,var(--blue))}
 .pf-body{padding:0 24px 22px;display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;margin-top:-44px}

@@ -19,7 +19,7 @@
 <x-app-layout>
     <x-slot name="header">{{ $ticket->ticket_no }}</x-slot>
 
-    <div style="max-width:1000px">
+    <div style="max-width:none">
 
         <p style="margin-bottom:16px">
             <a href="{{ $ticket->status->isTerminal() ? route('tickets.history') : route('tickets.index') }}" class="btn btn-sm"><i class="fa-solid fa-arrow-left"></i> {{ $ticket->status->isTerminal() ? 'Back to ticket history' : 'Back to tickets' }}</a>

@@ -8,8 +8,8 @@ input[type=number]:focus{border-color:var(--blue)!important;background:#fff!impo
 @media(max-width:575.98px){input[type=number]{font-size:16px}}
 
 /* generic page helpers */
-.p6-wrap{max-width:1180px}
-.p6-narrow{max-width:760px}
+.p6-wrap{max-width:none}
+.p6-narrow{max-width:none}
 .p6-note{font-size:13.5px;color:var(--text-2);margin:0 0 16px;line-height:1.55}
 .p6-note b{color:var(--navy)}
 .p6-grid{display:grid;gap:14px}
@@ -187,3 +187,6 @@ a:focus-visible,button:focus-visible,summary:focus-visible,[tabindex]:focus-visi
 @media(prefers-reduced-motion:reduce){
   .cs-btn,.cs-chev{transition:none}
 }
+
+/* full width: no nested padding */
+.content .content{padding-left:0;padding-right:0;padding-top:0}
