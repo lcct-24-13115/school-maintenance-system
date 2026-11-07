@@ -29,6 +29,9 @@ Route::get('/', function () {
 });
 
 Route::middleware('auth')->group(function () {
+    // ---- Help & FAQ (Help phase 2). Signed-in people: entries for "all" or their role ----
+    Route::get('/help', [\App\Http\Controllers\FaqController::class, 'index'])->name('help.index');
+
     // Sends the user to their own role dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -189,5 +192,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile/avatar', [ProfileController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
     Route::get('/avatars/{user}', [ProfileController::class, 'avatar'])->name('avatars.show');
 });
+
+// ---- Help & FAQ for visitors who are not signed in: only public entries for everyone ----
+Route::get('/help-public', [\App\Http\Controllers\FaqController::class, 'index'])->name('help.public');
 
 require __DIR__.'/auth.php';
