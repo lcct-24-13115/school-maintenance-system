@@ -15,14 +15,33 @@ use Illuminate\Support\HtmlString;
  *
  *  - audience  ["all"] or role slugs. A signed-in person sees an entry when it is for "all" or lists their role.
  *  - is_public a visitor who is NOT signed in may read it. Only an "all" entry can be public.
+ *  - source    "starter" (made by faq:seed) or "custom" (written or edited by an admin). faq:seed only touches starter rows.
  *  - Only published entries are ever shown to readers. The FAQ manager (Phase 3) sees the rest.
  */
 class Faq extends Model
 {
     public const ALL = 'all';
 
+    /** Made by faq:seed from database/data/faq_starter.php. faq:seed may update it, until an admin edits it. */
+    public const SOURCE_STARTER = 'starter';
+
+    /** Written by an admin, or a starter entry an admin has edited. faq:seed never touches it. */
+    public const SOURCE_CUSTOM = 'custom';
+
+    /**
+     * Changing one of these on a starter entry turns it into a custom one (see booted()), so the next faq:seed can
+     * never overwrite the admin's work. Hiding / showing an entry and moving it up or down are NOT content changes:
+     * faq:seed does not touch is_published or sort_order of an existing row anyway.
+     */
+    public const CONTENT_FIELDS = ['topic', 'audience', 'is_public', 'question', 'answer'];
+
     protected $fillable = [
-        'topic', 'audience', 'is_public', 'question', 'answer', 'sort_order', 'is_published', 'created_by', 'updated_by',
+        'topic', 'audience', 'is_public', 'question', 'answer', 'source', 'sort_order', 'is_published', 'created_by', 'updated_by',
+    ];
+
+    /** A row made by hand is custom unless the seeder says otherwise. */
+    protected $attributes = [
+        'source' => self::SOURCE_CUSTOM,
     ];
 
     protected function casts(): array
@@ -33,6 +52,20 @@ class Faq extends Model
             'is_published' => 'boolean',
             'sort_order' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // The safety net for "never overwrite an entry an admin edited": whoever edits the content of a starter
+        // entry (the FAQ manager, tinker, a test), it becomes custom in the same save. The seeder itself saves
+        // quietly (no events), so its own updates never trigger this.
+        static::updating(function (Faq $faq) {
+            if ($faq->source === self::SOURCE_STARTER
+                && ! $faq->isDirty('source')
+                && $faq->isDirty(self::CONTENT_FIELDS)) {
+                $faq->source = self::SOURCE_CUSTOM;
+            }
+        });
     }
 
     /** The role slugs an entry may be aimed at: every role that has a row in config/permissions.php. @return list<string> */
@@ -52,6 +85,11 @@ class Faq extends Model
     public function scopePublicOnly(Builder $query): Builder
     {
         return $query->where('is_public', true);
+    }
+
+    public function scopeStarter(Builder $query): Builder
+    {
+        return $query->where('source', self::SOURCE_STARTER);
     }
 
     public function scopeOrdered(Builder $query): Builder

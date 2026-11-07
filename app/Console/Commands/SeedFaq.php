@@ -2,28 +2,33 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Faq;
 use Database\Seeders\FaqSeeder;
 use Illuminate\Console\Command;
 
 /**
- * Help & FAQ: add the starter questions that are missing.   php artisan faq:seed
- * Safe to run more than once: it never changes an entry that already exists.
+ * Help & FAQ: bring the starter questions up to date.   php artisan faq:seed
+ * Safe to run more than once: it adds what is missing, updates starter entries nobody edited, and never touches
+ * an entry an admin wrote or edited in the FAQ manager. It never deletes anything.
  */
 class SeedFaq extends Command
 {
     protected $signature = 'faq:seed';
 
-    protected $description = 'Add the starter Help & FAQ entries that are missing';
+    protected $description = 'Add missing Help & FAQ starter entries and update the starter ones nobody has edited';
 
     public function handle(): int
     {
-        $before = Faq::count();
+        $r = (new FaqSeeder)->sync();
 
-        (new FaqSeeder)->run();
+        if ($r['added'] === 0 && $r['updated'] === 0) {
+            $this->info('Nothing to change: the starter entries are already up to date.');
+        } else {
+            $this->info("Starter entries: added {$r['added']}, updated {$r['updated']}, unchanged {$r['unchanged']}.");
+        }
 
-        $added = Faq::count() - $before;
-        $this->info($added === 0 ? 'Nothing to add: the starter entries are already there.' : "Added {$added} starter entr".($added === 1 ? 'y' : 'ies').'.');
+        if ($r['kept'] > 0) {
+            $this->line("Left alone: {$r['kept']} starter question(s) that an admin already wrote or edited.");
+        }
 
         return self::SUCCESS;
     }
