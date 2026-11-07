@@ -18,10 +18,17 @@
             </div>
         @endif
 
+        @php $canManage = (bool) auth()->user()?->can_do('manage_pm_schedules'); @endphp
+
         <div style="margin-bottom:14px">
             <a href="{{ route('admin.pm-schedules.index') }}" class="btn"><i class="fa-solid fa-arrow-left"></i> PM schedules</a>
         </div>
 
+        @unless ($canManage)
+            <p class="p6-note"><i class="fa-solid fa-eye"></i> You can look at the equipment list but not change it.</p>
+        @endunless
+
+        @if ($canManage)
         <form method="POST" action="{{ route('admin.equipment.store') }}" class="card">
             @csrf
             <h3 class="p6-card-t">Add equipment</h3>
@@ -62,10 +69,11 @@
                 <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add equipment</button>
             </div>
         </form>
+        @endif
 
         <div class="card" style="padding:0">
             @if ($equipment->isEmpty())
-                <div class="empty" style="padding:22px 16px"><i class="fa-solid fa-screwdriver-wrench"></i>No equipment yet. Add the first one above.</div>
+                <div class="empty" style="padding:22px 16px"><i class="fa-solid fa-screwdriver-wrench"></i>No equipment yet.@if ($canManage) Add the first one above.@endif</div>
             @else
                 <div class="table-wrap">
                     <table>
@@ -92,6 +100,7 @@
                                     <td data-label="PM schedules">{{ $e->pm_schedules_count }}</td>
                                     <td data-label="Actions" style="text-align:right;white-space:nowrap">
                                         <a href="{{ route('admin.equipment.history', $e) }}" class="btn btn-sm" title="Maintenance history"><i class="fa-solid fa-clock-rotate-left"></i> History</a>
+                                        @if ($canManage)
                                         <button type="button" class="btn btn-sm" @click="edit = !edit"><i class="fa-solid fa-pen"></i> Edit</button>
                                         <form method="POST" action="{{ route('admin.equipment.destroy', $e) }}" style="display:inline"
                                               onsubmit="return confirm({{ \Illuminate\Support\Js::from($confirm) }})">
@@ -99,8 +108,10 @@
                                             @method('DELETE')
                                             <button class="btn btn-sm btn-danger" title="Delete" aria-label="Delete"><i class="fa-solid fa-trash"></i></button>
                                         </form>
+                                        @endif
                                     </td>
                                 </tr>
+                                @if ($canManage)
                                 <tr x-show="edit" x-cloak>
                                     <td colspan="5">
                                         <form method="POST" action="{{ route('admin.equipment.update', $e) }}">
@@ -141,6 +152,7 @@
                                         </form>
                                     </td>
                                 </tr>
+                                @endif
                             </tbody>
                         @endforeach
                     </table>

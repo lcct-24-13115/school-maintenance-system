@@ -21,8 +21,16 @@
             A ticket is made automatically every day at 1:00 AM, a few days before each due date. The calendar comes in a later phase.
         </p>
 
+        @php $canManage = (bool) auth()->user()?->can_do('manage_pm_schedules'); @endphp
+
+        @unless ($canManage)
+            <p class="p6-note"><i class="fa-solid fa-eye"></i> You can look at the PM schedules but not change them.</p>
+        @endunless
+
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-            <a href="{{ route('admin.pm-schedules.create') }}" class="btn btn-primary"><i class="fa-solid fa-plus"></i> New schedule</a>
+            @if ($canManage)
+                <a href="{{ route('admin.pm-schedules.create') }}" class="btn btn-primary"><i class="fa-solid fa-plus"></i> New schedule</a>
+            @endif
             <a href="{{ route('admin.equipment.index') }}" class="btn"><i class="fa-solid fa-screwdriver-wrench"></i> Equipment</a>
         </div>
 
@@ -70,7 +78,9 @@
                     <table>
                         <thead>
                             <tr>
-                                <th style="width:34px"><input type="checkbox" aria-label="Select all" onclick="document.querySelectorAll('.bulk-cb').forEach(function (c) { c.checked = this.checked }, this)"></th>
+                                @if ($canManage)
+                                    <th style="width:34px"><input type="checkbox" aria-label="Select all" onclick="document.querySelectorAll('.bulk-cb').forEach(function (c) { c.checked = this.checked }, this)"></th>
+                                @endif
                                 <th>Schedule</th>
                                 <th>Where</th>
                                 <th>Repeats</th>
@@ -84,7 +94,9 @@
                             @foreach ($schedules as $s)
                                 @php $confirm = "Delete the PM schedule \"{$s->title}\"? This cannot be undone."; @endphp
                                 <tr @if (! $s->is_active) style="opacity:.62" @endif>
-                                    <td data-label="Select"><input type="checkbox" class="bulk-cb" name="ids[]" value="{{ $s->id }}" form="bulk-form" aria-label="Select {{ $s->title }}"></td>
+                                    @if ($canManage)
+                                        <td data-label="Select"><input type="checkbox" class="bulk-cb" name="ids[]" value="{{ $s->id }}" form="bulk-form" aria-label="Select {{ $s->title }}"></td>
+                                    @endif
                                     <td data-label="Schedule" style="word-break:break-word">
                                         <b>{{ $s->title }}</b>
                                         @if ($s->ticket_priority === 'emergency')<span class="badge nocap ab-fail" style="margin-left:6px">Emergency</span>@endif
@@ -107,12 +119,15 @@
                                         @endif
                                     </td>
                                     <td data-label="Actions" style="text-align:right;white-space:nowrap">
+                                        @if ($canManage)
                                         <form method="POST" action="{{ route('admin.pm-schedules.generate', $s) }}" style="display:inline"
                                               onsubmit="return confirm('Make the ticket for the next due date now? The schedule then moves to the following date.')">
                                             @csrf
                                             <button class="btn btn-sm" title="Make the ticket for the next due date now" @disabled(! $s->is_active || ! $s->next_due_date)><i class="fa-solid fa-ticket"></i> Ticket now</button>
                                         </form>
+                                        @endif
                                         <a class="btn btn-sm" href="{{ route('admin.pm-schedules.history', $s) }}" title="Who changed this schedule"><i class="fa-solid fa-clock-rotate-left"></i> History</a>
+                                        @if ($canManage)
                                         <form method="POST" action="{{ route('admin.pm-schedules.duplicate', $s) }}" style="display:inline">
                                             @csrf
                                             <button class="btn btn-sm" title="Duplicate" aria-label="Duplicate"><i class="fa-regular fa-copy"></i></button>
@@ -131,6 +146,7 @@
                                             @method('DELETE')
                                             <button class="btn btn-sm btn-danger" title="Delete" aria-label="Delete"><i class="fa-solid fa-trash"></i></button>
                                         </form>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach
@@ -140,6 +156,7 @@
             @endif
         </div>
 
+        @if ($canManage)
         <form id="bulk-form" method="POST" action="{{ route('admin.pm-schedules.bulk') }}" class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             @csrf
             <span style="font-size:13.5px;color:var(--text-2)">Ticked schedules:</span>
@@ -147,6 +164,7 @@
             <button type="submit" name="action" value="resume" class="btn btn-sm"><i class="fa-solid fa-play"></i> Resume</button>
             @error('ids')<span style="color:var(--red);font-weight:700;font-size:13px">{{ $message }}</span>@enderror
         </form>
+        @endif
 
         @include('admin.pm-schedules._runs')
 

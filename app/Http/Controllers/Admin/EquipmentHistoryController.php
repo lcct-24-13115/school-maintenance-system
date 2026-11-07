@@ -14,13 +14,13 @@ use Illuminate\View\View;
 /**
  * Maintenance history of ONE piece of equipment: every preventive-maintenance ticket made from its PM schedules,
  * with the due date, the day the work was done, the technician and the checklist result.
- * Capability: manage_pm_schedules (others get 403). Tickets are still filtered with visibleTo(), like every ticket list.
+ * Capability: view_pm_schedules or manage_pm_schedules (others get 403). Tickets are still filtered with visibleTo(), like every ticket list.
  */
 class EquipmentHistoryController extends Controller
 {
     public function __invoke(Request $request, Equipment $equipment): View
     {
-        abort_unless($request->user()?->can_do('manage_pm_schedules'), 403, 'You do not have access to this page.');
+        abort_unless($request->user()?->canViewPm(), 403, 'You do not have access to this page.');
 
         $tz = config('app.timezone');
         $today = now($tz)->toDateString();

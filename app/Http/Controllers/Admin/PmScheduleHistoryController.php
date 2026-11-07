@@ -8,12 +8,12 @@ use App\Models\PmSchedule;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-/** Who made, edited, paused / resumed or completed a PM schedule, and when (read from the audit trail). Capability manage_pm_schedules. */
+/** Who made, edited, paused / resumed or completed a PM schedule, and when (read from the audit trail). Capability: view_pm_schedules or manage_pm_schedules (read-only). */
 class PmScheduleHistoryController extends Controller
 {
     public function __invoke(Request $request, PmSchedule $pmSchedule): View
     {
-        abort_unless($request->user()?->can_do('manage_pm_schedules'), 403, 'You do not have access to this page.');
+        abort_unless($request->user()?->canViewPm(), 403, 'You do not have access to this page.');
 
         $pmSchedule->load('creator:id,name', 'facility:id,name', 'equipment:id,name');
 

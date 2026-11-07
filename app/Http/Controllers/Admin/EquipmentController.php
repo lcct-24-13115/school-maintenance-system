@@ -15,7 +15,7 @@ class EquipmentController extends Controller
 {
     public function index(Request $request): View
     {
-        $this->authorizeManage($request);
+        $this->authorizeView($request);
 
         return view('admin.equipment.index', [
             'equipment' => Equipment::query()->with('facility:id,name')->withCount('pmSchedules')
@@ -79,6 +79,12 @@ class EquipmentController extends Controller
             'name.required' => 'Type the equipment name.',
             'facility_id.required' => 'Choose the facility.',
         ]);
+    }
+
+    /** Read-only pages (list): view_pm_schedules or manage_pm_schedules. Everything that changes data uses authorizeManage(). */
+    private function authorizeView(Request $request): void
+    {
+        abort_unless($request->user()?->canViewPm(), 403, 'You do not have access to this page.');
     }
 
     private function authorizeManage(Request $request): void

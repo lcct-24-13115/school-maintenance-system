@@ -69,7 +69,7 @@
             </a>
         @endif
 
-        @if ($u->can_do('manage_pm_schedules'))
+        @if ($u->canViewPm())
             <a href="{{ route('admin.pm-schedules.index') }}" class="{{ request()->routeIs('admin.pm-schedules.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-calendar-check"></i> PM schedules
             </a>

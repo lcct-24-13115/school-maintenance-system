@@ -1,0 +1,67 @@
+PM E2 - Roles at access control (PM Scheduler)
+==============================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+
+  cd C:\laragon\www\school-maintenance-system
+  git add -A ; git commit -m "Before PM E2 access control"
+  tar -xf "$env:USERPROFILE\Downloads\pm-e2-access-patch.zip" -C .
+  php artisan config:clear
+  php artisan view:clear
+  php artisan test --filter=PmAccessTest
+  php artisan test
+
+DI MO MA-EXTRACT ANG ZIP? Gamitin ang terminal (piliin ang isa), sa loob ng project folder:
+  A) tar -xf "$env:USERPROFILE\Downloads\pm-e2-access-patch.zip" -C .
+  B) Expand-Archive -Path "$env:USERPROFILE\Downloads\pm-e2-access-patch.zip" -DestinationPath . -Force
+
+WALANG MIGRATION. WALANG "npm install". WALANG "npm run build".
+
+I-PUSH SA GITHUB (kapag pasado na ang test):
+  git status
+  git add -A
+  git commit -m "PM E2: read-only PM access (view_pm_schedules, view_pm_reports)"
+  git push
+  (Kung "no upstream branch": git push -u origin main   -- palitan ang main kung iba ang branch: git branch --show-current)
+
+ANO ANG NAGAWA
+  Dalawang bagong capability sa config/permissions.php:
+    view_pm_schedules  = tumingin LANG: PM schedules, Equipment, History, calendar feed
+    view_pm_reports    = PM compliance report (gagamitin sa E3)
+  manage_pm_schedules (Maintenance Admin) ay kasama na ang pagtingin.
+
+  Default (CONFIRM WITH CLIENT, nasa docs/OPEN_QUESTIONS.md #67-69):
+    Maintenance Admin : tumingin + magbago + PM report
+    President         : tumingin lang + PM report
+    Finance           : PM report lang (HINDI ang schedules / calendar)
+    Custodian, Requester, Dept Head, Treasurer : wala (403)
+  Para palitan: i-edit lang ang config/permissions.php, walang code na gagalawin.
+
+  Ang mga pahinang nagbabago ng data (create, edit, toggle, delete, "Ticket now", bulk, duplicate, equipment add / edit / delete)
+  ay Maintenance Admin pa rin lang. 403 din ang sagot ng server kahit manual na i-send ng President.
+  Ang President ay nakakakita ng mga pahina na WALANG buttons na nagbabago (may note na "You can look ... but not change").
+
+BAGO / ino-overwrite:
+  config/permissions.php                                   <- 2 bagong capability + matrix
+  app/Models/User.php                                      <- canViewPm(), canViewPmReports()
+  app/Http/Controllers/Admin/PmScheduleController.php      <- index = authorizeView
+  app/Http/Controllers/Admin/EquipmentController.php       <- index = authorizeView
+  app/Http/Controllers/Admin/PmScheduleHistoryController.php
+  app/Http/Controllers/Admin/EquipmentHistoryController.php
+  app/Http/Controllers/MaintenanceCalendarController.php
+  resources/views/layouts/navigation.blade.php             <- menu link para sa view-only
+  resources/views/admin/pm-schedules/index.blade.php       <- itinatago ang mga button kapag view-only
+  resources/views/admin/equipment/index.blade.php          <- itinatago ang add / edit / delete kapag view-only
+  docs/OPEN_QUESTIONS.md                                   <- dagdag #67-69
+  tests/Feature/PmAccessTest.php                           <- BAGO (9 tests)
+
+PAANO SUBUKAN SA BROWSER (password: password)
+  1. maintenance@lcctanauan.edu.ph > PM schedules: kumpleto ang buttons (gaya ng dati).
+  2. finance@ / custodian@ : walang "PM schedules" sa menu; kapag binuksan ang /admin/pm-schedules = 403.
+  3. President (test account lang, nasa phpunit seeder): may "PM schedules" sa menu, walang New schedule / Ticket now / Edit / Delete / bulk.
+
+KUNG MAY MASIRA
+  Rollback: git checkout -- .   (at burahin ang tests/Feature/PmAccessTest.php)
+
+LAGING TANDAAN: walang PHP sa sandbox ko, kaya hindi pa na-run ang tests. Run mo muna ang
+  php artisan test --filter=PmAccessTest   at ipadala ang error (kung meron).

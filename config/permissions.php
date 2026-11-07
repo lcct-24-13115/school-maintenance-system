@@ -30,6 +30,10 @@
 |   request_info       ask the requester for information: ticket goes to Waiting for User (M2)
 |   manage_qr_codes    open /admin/qr-codes: make, edit, print and delete QR codes for Login / Register / New repair request / any link (Phase 17)
 |   view_audit_logs    open /admin/audit-logs, the read-only audit trail (Merge Phase M3)
+|   manage_pm_schedules  make / edit / pause / delete PM schedules and equipment, "Ticket now", bulk actions (PM Scheduler)
+|   view_pm_schedules    READ-ONLY look at PM schedules, equipment, their history and the maintenance calendar (PM E2).
+|                        manage_pm_schedules already includes this. No buttons that change anything.
+|   view_pm_reports      open the PM compliance report and its CSV / PDF (PM E3). manage_pm_schedules includes this too.
 |   escalate           escalate to the President / authorizer (M2). Handing it back is the authorizer's
 |                      (school.workflow.authorizers), like approve/disapprove.
 |
@@ -42,13 +46,15 @@ return [
     // maintenance_admin is the proposal's "Admin".
     'maintenance_admin' => [
         'view_all_tickets', 'view_confidential', 'flag_emergency', 'clear_emergency',
-        'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users', 'manage_settings', 'manage_categories', 'manage_qr_codes', 'manage_pm_schedules',
+        'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users', 'manage_settings', 'manage_categories', 'manage_qr_codes', 'manage_pm_schedules', 'view_pm_reports',
         'cancel_own', 'reopen_own', 'request_info', 'escalate', 'view_audit_logs',
     ],
 
     // CONFIRM WITH CLIENT: Finance sees all tickets EXCEPT confidential ones.
     'finance' => [
         'view_all_tickets', 'view_analytics', 'export_reports',
+        // CONFIRM WITH CLIENT (PM E2): Finance reads the PM compliance report only, not the schedules / calendar.
+        'view_pm_reports',
         'cancel_own', 'reopen_own',
     ],
 
@@ -56,6 +62,8 @@ return [
     'president' => [
         'view_all_tickets', 'view_confidential', 'authorize', 'disapprove', 'flag_emergency',
         'view_analytics', 'export_reports', 'view_audit_logs',
+        // CONFIRM WITH CLIENT (PM E2): the President (PM supervisor) may look, not change.
+        'view_pm_schedules', 'view_pm_reports',
         'cancel_own', 'reopen_own',
     ],
 
