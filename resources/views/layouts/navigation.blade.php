@@ -45,7 +45,7 @@
             <i class="fa-solid fa-circle-question"></i> Help &amp; FAQ
         </a>
 
-        @if ($u->can_do('view_analytics') || $u->canViewPmReports() || $u->can_do('manage_settings') || $u->can_do('manage_categories') || $u->can_do('manage_users') || $u->can_do('manage_qr_codes') || $u->can_do('view_audit_logs'))
+        @if ($u->can_do('view_analytics') || $u->canViewPmReports() || $u->can_do('manage_settings') || $u->can_do('manage_categories') || $u->can_do('manage_users') || $u->can_do('manage_qr_codes') || $u->can_do('view_audit_logs') || $u->canManageFaq())
             <div class="nav-sec">Administration</div>
         @endif
 
@@ -76,6 +76,12 @@
         @if ($u->can_do('manage_categories'))
             <a href="{{ route('admin.categories.index') }}" class="{{ request()->routeIs('admin.categories.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-tags"></i> Categories
+            </a>
+        @endif
+
+        @if ($u->canManageFaq())
+            <a href="{{ route('admin.faq.index') }}" class="{{ request()->routeIs('admin.faq.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-pen-to-square"></i> FAQ manager
             </a>
         @endif
 
