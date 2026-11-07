@@ -102,6 +102,66 @@ class ReportController extends Controller
 
     // ---------------------------------------------------------------------------------------------
 
+    public function pdf(Request $request)
+    {
+        $this->authorizeCapability($request, 'export_reports');
+        $filters = $this->filters($request);
+
+        $report = new ReportMetrics($request->user(), $filters['from'], $filters['to']);
+        $metrics = $report->all();
+        $query = $report->tickets();
+        $total = (clone $query)->count();
+        $limit = 300;
+
+        AuditLogger::log(
+            AuditLogger::EXPORT,
+            sprintf('Exported tickets report (PDF): %d %s%s', $total, $total === 1 ? 'ticket' : 'tickets', $this->rangeLabel($filters)),
+            user: $request->user(),
+            meta: ['report' => 'tickets', 'format' => 'pdf', 'rows' => $total, 'from' => $filters['from'], 'to' => $filters['to']],
+        );
+
+        $tickets = $query->with(['category:id,name', 'department:id,name', 'requester:id,name', 'assignee:id,name'])
+            ->orderByDesc('submitted_at')->limit($limit)->get();
+
+        $logo = null;
+        $logoPath = public_path('images/lcct-logo.png');
+        if (extension_loaded('gd') && is_file($logoPath)) {
+            $logo = 'data:image/png;base64,'.base64_encode(file_get_contents($logoPath));
+        }
+
+        $range = match (true) {
+            $filters['from'] && $filters['to'] => $filters['from'].' to '.$filters['to'],
+            (bool) $filters['from'] => 'from '.$filters['from'],
+            (bool) $filters['to'] => 'up to '.$filters['to'],
+            default => 'all dates',
+        };
+
+        $html = view('reports.pdf', [
+            'metrics' => $metrics,
+            'tickets' => $tickets,
+            'totalTickets' => $total,
+            'range' => $range,
+            'logo' => $logo,
+            'generatedBy' => $request->user()->name,
+        ])->render();
+
+        $options = new \Dompdf\Options();
+        $options->set('defaultFont', 'DejaVu Sans');
+        $options->set('isRemoteEnabled', false);
+        $options->set('chroot', base_path());
+        $options->set('fontCache', storage_path('framework/cache'));
+
+        $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf->loadHtml($html, 'UTF-8');
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="maintenance-report-'.now()->format('Ymd-Hi').'.pdf"',
+        ]);
+    }
+
     private function authorizeCapability(Request $request, string $capability): void
     {
         abort_unless($request->user()?->can_do($capability), 403, 'You do not have access to this page.');

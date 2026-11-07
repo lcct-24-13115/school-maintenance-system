@@ -76,7 +76,7 @@
                 <button type="submit" class="btn btn-primary"><i class="fa-solid fa-filter"></i> Apply</button>
                 <a href="{{ route('reports.index') }}" class="btn">Clear</a>
                 @if ($canExport)
-                    <a href="{{ route('reports.export', $query) }}" class="btn btn-ok push"><i class="fa-solid fa-file-csv"></i> Download CSV</a>
+                    <a href="{{ route('reports.pdf', $query) }}" class="btn btn-ok push"><i class="fa-solid fa-file-pdf"></i> Download PDF</a>
                 @endif
             </div>
         </form>
