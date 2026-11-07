@@ -211,3 +211,10 @@ a:focus-visible,button:focus-visible,summary:focus-visible,[tabindex]:focus-visi
 .faq-ins-empty,.faq-ins-hint{margin:0;font-size:13px;color:var(--text-2);line-height:1.5}
 .faq-ins-hint{margin-top:12px}
 @media (max-width:900px){.faq-insights{grid-template-columns:1fr}}
+
+/* PHASE 5D: the FAQ manager on a phone must not scroll sideways */
+.p6-wrap{min-width:0;max-width:100%}
+@media (max-width:767.98px){
+  table.stack td[data-label="Actions"]{white-space:normal!important;text-align:left!important}
+  table.stack td[data-label="Actions"]>form,table.stack td[data-label="Actions"]>a{margin:0 6px 6px 0}
+}

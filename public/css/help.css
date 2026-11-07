@@ -83,3 +83,77 @@
 .help-feedback-status{flex:1 1 100%;min-height:18px;font-size:13px;color:var(--text-2)}
 .help-feedback-status.error{color:#b42318}
 @media (max-width:560px){.help-feedback{padding:12px 14px}}
+
+/* ====================================================================================================
+   PHASE 5D: keyboard, phone and print (no new library; plain CSS)
+   ==================================================================================================== */
+html:has(.help-page){scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){
+  html:has(.help-page){scroll-behavior:auto}
+  .help-item>summary::after{transition:none}
+}
+
+/* the page itself can receive focus from "Back to top", without showing a box */
+.help-page{scroll-margin-top:96px;min-width:0;overflow-wrap:anywhere}
+.help-page:focus{outline:none}
+
+/* visible focus for everything that can be tabbed to (the search box keeps its own ring above) */
+.help-page a:focus-visible,
+.help-page button:focus-visible,
+.help-chip:focus-visible,
+.auth-help-link:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.help-item>summary:focus-visible{outline:3px solid var(--blue);outline-offset:-3px;border-radius:16px;background:var(--surface-2)}
+
+/* bigger tap targets, and the arrow is decoration (empty alternative text where the browser supports it) */
+.help-item>summary{min-height:44px}
+.help-item>summary::after{content:"\f078";content:"\f078" / ""}
+.help-chip{min-height:40px}
+.help-fb{min-height:40px}
+
+/* phones: nothing may push the page sideways */
+.help-item>summary,.help-answer,.help-chip,.help-contact a{overflow-wrap:anywhere}
+.help-chip{max-width:100%;min-width:0}
+.help-chips,.help-search,.help-actions{min-width:0}
+.help-answer img,.help-answer table,.help-answer pre{max-width:100%}
+.help-answer pre,.help-answer code{white-space:pre-wrap;word-break:break-word}
+.auth-card:has(.help-page){min-width:0;max-width:100%}
+@media (max-width:575.98px){
+  .help-search-box{flex:1 1 100%}
+  .help-chips{gap:6px}
+  .help-more{padding:16px}
+}
+
+/* Back to top */
+.help-top{display:flex;justify-content:flex-end;margin:14px 0 0}
+.help-top a{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;border:1.5px solid var(--line);background:#fff;color:var(--navy);font-size:13.5px;font-weight:700;text-decoration:none}
+.help-top a:hover{border-color:var(--blue);color:var(--deep);text-decoration:none}
+
+/* the line that only shows on paper */
+.help-print-head{display:none}
+
+/* PRINT: every answer open, no menus, no search, no vote buttons */
+@media print{
+  @page{margin:14mm}
+  body:has(.help-page){background:#fff!important;color:#000}
+  body:has(.help-page) :is(.sidebar,.sb-scrim,.topbar,.hero-m,.auth-help-link,.auth-credit,.auth-logo,.auth-brand){display:none!important}
+  body:has(.help-page) .main{margin:0!important}
+  body:has(.help-page) :is(.stage,.content,.auth-card){margin:0!important;padding:0!important;max-width:none!important;width:auto!important;border:0!important;box-shadow:none!important;background:none!important}
+  .help-page{max-width:none}
+  .help-print-head{display:block;margin:0 0 12px;padding-bottom:6px;border-bottom:1px solid #777;font-size:11pt;color:#000}
+  .help-back,.help-manage,.help-search,.help-chips,.help-status,.help-feedback,.help-top,.help-actions,.help-empty .btn,
+  .help-more .btn,.help-signin{display:none!important}
+  .help-intro{color:#000}
+  .help-group h2{color:#000;break-after:avoid}
+  .help-item{box-shadow:none;border:1px solid #888;border-radius:6px;background:#fff;break-inside:avoid}
+  .help-item>summary{color:#000;padding:8px 10px}
+  .help-item>summary::after{content:none!important}
+  .help-answer{padding:0 10px 10px;color:#000}
+  .help-item mark{background:none;font-weight:700}
+  .help-more{border:0;background:none;padding:10px 0 0;break-inside:avoid}
+  .help-more h2{color:#000}
+  .help-more>p,.help-contact b{color:#000}
+  .help-contact i{display:none}
+}
+@media print{
+  .help-item::details-content{content-visibility:visible!important}
+}

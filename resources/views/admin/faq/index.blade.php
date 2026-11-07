@@ -105,12 +105,12 @@
                                     <form method="POST" action="{{ route('admin.faq.move', $faq) }}" style="display:inline">
                                         @csrf
                                         <input type="hidden" name="direction" value="up">
-                                        <button class="btn btn-sm" style="padding:0 11px" title="Move up" aria-label="Move up" @disabled($isFirst)><i class="fa-solid fa-arrow-up"></i></button>
+                                        <button class="btn btn-sm" style="padding:0 11px" title="Move up" aria-label="Move up: {{ $faq->question }}" @disabled($isFirst)><i class="fa-solid fa-arrow-up"></i></button>
                                     </form>
                                     <form method="POST" action="{{ route('admin.faq.move', $faq) }}" style="display:inline">
                                         @csrf
                                         <input type="hidden" name="direction" value="down">
-                                        <button class="btn btn-sm" style="padding:0 11px" title="Move down" aria-label="Move down" @disabled($isLast)><i class="fa-solid fa-arrow-down"></i></button>
+                                        <button class="btn btn-sm" style="padding:0 11px" title="Move down" aria-label="Move down: {{ $faq->question }}" @disabled($isLast)><i class="fa-solid fa-arrow-down"></i></button>
                                     </form>
                                 </td>
 
@@ -163,7 +163,7 @@
                                           onsubmit="return confirm({{ \Illuminate\Support\Js::from($confirm) }})">
                                         @csrf
                                         @method('DELETE')
-                                        <button class="btn btn-sm btn-danger" title="Delete" aria-label="Delete"><i class="fa-solid fa-trash"></i></button>
+                                        <button class="btn btn-sm btn-danger" title="Delete" aria-label="Delete: {{ $faq->question }}"><i class="fa-solid fa-trash"></i></button>
                                     </form>
                                 </td>
                             </tr>

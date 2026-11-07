@@ -12,7 +12,8 @@
 
 <link rel="stylesheet" href="{{ asset('css/help.css') }}?v={{ @filemtime(public_path('css/help.css')) }}">
 
-<div class="help-page">
+<div class="help-page" id="help-top" tabindex="-1">
+    <p class="help-print-head"><b>LCCT Maintenance - Help &amp; FAQ</b> &middot; printed {{ now()->format('F j, Y') }}@if ($topic) &middot; Topic: {{ $topic }}@endif @if ($q !== '') &middot; Search: {{ $q }}@endif</p>
     @if ($isGuest)
         <p class="help-back"><a href="{{ route('login') }}"><i class="fa-solid fa-arrow-left"></i> Back to sign in</a></p>
         <h1 class="form-title">Help <span>&amp; FAQ</span></h1>
@@ -115,7 +116,12 @@
         </div>
     @endif
 
+    @if ($count >= 5)
+        <p class="help-top"><a href="#help-top"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i> Back to top</a></p>
+    @endif
+
     @include('help._still-need-help')
     <script src="{{ asset('js/help-filter.js') }}?v={{ @filemtime(public_path('js/help-filter.js')) }}" defer></script>
     <script src="{{ asset('js/help-feedback.js') }}?v={{ @filemtime(public_path('js/help-feedback.js')) }}" defer></script>
+    <script src="{{ asset('js/help-a11y.js') }}?v={{ @filemtime(public_path('js/help-a11y.js')) }}" defer></script>
 </div>
