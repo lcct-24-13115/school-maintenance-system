@@ -72,3 +72,14 @@
 
 /* The instant filter hides things with the "hidden" attribute (Phase 2E) */
 .help-page [hidden]{display:none!important}
+
+/* PHASE 5A: Was this helpful? */
+.help-feedback{padding:12px 18px 14px;border-top:1px dashed var(--line)}
+.help-feedback-form{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.help-feedback-q{font-size:13.5px;font-weight:700;color:var(--text-2);margin-right:4px}
+.help-fb[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+.help-fb:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.help-fb:disabled{opacity:.6;cursor:progress}
+.help-feedback-status{flex:1 1 100%;min-height:18px;font-size:13px;color:var(--text-2)}
+.help-feedback-status.error{color:#b42318}
+@media (max-width:560px){.help-feedback{padding:12px 14px}}

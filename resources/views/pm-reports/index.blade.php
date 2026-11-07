@@ -24,6 +24,7 @@
     </x-slot>
 
     <div class="content p6-wrap">
+        <x-help-link topic="Preventive maintenance" row />
 
         <form method="GET" action="{{ route('pm-reports.index') }}" class="card">
             <div class="p6-grid p6-filters">

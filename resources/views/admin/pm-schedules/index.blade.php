@@ -8,6 +8,7 @@
     </x-slot>
 
     <div class="content p6-wrap">
+        <x-help-link topic="Preventive maintenance" row />
 
         @if (session('status'))
             <div class="alert ok" role="status"><i class="fa-solid fa-circle-check"></i><span>{{ session('status') }}</span></div>

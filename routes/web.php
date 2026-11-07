@@ -32,6 +32,8 @@ Route::get('/', function () {
 Route::middleware('auth')->group(function () {
     // ---- Help & FAQ (Help phase 2). Signed-in people: entries for "all" or their role ----
     Route::get('/help', [\App\Http\Controllers\FaqController::class, 'index'])->name('help.index');
+    // "Was this helpful?" (Help & FAQ Phase 5A)
+    Route::post('/help/{faq}/feedback', [\App\Http\Controllers\FaqFeedbackController::class, 'store'])->middleware('throttle:30,1')->name('help.feedback');
 
     // Sends the user to their own role dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -209,5 +211,6 @@ Route::middleware('auth')->group(function () {
 
 // ---- Help & FAQ for visitors who are not signed in: only public entries for everyone ----
 Route::get('/help-public', [\App\Http\Controllers\FaqController::class, 'index'])->name('help.public');
+Route::post('/help-public/{faq}/feedback', [\App\Http\Controllers\FaqFeedbackController::class, 'store'])->middleware('throttle:30,1')->name('help.public.feedback');
 
 require __DIR__.'/auth.php';

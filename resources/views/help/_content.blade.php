@@ -67,9 +67,10 @@
             <section class="help-group" data-help-group>
                 <h2>{{ $name }}</h2>
                 @foreach ($items as $faq)
-                    <details class="help-item" data-help-item{{ $openAll ? ' open' : '' }}>
+                    <details class="help-item" id="faq-{{ $faq->id }}" data-help-item{{ ($openAll || (int) session('help_feedback_id') === (int) $faq->id) ? ' open' : '' }}>
                         <summary>{{ \App\Support\FaqHighlight::question($faq->question, $q) }}</summary>
                         <div class="help-answer">{{ $faq->answer_html }}</div>
+                        @include('help._feedback', ['faq' => $faq, 'isGuest' => $isGuest, 'vote' => $votes[$faq->id] ?? null])
                     </details>
                 @endforeach
             </section>
@@ -116,4 +117,5 @@
 
     @include('help._still-need-help')
     <script src="{{ asset('js/help-filter.js') }}?v={{ @filemtime(public_path('js/help-filter.js')) }}" defer></script>
+    <script src="{{ asset('js/help-feedback.js') }}?v={{ @filemtime(public_path('js/help-feedback.js')) }}" defer></script>
 </div>

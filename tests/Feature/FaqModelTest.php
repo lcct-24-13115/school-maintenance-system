@@ -181,7 +181,7 @@ class FaqModelTest extends TestCase
         $this->seed(FaqSeeder::class);
         $count = Faq::count();
 
-        $this->assertSame(8, $count);
+        $this->assertSame(count(require database_path('data/faq_starter.php')), $count);
 
         $this->seed(FaqSeeder::class);
         $this->assertSame($count, Faq::count());
@@ -222,17 +222,17 @@ class FaqModelTest extends TestCase
         $faq->refresh();
         $this->assertSame('Edited by the admin.', $faq->answer);
         $this->assertFalse($faq->is_published);
-        $this->assertSame(8, Faq::count());
+        $this->assertSame(count(require database_path('data/faq_starter.php')), Faq::count());
     }
 
     public function test_the_command_adds_what_is_missing(): void
     {
         $this->artisan('faq:seed')->assertExitCode(0);
-        $this->assertSame(8, Faq::count());
+        $this->assertSame(count(require database_path('data/faq_starter.php')), Faq::count());
 
         Faq::where('question', 'How do I accept a task?')->delete();
         $this->artisan('faq:seed')->assertExitCode(0);
-        $this->assertSame(8, Faq::count());
+        $this->assertSame(count(require database_path('data/faq_starter.php')), Faq::count());
     }
 
     public function test_the_starter_entries_are_visible_to_the_right_people(): void
@@ -240,7 +240,7 @@ class FaqModelTest extends TestCase
         $this->seed(FaqSeeder::class);
 
         $visitor = $this->seen(null);
-        $this->assertCount(3, $visitor);
+        $this->assertCount(count(array_filter(require database_path('data/faq_starter.php'), fn ($r) => $r[2])), $visitor);
         $this->assertContains('How do I sign in?', $visitor);
 
         $this->assertContains('How do I accept a task?', $this->seen($this->user('maintenance')));
