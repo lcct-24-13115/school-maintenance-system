@@ -108,9 +108,7 @@ TXT, 10],
 3. In **Repeats**, say how often: daily, weekly, monthly, quarterly, yearly, or every N days.
 4. Set the **Start date** (the first due date) and, if it ends, the **End date**.
 5. Set **Make the ticket this many days before the due date**, the **Ticket priority**, and who it is **Assigned to**.
-6. Choose **Next due date is based on**:
-   - **Fixed**: the dates always follow the original calendar.
-   - **Floating**: the next date is counted from the day the work was really completed.
+6. Choose **Next due date is based on**: **Fixed** (the dates always follow the original calendar) or **Floating** (the next date is counted from the day the work was really completed).
 7. Write the **Checklist**, one task per line (optional). It is copied into every ticket.
 8. Save.
 TXT, 20],
