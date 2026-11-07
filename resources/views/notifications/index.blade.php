@@ -8,7 +8,9 @@
     <div class="content p6-narrow">
         <div class="p6-bar" style="margin:0 0 18px">
             <p class="p6-note" style="margin:0">
-                @php($unread = auth()->user()->unreadNotifications()->count())
+                @php
+                    $unread = auth()->user()->unreadNotifications()->count();
+                @endphp
                 {{ $unread > 0 ? $unread.' unread' : 'You are all caught up.' }}
             </p>
             <form method="POST" action="{{ route('notifications.readAll') }}" class="push">
