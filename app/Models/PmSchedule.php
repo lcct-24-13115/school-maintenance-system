@@ -39,7 +39,7 @@ class PmSchedule extends Model
     protected $fillable = [
         'title', 'description', 'facility_id', 'equipment_id', 'category_id', 'ticket_priority', 'assigned_to',
         'frequency_type', 'frequency_interval', 'start_date', 'end_date', 'next_due_date', 'lead_time_days', 'schedule_basis',
-        'is_active', 'created_by',
+        'is_active', 'created_by', 'anchor_date', 'last_completed_date',
     ];
 
     protected function casts(): array
@@ -48,6 +48,8 @@ class PmSchedule extends Model
             'start_date' => 'date',
             'end_date' => 'date',
             'next_due_date' => 'date',
+            'anchor_date' => 'date',
+            'last_completed_date' => 'date',
             'frequency_interval' => 'integer',
             'lead_time_days' => 'integer',
             'is_active' => 'boolean',
@@ -58,6 +60,11 @@ class PmSchedule extends Model
     protected static function booted(): void
     {
         static::saving(function (PmSchedule $schedule) {
+            // Phase B: changing the dates or the frequency by hand drops the floating anchor (the schedule counts from start_date again)
+            if ($schedule->exists && $schedule->isDirty(['start_date', 'frequency_type', 'frequency_interval']) && ! $schedule->isDirty('anchor_date')) {
+                $schedule->anchor_date = null;
+            }
+
             if (! $schedule->exists || $schedule->isDirty(['start_date', 'end_date', 'frequency_type', 'frequency_interval'])) {
                 $schedule->next_due_date = $schedule->firstDueOnOrAfter(now(config('app.timezone'))->toDateString());
             }
@@ -89,7 +96,8 @@ class PmSchedule extends Model
     /** The n-th occurrence (0 = start_date). */
     public function occurrence(int $n): CarbonImmutable
     {
-        $start = CarbonImmutable::parse($this->start_date->toDateString())->startOfDay();
+        $base = $this->anchor_date ?? $this->start_date;   // Phase B: a floating schedule counts from the last completed day
+        $start = CarbonImmutable::parse($base->toDateString())->startOfDay();
         $k = $n * max(1, (int) $this->frequency_interval);
 
         return match ($this->frequency_type) {

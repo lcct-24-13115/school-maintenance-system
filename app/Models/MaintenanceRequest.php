@@ -53,6 +53,7 @@ class MaintenanceRequest extends Model
             'is_confidential' => 'boolean',
             'needed_by' => 'date',
             'pm_due_date' => 'date',
+            'pm_completed_date' => 'date',
             'submitted_at' => 'datetime',
             'due_at' => 'datetime',
             'assigned_at' => 'datetime',
@@ -338,6 +339,11 @@ class MaintenanceRequest extends Model
     public function pmChecklist(): HasMany
     {
         return $this->hasMany(PmTicketChecklistItem::class, 'request_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function pmTechnician(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'pm_technician_id');
     }
 
     public function pmSchedule(): BelongsTo

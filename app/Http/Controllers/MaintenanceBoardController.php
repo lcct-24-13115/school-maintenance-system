@@ -33,6 +33,14 @@ class MaintenanceBoardController extends Controller
 
     public function complete(Request $request, MaintenanceRequest $ticket): RedirectResponse
     {
+        // PM integration Phase B: a PM ticket is completed on its own page (date, technician, notes, checklist)
+        if ($ticket->isPmGenerated()) {
+            Gate::authorize('work', $ticket);
+
+            return redirect()->to(route('tickets.show', $ticket).'#pm-complete')
+                ->with('pm_error', 'This is a preventive maintenance ticket. Fill in the PM completion form (date, technician, checklist) to complete it.');
+        }
+
         return $this->act($request, $ticket, 'completed', fn () => TicketWorkflow::markWorkCompleted($ticket, $request->user()), 'Great job! Marked as completed.');
     }
 

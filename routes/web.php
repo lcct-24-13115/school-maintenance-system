@@ -90,6 +90,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/respond-info', [TicketActionController::class, 'respondToInfo'])->name('respond-info');
         // Phase 12: escalate to the authorizer
         Route::post('/escalate', [TicketActionController::class, 'escalate'])->name('escalate');
+        // PM integration Phase B: complete a preventive-maintenance ticket (date, technician, notes, checklist)
+        Route::post('/pm-complete', [\App\Http\Controllers\PmCompletionController::class, 'store'])->name('pm-complete');
     });
 
     // ---- Authorizer inbox (school.workflow.authorizers only; others get 403) ----
