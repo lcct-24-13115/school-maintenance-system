@@ -5,7 +5,7 @@
 @else
     <x-app-layout>
         <x-slot name="header">
-            <h2 class="page-title">Help &amp; FAQ</h2>
+            <h1 class="page-title">Help &amp; FAQ</h1>
         </x-slot>
 
         <div class="content">

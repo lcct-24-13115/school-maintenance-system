@@ -237,4 +237,132 @@ class FaqPageTest extends TestCase
         $this->assertSame(['How do I sign in?'], $this->questions($this->get('/help-public?q=how+do+i')));
         $this->assertSame([], $this->questions($this->get('/help-public?q=send')));
     }
+
+    // ---------- Phase 2B: the design ----------
+
+    public function test_the_page_has_the_design_pieces(): void
+    {
+        $this->faq('Alpha question', ['topic' => 'Alpha']);
+        $this->faq('Beta question', ['topic' => 'Beta', 'sort_order' => 20]);
+
+        $this->as('requester')->assertOk()
+            ->assertSee('Help &amp; FAQ', false)
+            ->assertSee('name="q"', false)
+            ->assertSee('maxlength="100"', false)
+            ->assertSee('<details', false)
+            ->assertSee('<summary>Alpha question</summary>', false)
+            ->assertSeeInOrder(['All topics', 'Alpha', 'Beta'])
+            ->assertSee('id="still-need-help"', false);
+    }
+
+    public function test_search_and_chips_are_plain_get_forms_and_links(): void
+    {
+        $this->faq('Alpha question', ['topic' => 'Alpha']);
+        $this->faq('Beta question', ['topic' => 'Beta', 'sort_order' => 20]);
+
+        $this->as('requester')->assertOk()
+            ->assertSee('method="GET"', false)
+            ->assertSee('action="'.route('help.index').'"', false)
+            ->assertSee('href="'.route('help.index', ['topic' => 'Beta']).'"', false);
+
+        $this->faq('Public one', ['is_public' => true, 'topic' => 'Gamma']);
+        $this->app['auth']->forgetGuards();   // the person above is signed in; the next request is a visitor
+        $this->get('/help-public')->assertOk()
+            ->assertSee('action="'.route('help.public').'"', false)
+            ->assertSee('href="'.route('help.public', ['topic' => 'Gamma']).'"', false);
+    }
+
+    public function test_the_layout_switches_between_guest_and_signed_in(): void
+    {
+        $this->faq('Public one', ['is_public' => true]);
+
+        $this->get('/help-public')->assertOk()
+            ->assertSee('auth-card', false)
+            ->assertSee('Back to sign in');
+
+        $this->as('requester')->assertOk()
+            ->assertDontSee('auth-card', false)
+            ->assertDontSee('Back to sign in');
+    }
+
+    public function test_the_answer_is_shown_through_the_safe_accessor(): void
+    {
+        $this->faq('Q', ['answer' => "**Bold** text <script>alert(1)</script>\n\n- one\n- two"]);
+
+        $this->as('requester')->assertOk()
+            ->assertSee('<strong>Bold</strong>', false)
+            ->assertSee('<li>one</li>', false)
+            ->assertDontSee('<script>alert(1)</script>', false);
+    }
+
+    public function test_the_match_is_marked_in_the_question_only(): void
+    {
+        $this->faq('How do I Reset my password?', ['answer' => 'Use the link.']);
+        $this->faq('Where are my photos?', ['answer' => 'Reset happens here.', 'sort_order' => 20]);
+
+        $this->as('requester', '/help?q=reset')->assertOk()
+            ->assertSee('How do I <mark>Reset</mark> my password?', false)
+            ->assertSee('Where are my photos?')
+            ->assertDontSee('<mark>Where', false);
+    }
+
+    public function test_the_mark_cannot_inject_html(): void
+    {
+        $this->faq('Fix <b>this</b> now', ['answer' => 'x']);
+
+        $this->as('requester', '/help?q=this')->assertOk()
+            ->assertSee('Fix &lt;b&gt;<mark>this</mark>&lt;/b&gt; now', false)
+            ->assertDontSee('<b>this</b>', false);
+    }
+
+    public function test_special_characters_in_the_search_do_not_break_the_page(): void
+    {
+        $this->faq('Something (odd) / here [x] + y');
+
+        foreach (['(', '/', '[x]', '+ y', '\\', '.*', '(odd)'] as $q) {
+            $this->as('requester', '/help?q='.urlencode($q))->assertOk();
+        }
+
+        $this->as('requester', '/help?q='.urlencode('(odd)'))->assertSee('<mark>(odd)</mark>', false);
+    }
+
+    public function test_the_empty_state_has_both_links(): void
+    {
+        $this->faq('Something');
+
+        $this->as('requester', '/help?q=zzzz')->assertOk()
+            ->assertSee('No answers found for &ldquo;zzzz&rdquo;', false)
+            ->assertSee('Clear the search')
+            ->assertSee('href="'.route('help.index').'"', false)
+            ->assertSee('Still need help?')
+            ->assertSee('href="#still-need-help"', false);
+    }
+
+    public function test_the_empty_state_offers_all_topics_when_the_topic_has_no_match(): void
+    {
+        $this->faq('Alpha foo', ['topic' => 'Alpha']);
+        $this->faq('Beta bar', ['topic' => 'Beta', 'sort_order' => 20]);
+
+        $this->as('requester', '/help?q=foo&topic=Beta')->assertOk()
+            ->assertSee('No answers found for &ldquo;foo&rdquo;', false)
+            ->assertSee('Search all topics (1)');
+    }
+
+    public function test_a_few_matches_open_by_default_and_many_do_not(): void
+    {
+        foreach (range(1, 5) as $i) {
+            $this->faq("Password question $i", ['sort_order' => $i]);
+        }
+
+        $this->as('requester', '/help?q=password')->assertOk()->assertDontSee('data-help-item open', false);
+
+        $this->as('requester', '/help?q='.urlencode('question 2'))->assertOk()->assertSee('data-help-item open', false);
+    }
+
+    public function test_an_empty_help_page_still_renders(): void
+    {
+        $this->as('requester')->assertOk()->assertSee('No questions here yet');
+        $this->app['auth']->forgetGuards();   // the person above is signed in; the next request is a visitor
+        $this->get('/help-public')->assertOk()->assertSee('No questions here yet');
+    }
 }
