@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Faq;
+use App\Models\FaqFeedback;
+use App\Models\FaqSearchMiss;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,6 +36,11 @@ class FaqController extends Controller
         $visible = $this->entries($user, '');                                  // what this person may read at all
         $matching = $q === '' ? $visible : $this->entries($user, $q);          // ... that matches the search
 
+        // Phase 5B: a search that finds nothing is written down (the words only), so the admin knows what to write next.
+        if ($q !== '' && $matching->isEmpty()) {
+            FaqSearchMiss::recordOnce($q, $request);
+        }
+
         $counts = $matching->countBy('topic');
         $topics = $visible->pluck('topic')->unique()->values()
             ->map(fn (string $name) => ['name' => $name, 'count' => (int) ($counts[$name] ?? 0)]);
@@ -51,6 +58,7 @@ class FaqController extends Controller
             'total' => $matching->count(),
             'entries' => $entries,
             'groups' => $entries->groupBy('topic'),
+            'votes' => FaqFeedback::votesFor($entries->pluck('id')->all(), $user, $request),   // Phase 5A: what this reader already voted
         ]);
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Faq;
+use App\Models\FaqSearchMiss;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -62,6 +63,7 @@ class FaqAdminController extends Controller
             'roleLabels' => $this->roleLabels(),
             // the neighbours inside the same topic decide which arrow buttons are disabled (whole topic, not the filtered page)
             'edges' => $this->edges(),
+            'insights' => $this->insights(),   // Phase 5B
         ]);
     }
 
@@ -322,6 +324,29 @@ class FaqAdminController extends Controller
         }
 
         return $edges;
+    }
+
+    /**
+     * Phase 5B: what to write next. Top 5 by "helpful", top 5 by "not helpful", top 10 searches that found nothing.
+     * The table is small, so the ranking is done in PHP (same on SQLite and MySQL).
+     *
+     * @return array{helpful: \Illuminate\Support\Collection, not_helpful: \Illuminate\Support\Collection, misses: \Illuminate\Support\Collection}
+     */
+    private function insights(): array
+    {
+        $rows = Faq::query()
+            ->select(['faqs.id', 'faqs.topic', 'faqs.question'])
+            ->withCount([
+                'feedback as helpful_count' => fn ($q) => $q->where('helpful', true),
+                'feedback as not_helpful_count' => fn ($q) => $q->where('helpful', false),
+            ])
+            ->get();
+
+        return [
+            'helpful' => $rows->where('helpful_count', '>', 0)->sortBy([['helpful_count', 'desc'], ['id', 'asc']])->take(5)->values(),
+            'not_helpful' => $rows->where('not_helpful_count', '>', 0)->sortBy([['not_helpful_count', 'desc'], ['id', 'asc']])->take(5)->values(),
+            'misses' => FaqSearchMiss::query()->orderByDesc('count')->orderByDesc('last_seen_at')->orderBy('id')->limit(10)->get(),
+        ];
     }
 
     private function auditVisibility(Faq $faq): void

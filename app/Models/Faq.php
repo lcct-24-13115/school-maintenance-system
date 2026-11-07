@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
 
@@ -146,6 +147,12 @@ class Faq extends Model
     }
 
     // ---------- relations ----------
+
+    /** "Was this helpful?" votes (Phase 5A). */
+    public function feedback(): HasMany
+    {
+        return $this->hasMany(FaqFeedback::class);
+    }
 
     public function creator(): BelongsTo
     {

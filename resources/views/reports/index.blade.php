@@ -27,6 +27,7 @@
     </x-slot>
 
     <div class="content p6-wrap">
+        <x-help-link topic="Reports and records" row />
 
         @if (session('status'))
             <div class="alert ok"><i class="fa-solid fa-circle-check"></i><div>{{ session('status') }}</div></div>

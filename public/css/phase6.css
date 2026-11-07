@@ -194,3 +194,20 @@ a:focus-visible,button:focus-visible,summary:focus-visible,[tabindex]:focus-visi
 /* Login: Forgot password right-aligned above the button */
 .auth-row.auth-row-end{justify-content:flex-end;margin:2px 0 14px}
 .auth-card .field .hint{margin-top:8px;line-height:1.5}
+
+/* FAQ 4E help-link */
+.help-link-row{display:flex;justify-content:flex-end;margin:0 0 12px}
+.help-link{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:700;color:var(--deep);text-decoration:none}
+.help-link:hover{text-decoration:underline}
+@media (pointer:coarse){.help-link{min-height:38px}}
+
+/* PHASE 5B: FAQ insights */
+.faq-insights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:0 0 20px}
+.faq-insights .card{margin-bottom:0;padding:18px;min-width:0}
+.faq-ins-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.faq-ins-list li{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;min-width:0;overflow-wrap:anywhere;line-height:1.4}
+.faq-ins-n{font-size:12.5px;font-weight:700;color:var(--text-2);white-space:nowrap}
+.faq-ins-term{font-weight:700;color:var(--navy)}
+.faq-ins-empty,.faq-ins-hint{margin:0;font-size:13px;color:var(--text-2);line-height:1.5}
+.faq-ins-hint{margin-top:12px}
+@media (max-width:900px){.faq-insights{grid-template-columns:1fr}}

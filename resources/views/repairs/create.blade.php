@@ -14,6 +14,7 @@
         })">
 
         <div class="alert warn"><i class="fa-solid fa-calendar-check"></i><div>Request must be made 5 working days in advance.</div></div>
+        <x-help-link topic="Sending a repair request" row />
 
         @error('form')<div class="alert err" role="alert"><i class="fa-solid fa-circle-exclamation"></i><div>{{ $message }}</div></div>@enderror
 
