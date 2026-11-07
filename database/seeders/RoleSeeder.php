@@ -12,7 +12,7 @@ class RoleSeeder extends Seeder
         $roles = [
             [Role::REQUESTER, 'Student', 'Submits and tracks maintenance requests'],
             [Role::MAINTENANCE_ADMIN, 'Head of Maintenance', 'Reviews and approves requests, assigns queue and priority'],
-            [Role::FINANCE, 'Finance / Bookkeeper', 'Budget review, receipts and expenditures'],
+            [Role::FINANCE, 'Finance', 'Budget review, receipts and expenditures'],
             [Role::CUSTODIAN, 'Property Custodian', 'Inventory, property tags and clearance'],
         ];
 

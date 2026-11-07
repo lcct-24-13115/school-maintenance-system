@@ -16,7 +16,7 @@ class UserSeeder extends Seeder
         $accounts = [
             [Role::MAINTENANCE_ADMIN, 'Head of Maintenance', 'maintenance@lcctanauan.edu.ph', null],
             [Role::CUSTODIAN, 'Property Custodian', 'custodian@lcctanauan.edu.ph', null],
-            [Role::FINANCE, 'Finance / Bookkeeper', 'finance@lcctanauan.edu.ph', 'FIN'],
+            [Role::FINANCE, 'Finance', 'finance@lcctanauan.edu.ph', 'FIN'],
         ];
 
         foreach ($accounts as [$slug, $name, $email, $deptCode]) {

@@ -129,7 +129,7 @@ class TicketActionsTest extends TestCase
             TicketWorkflow::authorize($ticket, $this->user('president'));
             $this->fail('The President should not be able to authorize when only finance is configured.');
         } catch (DomainException $e) {
-            $this->assertSame('Only the Finance / Bookkeeper can authorize a ticket.', $e->getMessage());
+            $this->assertSame('Only the Finance can authorize a ticket.', $e->getMessage());
         }
 
         $this->actingAs($this->user('president'))->post(route('tickets.approve', $ticket))->assertForbidden();
