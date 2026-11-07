@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\QrCodeController;
 use App\Http\Controllers\Admin\PmScheduleController;
 use App\Http\Controllers\Admin\EquipmentController;
+use App\Http\Controllers\Admin\FaqAdminController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ApprovalController;
@@ -154,6 +155,19 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::get('/admin/audit-logs', [AuditLogController::class, 'index'])->name('admin.audit-logs.index');
+
+    // ---- FAQ manager (Help & FAQ Phase 3). Capability manage_faq is checked in the controller (others get 403) ----
+    Route::prefix('admin/faq')->name('admin.faq.')->group(function () {
+        Route::get('/', [FaqAdminController::class, 'index'])->name('index');
+        Route::get('/create', [FaqAdminController::class, 'create'])->name('create');
+        Route::post('/', [FaqAdminController::class, 'store'])->name('store');
+        Route::get('/{faq}/edit', [FaqAdminController::class, 'edit'])->name('edit');
+        Route::put('/{faq}', [FaqAdminController::class, 'update'])->name('update');
+        Route::patch('/{faq}/visibility', [FaqAdminController::class, 'toggle'])->name('toggle');
+        Route::post('/{faq}/move', [FaqAdminController::class, 'move'])->name('move');
+        Route::post('/{faq}/duplicate', [FaqAdminController::class, 'duplicate'])->name('duplicate');
+        Route::delete('/{faq}', [FaqAdminController::class, 'destroy'])->name('destroy');
+    });
 
     // ---- Categories admin (Phase 5). Capability manage_categories is checked in the controller (others get 403) ----
     Route::prefix('admin/categories')->name('admin.categories.')->group(function () {

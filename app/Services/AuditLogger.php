@@ -55,6 +55,19 @@ class AuditLogger
 
     public const EQUIPMENT_CHANGED = 'equipment_changed';
 
+    // Help & FAQ manager (Phase 3)
+    public const FAQ_CREATED = 'faq_created';
+
+    public const FAQ_UPDATED = 'faq_updated';
+
+    public const FAQ_PUBLISHED = 'faq_published';
+
+    public const FAQ_HIDDEN = 'faq_hidden';
+
+    public const FAQ_REORDERED = 'faq_reordered';
+
+    public const FAQ_DELETED = 'faq_deleted';
+
     public const TICKET_STATUS = 'ticket_status';
 
     public const TICKET_ASSIGNED = 'ticket_assigned';
@@ -81,6 +94,7 @@ class AuditLogger
             self::LOGIN, self::LOGOUT, self::LOGIN_FAILED, self::REGISTERED, self::PASSWORD_RESET,
             self::USER_CREATED, self::USER_UPDATED, self::USER_DEACTIVATED, self::USER_REACTIVATED, self::ROLE_CHANGED, self::USER_PASSWORD_RESET,
             self::SETTINGS_UPDATED, self::CATEGORY_CHANGED, self::QR_CODE_CHANGED, self::PM_SCHEDULE_CHANGED, self::EQUIPMENT_CHANGED,
+            self::FAQ_CREATED, self::FAQ_UPDATED, self::FAQ_PUBLISHED, self::FAQ_HIDDEN, self::FAQ_REORDERED, self::FAQ_DELETED,
             self::TICKET_STATUS, self::TICKET_ASSIGNED, self::TICKET_REASSIGNED,
             self::ATTACHMENT_UPLOADED, self::ATTACHMENT_DOWNLOADED,
             self::EXPORT,
