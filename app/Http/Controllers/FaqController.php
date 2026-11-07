@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Faq;
+use App\Models\FaqFeedback;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,6 +52,7 @@ class FaqController extends Controller
             'total' => $matching->count(),
             'entries' => $entries,
             'groups' => $entries->groupBy('topic'),
+            'votes' => FaqFeedback::votesFor($entries->pluck('id')->all(), $user, $request),   // Phase 5A: what this reader already voted
         ]);
     }
 

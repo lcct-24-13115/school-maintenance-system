@@ -98,7 +98,8 @@
         el: el,
         summary: summary,
         title: summary ? summary.textContent : '',
-        text: normalize(el.textContent),
+        // only the question and the answer are searched (not the "Was this helpful?" buttons)
+        text: normalize((summary ? summary.textContent : '') + ' ' + (el.querySelector('.help-answer') ? el.querySelector('.help-answer').textContent : '')),
         openAtLoad: el.hasAttribute('open')
       };
     });
