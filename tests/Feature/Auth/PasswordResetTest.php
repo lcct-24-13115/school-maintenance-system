@@ -3,71 +3,45 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class PasswordResetTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_reset_password_link_screen_can_be_rendered(): void
+    public function test_forgot_password_screen_can_be_rendered(): void
     {
-        $response = $this->get('/forgot-password');
-
-        $response->assertStatus(200);
+        $this->get('/forgot-password')->assertStatus(200)->assertSee('Employee / ID number');
     }
 
-    public function test_reset_password_link_can_be_requested(): void
+    public function test_password_can_be_changed_directly_with_matching_email_and_id(): void
     {
-        Notification::fake();
+        $user = User::factory()->create(['employee_no' => 'EMP-001']);
 
-        $user = User::factory()->create();
+        $this->post('/forgot-password', [
+            'email' => $user->email,
+            'employee_no' => 'EMP-001',
+            'password' => 'NewPassw0rd!2026',
+            'password_confirmation' => 'NewPassw0rd!2026',
+        ])->assertSessionHasNoErrors()->assertRedirect(route('login'));
 
-        $this->post('/forgot-password', ['email' => $user->email]);
-
-        Notification::assertSentTo($user, ResetPassword::class);
+        $this->assertTrue(Hash::check('NewPassw0rd!2026', $user->fresh()->password));
     }
 
-    public function test_reset_password_screen_can_be_rendered(): void
+    public function test_wrong_id_number_does_not_change_the_password(): void
     {
-        Notification::fake();
+        $user = User::factory()->create(['employee_no' => 'EMP-001']);
+        $old = $user->password;
 
-        $user = User::factory()->create();
+        $this->post('/forgot-password', [
+            'email' => $user->email,
+            'employee_no' => 'WRONG',
+            'password' => 'NewPassw0rd!2026',
+            'password_confirmation' => 'NewPassw0rd!2026',
+        ])->assertSessionHasErrors('email');
 
-        $this->post('/forgot-password', ['email' => $user->email]);
-
-        Notification::assertSentTo($user, ResetPassword::class, function ($notification) {
-            $response = $this->get('/reset-password/'.$notification->token);
-
-            $response->assertStatus(200);
-
-            return true;
-        });
-    }
-
-    public function test_password_can_be_reset_with_valid_token(): void
-    {
-        Notification::fake();
-
-        $user = User::factory()->create();
-
-        $this->post('/forgot-password', ['email' => $user->email]);
-
-        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
-            $response = $this->post('/reset-password', [
-                'token' => $notification->token,
-                'email' => $user->email,
-                'password' => 'password',
-                'password_confirmation' => 'password',
-            ]);
-
-            $response
-                ->assertSessionHasNoErrors()
-                ->assertRedirect(route('login'));
-
-            return true;
-        });
+        $this->assertSame($old, $user->fresh()->password);
     }
 }
