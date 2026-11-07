@@ -125,6 +125,12 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->can_do('manage_pm_schedules') || $this->can_do('view_pm_reports');
     }
 
+    /** Help & FAQ (Phase 1): may this user add, edit, order, hide and delete the FAQ entries? (Everyone may READ the ones meant for them.) */
+    public function canManageFaq(): bool
+    {
+        return $this->can_do('manage_faq');
+    }
+
     /** Route name of this user's dashboard (used after login). */
     public function dashboardRoute(): string
     {

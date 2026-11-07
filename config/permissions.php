@@ -34,6 +34,7 @@
 |   view_pm_schedules    READ-ONLY look at PM schedules, equipment, their history and the maintenance calendar (PM E2).
 |                        manage_pm_schedules already includes this. No buttons that change anything.
 |   view_pm_reports      open the PM compliance report and its CSV / PDF (PM E3). manage_pm_schedules includes this too.
+|   manage_faq          add, edit, order, hide and delete the Help & FAQ entries (Help & FAQ Phase 1). Everyone can READ the entries meant for their role.
 |   escalate           escalate to the President / authorizer (M2). Handing it back is the authorizer's
 |                      (school.workflow.authorizers), like approve/disapprove.
 |
@@ -48,6 +49,8 @@ return [
         'view_all_tickets', 'view_confidential', 'flag_emergency', 'clear_emergency',
         'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users', 'manage_settings', 'manage_categories', 'manage_qr_codes', 'manage_pm_schedules', 'view_pm_reports',
         'cancel_own', 'reopen_own', 'request_info', 'escalate', 'view_audit_logs',
+        // CONFIRM WITH CLIENT (Help & FAQ): who writes the FAQ.
+        'manage_faq',
     ],
 
     // CONFIRM WITH CLIENT: Finance sees all tickets EXCEPT confidential ones.
