@@ -24,6 +24,7 @@
         <p style="margin-bottom:16px">
             <a href="{{ $ticket->status->isTerminal() ? route('tickets.history') : route('tickets.index') }}" class="btn btn-sm"><i class="fa-solid fa-arrow-left"></i> {{ $ticket->status->isTerminal() ? 'Back to ticket history' : 'Back to tickets' }}</a>
         </p>
+        <x-help-link topic="Following your request" row />
 
         @if (session('status'))
             <div class="alert ok"><i class="fa-solid fa-circle-check"></i><div>{{ session('status') }}</div></div>
