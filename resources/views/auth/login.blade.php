@@ -30,6 +30,7 @@
                 <input id="password" type="password" name="password" required autocomplete="current-password"
                     placeholder="Enter your password">
             </div>
+            <p class="hint">Your default password is your student ID number.</p>
         </div>
 
         @if (Route::has('password.request'))
