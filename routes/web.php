@@ -128,6 +128,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/{pmSchedule}/generate', \App\Http\Controllers\Admin\PmScheduleGenerateController::class)->name('generate');
     });
 
+    // ---- Maintenance Calendar (Phase 1): JSON feed. Capability manage_pm_schedules is checked in the controller (others get 403) ----
+    Route::get('/maintenance-calendar/events', [\App\Http\Controllers\MaintenanceCalendarController::class, 'events'])->middleware('throttle:60,1')->name('maintenance-calendar.events');
+
     Route::prefix('admin/equipment')->name('admin.equipment.')->group(function () {
         Route::get('/', [EquipmentController::class, 'index'])->name('index');
         Route::post('/', [EquipmentController::class, 'store'])->name('store');
