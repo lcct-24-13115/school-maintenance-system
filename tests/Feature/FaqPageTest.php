@@ -522,4 +522,44 @@ class FaqPageTest extends TestCase
 
         $this->get('/help-public')->assertOk()->assertDontSee('class="auth-help-link"', false);
     }
+
+    // ---------- Phase 2E: the instant filter (plain JavaScript, progressive enhancement) ----------
+
+    public function test_the_page_loads_the_instant_filter_and_has_its_hooks(): void
+    {
+        $this->faq('Something');
+
+        $this->as('requester')->assertOk()
+            ->assertSee('js/help-filter.js', false)
+            ->assertSee('id="help-list"', false)
+            ->assertSee('data-help-group', false)
+            ->assertSee('data-help-item', false)
+            ->assertSee('id="help-js-clear"', false);
+
+        $this->assertFileExists(public_path('js/help-filter.js'));
+    }
+
+    public function test_the_filters_empty_message_is_hidden_until_the_script_shows_it(): void
+    {
+        $this->faq('Something');
+
+        $this->as('requester')->assertOk()->assertSee('id="help-js-empty" hidden', false);
+    }
+
+    public function test_there_is_no_filter_message_when_the_server_already_shows_the_empty_state(): void
+    {
+        $this->as('requester')->assertOk()->assertDontSee('id="help-js-empty"', false);
+
+        $this->faq('Something');
+        $this->as('requester', '/help?q=zzzz')->assertOk()->assertDontSee('id="help-js-empty"', false);
+    }
+
+    public function test_the_filter_script_never_builds_html_from_text(): void
+    {
+        $js = file_get_contents(public_path('js/help-filter.js'));
+
+        foreach (['innerHTML', 'outerHTML', 'insertAdjacentHTML', 'document.write', 'eval('] as $bad) {
+            $this->assertStringNotContainsString($bad, $js, $bad);
+        }
+    }
 }

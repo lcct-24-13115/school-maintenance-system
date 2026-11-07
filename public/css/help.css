@@ -69,3 +69,6 @@
 .auth-help-link i{color:var(--deep)}
 .auth-help-link:hover{background:#fff;border-color:var(--blue);color:var(--deep);text-decoration:none}
 @media(max-width:575.98px){.auth-help-link{margin:14px 0 4px;box-shadow:none}}
+
+/* The instant filter hides things with the "hidden" attribute (Phase 2E) */
+.help-page [hidden]{display:none!important}

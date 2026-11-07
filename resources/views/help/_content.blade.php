@@ -71,6 +71,19 @@
         @endforeach
     </div>
 
+    @if ($count > 0)
+        {{-- Shown by help-filter.js only (hidden until then): typing found nothing among the questions on this page. --}}
+        <div class="empty help-empty" id="help-js-empty" hidden>
+            <i class="fa-regular fa-circle-question"></i>
+            <b>No answers match &ldquo;<span id="help-js-q"></span>&rdquo;</b>
+            <span>Press Enter to search every question, or clear the search.</span>
+            <div class="help-actions">
+                <button type="button" class="btn btn-sm" id="help-js-clear"><i class="fa-solid fa-xmark"></i> Clear the search</button>
+                <a class="btn btn-sm btn-primary" href="#still-need-help"><i class="fa-solid fa-life-ring"></i> Still need help?</a>
+            </div>
+        </div>
+    @endif
+
     @if ($count === 0)
         <div class="empty help-empty" id="help-empty">
             <i class="fa-regular fa-circle-question"></i>
@@ -97,4 +110,5 @@
     @endif
 
     @include('help._still-need-help')
+    <script src="{{ asset('js/help-filter.js') }}?v={{ @filemtime(public_path('js/help-filter.js')) }}" defer></script>
 </div>
