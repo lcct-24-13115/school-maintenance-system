@@ -18,7 +18,7 @@
 
         <p class="p6-note">
             A PM schedule repeats on its own: for example <b>Aircon Cleaning</b> every 3 months or <b>Generator Checkup</b> every month.
-            Automatic tickets and the calendar come in the next phases. For now you can set up and manage the schedules here.
+            A ticket is made automatically every day at 1:00 AM, a few days before each due date. The calendar comes in a later phase.
         </p>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
@@ -105,6 +105,11 @@
                                         @endif
                                     </td>
                                     <td data-label="Actions" style="text-align:right;white-space:nowrap">
+                                        <form method="POST" action="{{ route('admin.pm-schedules.generate', $s) }}" style="display:inline"
+                                              onsubmit="return confirm('Make the ticket for the next due date now? The schedule then moves to the following date.')">
+                                            @csrf
+                                            <button class="btn btn-sm" title="Make the ticket for the next due date now" @disabled(! $s->is_active || ! $s->next_due_date)><i class="fa-solid fa-ticket"></i> Ticket now</button>
+                                        </form>
                                         <a class="btn btn-sm" href="{{ route('admin.pm-schedules.edit', $s) }}"><i class="fa-solid fa-pen"></i> Edit</a>
                                         <form method="POST" action="{{ route('admin.pm-schedules.toggle', $s) }}" style="display:inline">
                                             @csrf
@@ -127,6 +132,8 @@
                 </div>
             @endif
         </div>
+
+        @include('admin.pm-schedules._runs')
 
         @include('partials.pager', ['paginator' => $schedules])
     </div>

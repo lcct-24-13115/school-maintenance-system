@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A recurring preventive-maintenance schedule (PM Scheduler, Phase 1).
@@ -46,6 +47,7 @@ class PmSchedule extends Model
             'frequency_interval' => 'integer',
             'lead_time_days' => 'integer',
             'is_active' => 'boolean',
+            'last_generated_at' => 'datetime',
         ];
     }
 
@@ -145,6 +147,11 @@ class PmSchedule extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(MaintenanceRequest::class, 'pm_schedule_id');
     }
 
     public function creator(): BelongsTo

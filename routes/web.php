@@ -125,6 +125,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/{pmSchedule}', [PmScheduleController::class, 'update'])->name('update');
         Route::patch('/{pmSchedule}/active', [PmScheduleController::class, 'toggle'])->name('toggle');
         Route::delete('/{pmSchedule}', [PmScheduleController::class, 'destroy'])->name('destroy');
+        Route::post('/{pmSchedule}/generate', \App\Http\Controllers\Admin\PmScheduleGenerateController::class)->name('generate');
     });
 
     Route::prefix('admin/equipment')->name('admin.equipment.')->group(function () {

@@ -51,6 +51,7 @@ class PmScheduleController extends Controller
             'filters' => $filters,
             'facilities' => Facility::orderBy('sort_order')->orderBy('name')->get(['id', 'name']),
             'equipmentList' => Equipment::orderBy('name')->get(['id', 'name']),
+            'runs' => \App\Models\PmJobRun::latest('id')->limit(8)->get(),
             'frequencies' => PmSchedule::frequencyLabels(),
         ]);
     }

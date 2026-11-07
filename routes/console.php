@@ -14,3 +14,6 @@ Schedule::command('tickets:autoclose')->hourly()->withoutOverlapping();
 
 // Phase 12: escalate open tickets that are past their target date (not the ones waiting for the requester).
 Schedule::command('tickets:escalate')->hourly()->withoutOverlapping();
+
+// PM Scheduler (Phase 2): make the preventive maintenance tickets that are due. Needs the Laravel scheduler running (see the steps).
+Schedule::command('pm:generate --trigger=schedule')->dailyAt('01:00')->timezone('Asia/Manila')->withoutOverlapping();

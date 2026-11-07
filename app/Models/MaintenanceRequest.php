@@ -41,6 +41,7 @@ class MaintenanceRequest extends Model
         'status', 'assigned_to', 'assigned_at',
         'president_id', 'president_approved_at', 'president_remarks',
         'problems_encountered', 'recommendations',
+        'pm_schedule_id', 'pm_due_date',
         'submitted_at', 'due_at', 'completed_at', 'closed_at',
     ];
 
@@ -51,6 +52,7 @@ class MaintenanceRequest extends Model
             'is_emergency' => 'boolean',
             'is_confidential' => 'boolean',
             'needed_by' => 'date',
+            'pm_due_date' => 'date',
             'submitted_at' => 'datetime',
             'due_at' => 'datetime',
             'assigned_at' => 'datetime',
@@ -325,6 +327,11 @@ class MaintenanceRequest extends Model
     }
 
     // ---- relations -----------------------------------------------------------------------------
+
+    public function pmSchedule(): BelongsTo
+    {
+        return $this->belongsTo(PmSchedule::class);
+    }
 
     public function requester(): BelongsTo
     {
