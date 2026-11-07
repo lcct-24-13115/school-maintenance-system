@@ -128,6 +128,9 @@ Route::middleware('auth')->group(function () {
         Route::patch('/{pmSchedule}/active', [PmScheduleController::class, 'toggle'])->name('toggle');
         Route::delete('/{pmSchedule}', [PmScheduleController::class, 'destroy'])->name('destroy');
         Route::post('/{pmSchedule}/generate', \App\Http\Controllers\Admin\PmScheduleGenerateController::class)->name('generate');
+        Route::post('/bulk', [\App\Http\Controllers\Admin\PmScheduleBulkController::class, 'bulk'])->name('bulk');
+        Route::post('/{pmSchedule}/duplicate', [\App\Http\Controllers\Admin\PmScheduleBulkController::class, 'duplicate'])->name('duplicate');
+        Route::get('/{pmSchedule}/history', \App\Http\Controllers\Admin\PmScheduleHistoryController::class)->name('history');
     });
 
     // ---- Maintenance Calendar (Phase 1): JSON feed. Capability manage_pm_schedules is checked in the controller (others get 403) ----
