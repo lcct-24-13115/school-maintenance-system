@@ -42,7 +42,7 @@ return [
     // maintenance_admin is the proposal's "Admin".
     'maintenance_admin' => [
         'view_all_tickets', 'view_confidential', 'flag_emergency', 'clear_emergency',
-        'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users', 'manage_settings', 'manage_categories', 'manage_qr_codes',
+        'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users', 'manage_settings', 'manage_categories', 'manage_qr_codes', 'manage_pm_schedules',
         'cancel_own', 'reopen_own', 'request_info', 'escalate', 'view_audit_logs',
     ],
 

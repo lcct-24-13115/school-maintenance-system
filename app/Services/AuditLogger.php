@@ -51,6 +51,10 @@ class AuditLogger
 
     public const QR_CODE_CHANGED = 'qr_code_changed';   // a QR code was made, edited or deleted (Phase 17)
 
+    public const PM_SCHEDULE_CHANGED = 'pm_schedule_changed';
+
+    public const EQUIPMENT_CHANGED = 'equipment_changed';
+
     public const TICKET_STATUS = 'ticket_status';
 
     public const TICKET_ASSIGNED = 'ticket_assigned';
@@ -76,7 +80,7 @@ class AuditLogger
         return [
             self::LOGIN, self::LOGOUT, self::LOGIN_FAILED, self::REGISTERED, self::PASSWORD_RESET,
             self::USER_CREATED, self::USER_UPDATED, self::USER_DEACTIVATED, self::USER_REACTIVATED, self::ROLE_CHANGED, self::USER_PASSWORD_RESET,
-            self::SETTINGS_UPDATED, self::CATEGORY_CHANGED, self::QR_CODE_CHANGED,
+            self::SETTINGS_UPDATED, self::CATEGORY_CHANGED, self::QR_CODE_CHANGED, self::PM_SCHEDULE_CHANGED, self::EQUIPMENT_CHANGED,
             self::TICKET_STATUS, self::TICKET_ASSIGNED, self::TICKET_REASSIGNED,
             self::ATTACHMENT_UPLOADED, self::ATTACHMENT_DOWNLOADED,
             self::EXPORT,

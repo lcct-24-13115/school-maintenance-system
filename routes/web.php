@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\QrCodeController;
+use App\Http\Controllers\Admin\PmScheduleController;
+use App\Http\Controllers\Admin\EquipmentController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ApprovalController;
@@ -113,6 +115,24 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
     Route::get('/reports/pdf', [ReportController::class, 'pdf'])->name('reports.pdf');
+
+    // ---- Preventive Maintenance Scheduler (PM Scheduler Phase 1). Capability manage_pm_schedules is checked in the controllers (others get 403) ----
+    Route::prefix('admin/pm-schedules')->name('admin.pm-schedules.')->group(function () {
+        Route::get('/', [PmScheduleController::class, 'index'])->name('index');
+        Route::get('/create', [PmScheduleController::class, 'create'])->name('create');
+        Route::post('/', [PmScheduleController::class, 'store'])->name('store');
+        Route::get('/{pmSchedule}/edit', [PmScheduleController::class, 'edit'])->name('edit');
+        Route::put('/{pmSchedule}', [PmScheduleController::class, 'update'])->name('update');
+        Route::patch('/{pmSchedule}/active', [PmScheduleController::class, 'toggle'])->name('toggle');
+        Route::delete('/{pmSchedule}', [PmScheduleController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('admin/equipment')->name('admin.equipment.')->group(function () {
+        Route::get('/', [EquipmentController::class, 'index'])->name('index');
+        Route::post('/', [EquipmentController::class, 'store'])->name('store');
+        Route::put('/{equipment}', [EquipmentController::class, 'update'])->name('update');
+        Route::delete('/{equipment}', [EquipmentController::class, 'destroy'])->name('destroy');
+    });
 
     Route::get('/admin/audit-logs', [AuditLogController::class, 'index'])->name('admin.audit-logs.index');
 

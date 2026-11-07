@@ -69,6 +69,15 @@
             </a>
         @endif
 
+        @if ($u->can_do('manage_pm_schedules'))
+            <a href="{{ route('admin.pm-schedules.index') }}" class="{{ request()->routeIs('admin.pm-schedules.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-calendar-check"></i> PM schedules
+            </a>
+            <a href="{{ route('admin.equipment.index') }}" class="{{ request()->routeIs('admin.equipment.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-screwdriver-wrench"></i> Equipment
+            </a>
+        @endif
+
         @if ($u->can_do('manage_qr_codes'))
             <a href="{{ route('admin.qr-codes.index') }}" class="{{ request()->routeIs('admin.qr-codes.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-qrcode"></i> QR codes
