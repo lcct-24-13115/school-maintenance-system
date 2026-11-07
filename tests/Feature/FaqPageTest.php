@@ -365,4 +365,115 @@ class FaqPageTest extends TestCase
         $this->app['auth']->forgetGuards();   // the person above is signed in; the next request is a visitor
         $this->get('/help-public')->assertOk()->assertSee('No questions here yet');
     }
+
+    // ---------- Phase 2C: the "Still need help?" box and its settings ----------
+
+    private function settingsPayload(array $extra = []): array
+    {
+        return $extra + [
+            'sla_hours_routine' => \App\Models\Setting::int('sla_hours_routine'),
+            'sla_hours_emergency' => \App\Models\Setting::int('sla_hours_emergency'),
+            'reopen_window_days' => \App\Models\Setting::int('reopen_window_days'),
+        ];
+    }
+
+    public function test_the_help_box_shows_the_standard_text_until_it_is_changed(): void
+    {
+        $hours = config('school.settings_defaults.help_office_hours');
+        $email = config('school.settings_defaults.help_contact_email');
+
+        $this->as('requester')->assertOk()
+            ->assertSee('Still need help?')
+            ->assertSee($hours)
+            ->assertSee('href="mailto:'.$email.'"', false);
+    }
+
+    public function test_the_help_box_reads_the_settings(): void
+    {
+        \App\Models\Setting::put('help_office_hours', 'Mon to Fri, 9 AM to 4 PM');
+        \App\Models\Setting::put('help_contact_email', 'help@example.test');
+
+        $this->as('requester')->assertOk()
+            ->assertSee('Mon to Fri, 9 AM to 4 PM')
+            ->assertSee('href="mailto:help@example.test"', false)
+            ->assertDontSee(config('school.settings_defaults.help_contact_email'));
+    }
+
+    public function test_the_repair_button_is_for_signed_in_people_only(): void
+    {
+        // the visitor first (a later actingAs would keep the person signed in)
+        $this->get('/help-public')->assertOk()
+            ->assertDontSee('Send a repair request')
+            ->assertDontSee(route('repairs.create'), false)
+            ->assertSee('To send a repair request');
+
+        $this->as('requester')->assertOk()
+            ->assertSee('Send a repair request')
+            ->assertSee('href="'.route('repairs.create').'"', false);
+    }
+
+    public function test_the_text_of_the_box_is_escaped_and_a_bad_email_is_not_linked(): void
+    {
+        \App\Models\Setting::put('help_office_hours', '<script>alert(1)</script>');
+        \App\Models\Setting::put('help_contact_email', 'not an email');
+
+        $this->as('requester')->assertOk()
+            ->assertDontSee('<script>alert(1)</script>', false)
+            ->assertSee('&lt;script&gt;', false)
+            ->assertDontSee('mailto:', false);
+    }
+
+    public function test_the_admin_settings_page_has_the_help_fields(): void
+    {
+        $this->as('maintenance', route('admin.settings.edit', [], false))->assertOk()
+            ->assertSee('name="help_office_hours"', false)
+            ->assertSee('name="help_contact_email"', false)
+            ->assertSee(config('school.settings_defaults.help_contact_email'));
+    }
+
+    public function test_the_admin_can_save_the_help_texts(): void
+    {
+        $this->actingAs($this->user('maintenance'))
+            ->put(route('admin.settings.update'), $this->settingsPayload([
+                'help_office_hours' => 'Mon to Fri, 9 AM to 4 PM',
+                'help_contact_email' => 'help@example.test',
+            ]))
+            ->assertRedirect(route('admin.settings.edit'));
+
+        $this->assertSame('Mon to Fri, 9 AM to 4 PM', \App\Models\Setting::get('help_office_hours'));
+        $this->assertSame('help@example.test', \App\Models\Setting::get('help_contact_email'));
+    }
+
+    public function test_a_bad_email_is_refused_and_nothing_is_saved(): void
+    {
+        $this->actingAs($this->user('maintenance'))
+            ->put(route('admin.settings.update'), $this->settingsPayload(['help_contact_email' => 'nope']))
+            ->assertSessionHasErrors('help_contact_email');
+
+        $this->assertSame(config('school.settings_defaults.help_contact_email'), \App\Models\Setting::get('help_contact_email'));
+    }
+
+    public function test_a_blank_field_goes_back_to_the_standard_text(): void
+    {
+        \App\Models\Setting::put('help_office_hours', 'Custom hours');
+
+        $this->actingAs($this->user('maintenance'))
+            ->put(route('admin.settings.update'), $this->settingsPayload(['help_office_hours' => '']))
+            ->assertRedirect(route('admin.settings.edit'));
+
+        $this->assertSame(config('school.settings_defaults.help_office_hours'), \App\Models\Setting::get('help_office_hours'));
+    }
+
+    public function test_saving_without_the_help_fields_leaves_them_alone(): void
+    {
+        \App\Models\Setting::put('help_office_hours', 'Custom hours');
+        \App\Models\Setting::put('help_contact_email', 'custom@example.test');
+
+        $this->actingAs($this->user('maintenance'))
+            ->put(route('admin.settings.update'), $this->settingsPayload())
+            ->assertRedirect(route('admin.settings.edit'));
+
+        $this->assertSame('Custom hours', \App\Models\Setting::get('help_office_hours'));
+        $this->assertSame('custom@example.test', \App\Models\Setting::get('help_contact_email'));
+    }
 }

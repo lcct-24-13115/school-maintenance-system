@@ -86,6 +86,8 @@ return [
         'sla_hours_routine' => 120,
         'sla_hours_emergency' => 24,
         'reopen_window_days' => 14,
+        'help_office_hours' => 'Monday to Friday, 8:00 AM to 5:00 PM',   // Help page (CONFIRM WITH CLIENT: placeholder)
+        'help_contact_email' => 'maintenance@lcctanauan.edu.ph',          // Help page (CONFIRM WITH CLIENT: placeholder)
         'autoclose_waiting_days' => 7,   // Phase 9: days without an answer before a Waiting for User ticket is auto-closed (0 = off)
     ],
 

@@ -16,12 +16,16 @@ class SettingsController extends Controller
     /** setting key => label shown on the page */
     public const KEYS = ['sla_hours_routine', 'sla_hours_emergency', 'reopen_window_days', 'autoclose_waiting_days'];
 
+    /** Text settings of the Help & FAQ page (Help phase 2C). Kept apart from KEYS because KEYS are whole numbers. */
+    public const TEXT_KEYS = ['help_office_hours', 'help_contact_email'];
+
     public function edit(Request $request): View
     {
         $this->authorizeManage($request);
 
         return view('admin.settings', [
             'values' => collect(self::KEYS)->mapWithKeys(fn ($k) => [$k => Setting::int($k)])->all(),
+            'texts' => collect(self::TEXT_KEYS)->mapWithKeys(fn ($k) => [$k => (string) Setting::get($k, '')])->all(),
         ]);
     }
 
@@ -35,6 +39,9 @@ class SettingsController extends Controller
             'reopen_window_days' => ['required', 'integer', 'min:0', 'max:365'],
             'autoclose_waiting_days' => ['nullable', 'integer', 'min:0', 'max:365'],   // Phase 9; left alone when the field is missing
             'recalculate_open' => ['nullable', 'boolean'],
+            // Help & FAQ page texts (Help phase 2C). Left alone when the field is missing; blank = back to the standard text.
+            'help_office_hours' => ['nullable', 'string', 'max:200'],
+            'help_contact_email' => ['nullable', 'email', 'max:120'],
         ]);
 
         // Remember what actually changed (old -> new) before saving, for the audit trail.
@@ -50,6 +57,25 @@ class SettingsController extends Controller
 
         foreach (self::KEYS as $key) {
             Setting::put($key, $data[$key] ?? Setting::int($key));
+        }
+
+        // Help & FAQ page texts: only when the field was sent; blank means "use the standard text again".
+        foreach (self::TEXT_KEYS as $key) {
+            if (! array_key_exists($key, $data)) {
+                continue;
+            }
+
+            $old = (string) Setting::get($key, '');
+            $new = trim((string) ($data[$key] ?? ''));
+
+            if ($new === '') {
+                $new = (string) config("school.settings_defaults.{$key}", '');
+            }
+
+            if ($old !== $new) {
+                $changes[$key] = [$old, $new];
+                Setting::put($key, $new);
+            }
         }
 
         if ($changes !== []) {

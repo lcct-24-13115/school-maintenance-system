@@ -54,3 +54,12 @@
   .help-item>summary{padding:13px 14px}
   .help-answer{padding:0 14px 14px}
 }
+
+/* Still need help? contact list (Phase 2C) */
+.help-more>p{color:var(--text-2);margin:0 0 12px;line-height:1.55}
+.help-contact{list-style:none;margin:0 0 16px;padding:0;display:grid;gap:10px}
+.help-contact li{display:flex;align-items:flex-start;gap:12px}
+.help-contact i{display:grid;place-items:center;flex:0 0 36px;height:36px;border-radius:50%;background:var(--sky);color:var(--deep)}
+.help-contact span{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere;line-height:1.4}
+.help-contact b{font-size:12.5px;color:var(--text-2);text-transform:uppercase;letter-spacing:.04em}
+.help-signin{margin:0;font-size:14px}

@@ -60,6 +60,22 @@
                 </span>
             </label>
 
+            <h3 class="p6-card-t" style="margin-top:26px">Help &amp; FAQ page</h3>
+            <p class="p6-card-s">Shown in the &ldquo;Still need help?&rdquo; box of the Help page. Leave a field empty to go back to the standard text.</p>
+
+            <div class="field">
+                <label for="help_office_hours">Office hours</label>
+                <input id="help_office_hours" type="text" name="help_office_hours" maxlength="200"
+                       value="{{ old('help_office_hours', $texts['help_office_hours'] ?? '') }}">
+                @error('help_office_hours')<div class="field-err">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="field">
+                <label for="help_contact_email">Contact e-mail</label>
+                <input id="help_contact_email" type="email" name="help_contact_email" maxlength="120"
+                       value="{{ old('help_contact_email', $texts['help_contact_email'] ?? '') }}">
+                @error('help_contact_email')<div class="field-err">{{ $message }}</div>@enderror
+            </div>
             <div class="p6-save">
                 <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save settings</button>
             </div>
