@@ -124,6 +124,7 @@ return [
         'reminder_days_before' => (int) env('PM_REMINDER_DAYS', 3),        // 0 = no reminder
         'escalate_after_days' => (int) env('PM_ESCALATE_AFTER_DAYS', 2),   // days overdue before the supervisor is told; 0 = off
         'supervisor_roles' => ['president'],
+        'widget_days' => (int) env('PM_WIDGET_DAYS', 90),                  // PM E3: dashboard "on-time rate" looks this many days back
     ],
 
     /*

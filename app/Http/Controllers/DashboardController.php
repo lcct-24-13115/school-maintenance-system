@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\TicketStatus;
 use App\Models\Inventory;
 use App\Models\MaintenanceRequest;
+use App\Services\PmCompliance;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -57,7 +58,7 @@ class DashboardController extends Controller
             'Pending tickets' => $this->card($visible()->pending()->count(), route('tickets.index', ['status' => TicketStatus::pendingValues()])),
             'Waiting for authorization' => $this->card($visible()->where('status', $pending)->count(), route('tickets.index', ['status' => [$pending]])),
             'Work completed (awaiting closure)' => $this->card($visible()->where('status', $completed)->count(), route('tickets.index', ['status' => [$completed]])),
-        ]);
+        ] + PmCompliance::dashboardCards($user, $this->pmWidgetDays()));
     }
 
     public function custodian(): View
@@ -79,7 +80,13 @@ class DashboardController extends Controller
             'Waiting for your approval' => $this->card($visible()->awaitingAuthorization()->count(), $user->canAuthorize() ? route('approvals.index') : route('tickets.index', ['status' => [$pending]])),
             'Authorized by you' => $this->card($visible()->whereNotNull('president_approved_at')->count()),
             'Closed' => $this->card($visible()->where('status', $closed)->count(), route('tickets.history', ['status' => [$closed]])),
-        ]);
+        ] + PmCompliance::dashboardCards($user, $this->pmWidgetDays()));
+    }
+
+    /** PM E3: how many days back the dashboard's "PM on-time rate" card looks (school.pm.widget_days, default 90). */
+    private function pmWidgetDays(): int
+    {
+        return max(1, (int) config('school.pm.widget_days', 90));
     }
 
     /** One dashboard card: the number, and the pre-filtered ticket list it links to (if any). */

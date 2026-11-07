@@ -1,0 +1,70 @@
+PM E3 - Dashboard widgets at PM compliance report (CSV / PDF)
+=============================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+
+  cd C:\laragon\www\school-maintenance-system
+  git add -A ; git commit -m "Before PM E3 compliance report"
+  tar -xf "$env:USERPROFILE\Downloads\pm-e3-report-patch.zip" -C .
+  php artisan config:clear
+  php artisan route:clear
+  php artisan view:clear
+  php artisan test --filter=PmReportTest
+  php artisan test
+
+DI MO MA-EXTRACT ANG ZIP? Gamitin ang terminal (piliin ang isa), sa loob ng project folder:
+  A) tar -xf "$env:USERPROFILE\Downloads\pm-e3-report-patch.zip" -C .
+  B) Expand-Archive -Path "$env:USERPROFILE\Downloads\pm-e3-report-patch.zip" -DestinationPath . -Force
+
+WALANG MIGRATION. WALANG "npm install". WALANG "npm run build".
+
+I-PUSH SA GITHUB (kapag pasado na ang test):
+  git add -A
+  git commit -m "PM E3: PM compliance report (CSV/PDF) and dashboard cards"
+  git push
+
+ANO ANG NAGAWA
+  1. PM compliance report: /pm-reports  (menu: "PM report")
+       - On-time rate, Done on time, Done late, Overdue now, Not due yet, Cancelled
+       - Overdue list (pinakamatagal na overdue ang una), table per Facility, table per Buwan
+       - Filter: From / To (PM DUE date) at Facility
+       - Download CSV  (/pm-reports/export)   at   Download PDF  (/pm-reports/pdf)
+       - Bawat download ay nasa Audit log (export)
+  2. Dashboard cards (President at Finance): "PM overdue", "PM due in 7 days", "PM on-time rate (90 days)".
+       Pindutin ang card = bubukas ang PM report.
+       Ang Maintenance Admin ay napupunta sa board, kaya sa menu "PM report" niya ito binubuksan.
+  3. Sino ang may access: view_pm_reports (E2) = Maintenance Admin, President, Finance. Iba = 403.
+
+PAANO BINIBILANG (CONFIRM WITH CLIENT, docs/OPEN_QUESTIONS.md #70-75)
+  On time  = natapos sa o bago ang PM due date      Late = natapos pagkatapos ng due date
+  Overdue  = hindi pa tapos at lampas na ang due date
+  Not due yet = hindi pa tapos pero hindi pa due (hindi kasama sa rate)
+  Cancelled / Disapproved = hindi kasama sa lahat
+  Rate = on time / (on time + late + overdue)
+  "Natapos" = pm_completed_date (Complete PM form), kung wala, ang araw na naging Work Completed.
+  Para palitan ang 90 araw ng card:  .env  ->  PM_WIDGET_DAYS=60  (tapos php artisan config:clear)
+
+BAGO / ino-overwrite:
+  app/Services/PmCompliance.php                       <- BAGO (lahat ng bilang)
+  app/Http/Controllers/PmReportController.php         <- BAGO (page, CSV, PDF)
+  resources/views/pm-reports/index.blade.php          <- BAGO
+  resources/views/pm-reports/pdf.blade.php            <- BAGO
+  routes/web.php                                      <- 3 bagong route
+  resources/views/layouts/navigation.blade.php        <- "PM report" sa menu
+  app/Http/Controllers/DashboardController.php        <- PM cards sa Finance at President
+  resources/views/dashboards/role.blade.php           <- card na puwedeng may text (hal. 50.0%)
+  config/school.php                                   <- pm.widget_days
+  docs/OPEN_QUESTIONS.md                              <- dagdag #70-75
+  tests/Feature/PmReportTest.php                      <- BAGO (16 tests)
+
+PAANO SUBUKAN SA BROWSER (password: password)
+  1. maintenance@ > menu "PM report": may mga numero kung may PM tickets. Subukan ang From / To at Facility.
+  2. Pindutin ang Download CSV (buksan sa Excel) at Download PDF. Tingnan ang Audit log: may 2 bagong "Exported PM compliance report".
+  3. finance@ : may "PM report" sa menu at 3 PM cards sa dashboard. custodian@ : wala (at 403 sa /pm-reports).
+  4. Gumawa ng PM ticket (Ticket now) na lampas na ang due date: lalabas sa "Overdue now".
+
+KUNG MAY MASIRA
+  Rollback: git checkout -- .   (at burahin ang mga BAGONG file sa listahan sa itaas)
+
+LAGING TANDAAN: walang PHP sa sandbox ko, kaya hindi pa na-run ang tests. Run mo muna ang
+  php artisan test --filter=PmReportTest   at ipadala ang error (kung meron).

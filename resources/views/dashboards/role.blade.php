@@ -11,6 +11,8 @@
 
         return match (true) {
             str_contains($l, 'emergency'), str_contains($l, 'overdue') => ['fa-triangle-exclamation', 'var(--red)'],
+            str_contains($l, 'on-time') => ['fa-circle-check', 'var(--green)'],
+            str_contains($l, 'pm due') => ['fa-calendar-check', 'var(--deep)'],
             str_contains($l, 'pending'), str_contains($l, 'waiting'), str_contains($l, 'new'), str_contains($l, 'review') => ['fa-hourglass-half', 'var(--gold)'],
             str_contains($l, 'progress') => ['fa-screwdriver-wrench', 'var(--deep)'],
             str_contains($l, 'closed'), str_contains($l, 'complete'), str_contains($l, 'approved') => ['fa-circle-check', 'var(--green)'],
@@ -54,6 +56,7 @@
                 @php
                     $count = is_array($card) ? ($card['count'] ?? 0) : $card;
                     $url = is_array($card) ? ($card['url'] ?? null) : null;
+                    $shown = is_array($card) && isset($card['display']) ? $card['display'] : $count;   // PM E3: a card may show text such as "87.5%"
                     [$icon, $colour] = $look((string) $label);
                 @endphp
 
@@ -64,7 +67,7 @@
                 @endif
                         <span class="ic"><i class="fa-solid {{ $icon }}"></i></span>
                         <div class="k">{{ $label }}</div>
-                        <div class="v nums">{{ $count }}</div>
+                        <div class="v nums">{{ $shown }}</div>
                         @if ($url)
                             <div class="s">View list <i class="fa-solid fa-arrow-right"></i></div>
                         @endif

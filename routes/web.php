@@ -118,6 +118,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
     Route::get('/reports/pdf', [ReportController::class, 'pdf'])->name('reports.pdf');
 
+    // ---- PM compliance report (PM E3). view_pm_reports (or manage_pm_schedules) is checked in the controller (others get 403) ----
+    Route::get('/pm-reports', [\App\Http\Controllers\PmReportController::class, 'index'])->name('pm-reports.index');
+    Route::get('/pm-reports/export', [\App\Http\Controllers\PmReportController::class, 'export'])->name('pm-reports.export');
+    Route::get('/pm-reports/pdf', [\App\Http\Controllers\PmReportController::class, 'pdf'])->name('pm-reports.pdf');
+
     // ---- Preventive Maintenance Scheduler (PM Scheduler Phase 1). Capability manage_pm_schedules is checked in the controllers (others get 403) ----
     Route::prefix('admin/pm-schedules')->name('admin.pm-schedules.')->group(function () {
         Route::get('/', [PmScheduleController::class, 'index'])->name('index');
