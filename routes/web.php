@@ -210,7 +210,8 @@ Route::middleware('auth')->group(function () {
 });
 
 // ---- Help & FAQ for visitors who are not signed in: only public entries for everyone ----
-Route::get('/help-public', [\App\Http\Controllers\FaqController::class, 'index'])->name('help.public');
+// 60 visits a minute per visitor. The third part ("help-public") keeps its counter apart from the other visitor routes.
+Route::get('/help-public', [\App\Http\Controllers\FaqController::class, 'index'])->middleware('throttle:60,1,help-public')->name('help.public');
 Route::post('/help-public/{faq}/feedback', [\App\Http\Controllers\FaqFeedbackController::class, 'store'])->middleware('throttle:30,1')->name('help.public.feedback');
 
 require __DIR__.'/auth.php';

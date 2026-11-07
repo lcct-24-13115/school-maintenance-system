@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\Faq;
 use App\Models\MaintenanceRequest;
 use App\Models\RequestAttachment;
 use App\Models\User;
+use App\Observers\FaqObserver;
 use App\Observers\UserObserver;
 use App\Policies\TicketPolicy;
 use App\Services\AuditLogger;
@@ -35,6 +37,19 @@ class AppServiceProvider extends ServiceProvider
     {
         // Audit trail (Merge Phase M3): account changes through an observer, sign-in events through listeners.
         User::observe(UserObserver::class);
+
+        // Help & FAQ Phase 5C: any change to an entry clears the cached Help lists.
+        Faq::observe(FaqObserver::class);
+
+        // Every {faq} in a URL: a person who may not manage the FAQ gets 403 on the admin routes BEFORE the entry is
+        // looked up, so a hidden entry and an id that does not exist look the same to them (no way to probe ids).
+        Route::bind('faq', function (string $value) {
+            if (request()->routeIs('admin.faq.*')) {
+                abort_unless(request()->user()?->canManageFaq(), 403, 'You do not have access to this page.');
+            }
+
+            return Faq::query()->where('id', $value)->firstOrFail();
+        });
         $this->registerAuditListeners();
 
         // The model is MaintenanceRequest but the policy is named for what it is: the ticket.

@@ -177,6 +177,7 @@ class FaqAdminController extends Controller
                 Faq::whereKey($id)->update(['sort_order' => ($position + 1) * 10]);
             }
 
+            \App\Support\FaqCache::flush();   // the order was written without model events (Phase 5C cache)
             $this->audit(AuditLogger::FAQ_REORDERED, "FAQ reordered: {$faq->question} moved {$direction} (topic: {$faq->topic})", $faq, ['direction' => $direction]);
         }
 

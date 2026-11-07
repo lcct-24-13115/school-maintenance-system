@@ -40,8 +40,12 @@ class SettingsController extends Controller
             'autoclose_waiting_days' => ['nullable', 'integer', 'min:0', 'max:365'],   // Phase 9; left alone when the field is missing
             'recalculate_open' => ['nullable', 'boolean'],
             // Help & FAQ page texts (Help phase 2C). Left alone when the field is missing; blank = back to the standard text.
-            'help_office_hours' => ['nullable', 'string', 'max:200'],
-            'help_contact_email' => ['nullable', 'email', 'max:120'],
+            'help_office_hours' => ['nullable', 'string', 'max:200', function (string $attribute, mixed $value, \Closure $fail) {
+                if (preg_match('/[<>\x00-\x1F\x7F]/u', (string) $value) === 1) {
+                    $fail('Office hours must be plain text: no < or > and no line breaks.');
+                }
+            }],
+            'help_contact_email' => ['nullable', 'string', 'email', 'max:120'],
         ]);
 
         // Remember what actually changed (old -> new) before saving, for the audit trail.
@@ -67,6 +71,10 @@ class SettingsController extends Controller
 
             $old = (string) Setting::get($key, '');
             $new = trim((string) ($data[$key] ?? ''));
+
+            if ($key === 'help_contact_email') {
+                $new = mb_strtolower($new);   // so "Help@School.ph" and "help@school.ph" are the same address
+            }
 
             if ($new === '') {
                 $new = (string) config("school.settings_defaults.{$key}", '');

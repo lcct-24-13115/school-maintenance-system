@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Faq;
 use App\Models\FaqFeedback;
 use App\Models\FaqSearchMiss;
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -14,8 +13,13 @@ use Illuminate\View\View;
 /**
  * Help & FAQ page (Phase 2).
  *   GET /help         (help.index)   signed-in people: entries for "all" or their role
- *   GET /help-public  (help.public)  anyone: only entries that are public AND for "all"
+ *   GET /help-public  (help.public)  anyone: only entries that are public AND for "all"  (throttle:60,1)
  * Visibility is decided by Faq::isVisibleTo(): unpublished entries and entries of another role never get here.
+ *
+ * Phase 5C: the list a person may read comes from FaqCache (10 minutes, one copy per audience, cleared on any admin
+ * change). The search and the topic counts are done on that list, so a visit costs one query on the faqs table
+ * when the copy is cold and none when it is warm: the counts of all topics come from the same list, not from a
+ * query per topic.
  */
 class FaqController extends Controller
 {
@@ -33,15 +37,15 @@ class FaqController extends Controller
         $user = $publicPage ? null : $request->user();
         $q = self::cleanQuery($request->query('q'));
 
-        $visible = $this->entries($user, '');                                  // what this person may read at all
-        $matching = $q === '' ? $visible : $this->entries($user, $q);          // ... that matches the search
+        $visible = Faq::visibleTo($user);                                      // what this person may read at all (cached)
+        $matching = $q === '' ? $visible : self::search($visible, $q);         // ... that matches the search
 
         // Phase 5B: a search that finds nothing is written down (the words only), so the admin knows what to write next.
         if ($q !== '' && $matching->isEmpty()) {
             FaqSearchMiss::recordOnce($q, $request);
         }
 
-        $counts = $matching->countBy('topic');
+        $counts = $matching->countBy('topic');   // every topic's count in one pass over the list
         $topics = $visible->pluck('topic')->unique()->values()
             ->map(fn (string $name) => ['name' => $name, 'count' => (int) ($counts[$name] ?? 0)]);
 
@@ -75,29 +79,20 @@ class FaqController extends Controller
         return trim(mb_substr(trim((string) $clean), 0, self::MAX_QUERY_LENGTH));
     }
 
-    /** @return Collection<int, Faq> */
-    private function entries(?User $user, string $q): Collection
+    /**
+     * The entries whose question or answer contains the words (not case sensitive; a typed % or _ is searched as itself).
+     * It only ever looks inside the list the person may already read.
+     *
+     * @param  Collection<int, Faq>  $entries
+     * @return Collection<int, Faq>
+     */
+    private static function search(Collection $entries, string $q): Collection
     {
-        return Faq::query()
-            ->published()
-            ->when($user === null, fn ($query) => $query->publicOnly())
-            ->when($q !== '', function ($query) use ($q) {
-                $like = '%'.self::escapeLike(mb_strtolower($q)).'%';
+        $needle = mb_strtolower($q);
 
-                $query->where(function ($w) use ($like) {
-                    $w->whereRaw("LOWER(question) LIKE ? ESCAPE '!'", [$like])
-                        ->orWhereRaw("LOWER(answer) LIKE ? ESCAPE '!'", [$like]);
-                });
-            })
-            ->ordered()
-            ->get()
-            ->filter(fn (Faq $faq) => $faq->isVisibleTo($user))   // audience + published, same rule as Phase 1
+        return $entries
+            ->filter(fn (Faq $faq) => str_contains(mb_strtolower((string) $faq->question), $needle)
+                || str_contains(mb_strtolower((string) $faq->answer), $needle))
             ->values();
-    }
-
-    /** So that a typed % or _ is searched as itself ("!" is the escape character in the LIKE above). */
-    private static function escapeLike(string $value): string
-    {
-        return str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value);
     }
 }

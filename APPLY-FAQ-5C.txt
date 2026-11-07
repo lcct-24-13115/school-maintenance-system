@@ -1,0 +1,69 @@
+FAQ PHASE 5C - Settings, caching at safety
+==========================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+
+  cd C:\laragon\www\school-maintenance-system
+  git add -A ; git commit -m "Before FAQ 5C"
+  powershell -ExecutionPolicy Bypass -File .\apply-faq-5c.ps1
+  php artisan optimize:clear
+  php artisan test --filter=FaqSettingsTest
+  php artisan test --filter=FaqCacheTest
+  php artisan test --filter=FaqLeakAuditTest
+  php artisan test --filter=Faq
+
+Ang apply-faq-5c.ps1 ay ISANG file lang (walang zip, walang extract). Ilagay ito sa project folder (katabi ng "artisan")
+bago patakbuhin. Gumagawa ito ng mga bagong file at nag-e-edit ng ilang linya sa mga umiiral. Kung may hindi
+mahanap na linya, titigil ito at sasabihin kung alin (walang kalahating pagbabago sa file na iyon).
+Pwede mo itong patakbuhin ulit: nilalaktawan nito ang naka-apply na.
+
+WALANG MIGRATION. WALANG "npm install". WALANG "npm run build".
+
+ANO ANG NAGAWA
+  1. SETTINGS: ang "Office hours" at "Contact e-mail" ng "Still need help?" box ay nasa /admin/settings na (mula pa sa
+     Help 2C, capability manage_settings). Dinagdagan ng mas mahigpit na validation:
+       - office hours: hanggang 200 character, plain text lang (bawal ang < >, bawal ang line break / control character)
+       - contact e-mail: dapat tunay na e-mail, hanggang 120 character, sine-save sa lower case
+       - blangko = balik sa standard na teksto; may mali = walang na-save kahit isang field
+     Ang mga teksto ay lumalabas sa box para sa signed-in at sa bisita (naka-escape, hindi HTML).
+  2. EAGER COUNTS: lahat ng bilang bawat topic ay galing sa iisang listahan (isang query sa faqs kapag malamig ang cache,
+     wala kapag mainit), hindi isang query bawat topic.
+  3. CACHE: ang published list ay naka-cache ng 10 minuto, ISANG kopya BAWAT AUDIENCE (bisita, o bawat role).
+     Nililinis ang lahat ng kopya sa anumang admin change: add, edit, hide/publish, delete (FaqObserver), at sa
+     move up/down at faq:seed na walang model event (tahasang FaqCache::flush()).
+  4. THROTTLE: /help-public ay throttle:60,1 (may prefix na "help-public" para hindi maghalo ang bilang nito sa
+     ibang pahina ng bisita, hal. forgot-password).
+  5. AUDIT NG LEAK:
+       - Sa /admin/faq/{id}/... ang taong walang manage_faq ay laging 403, kahit hidden na entry o id na wala
+         (dati: 403 kung may id, 404 kung wala = nalalaman kung may entry). Ang admin ay 404 pa rin sa id na wala.
+       - Ang feedback route ay 404 sa hidden / ibang role / hindi public, kapareho ng id na wala.
+       - Ang search at ?topic= ay sa loob lang ng listahang puwedeng basahin ng tao; ang cache ay walang nilalamang
+         unpublished o ibang role.
+       - May test na naglilista ng lahat ng route na may "help" o "faq": kapag may nagdagdag ng bago, mag-fail ito
+         para masuri muna.
+
+PAGBABAGO SA ASAL (alamin)
+  - Ang search ay ginagawa na sa PHP sa naka-cache na listahan (hindi na SQL LIKE). Pareho ang resulta: hindi sensitibo
+    sa laki ng letra, ang % at _ ay hinahanap bilang sarili nila.
+  - Pagkatapos ng admin change, ang pagbabago ay makikita agad (nililinis ang cache). Kung babaguhin mo ang faqs table
+    nang direkta sa database (phpMyAdmin / SQL), hintayin ang 10 minuto o patakbuhin ang:  php artisan cache:clear
+
+Bago (bagong file):
+  app/Support/FaqCache.php
+  app/Observers/FaqObserver.php
+  tests/Feature/FaqSettingsTest.php
+  tests/Feature/FaqCacheTest.php
+  tests/Feature/FaqLeakAuditTest.php
+
+Napalitan ang buong file:
+  app/Http/Controllers/FaqController.php
+
+Maliliit na dagdag sa (linya lang):
+  app/Models/Faq.php                                   <- visibleTo() ay gumagamit na ng cache (visibleToFresh() ang tunay na query)
+  app/Providers/AppServiceProvider.php                 <- Faq::observe() at ang {faq} binding
+  routes/web.php                                       <- throttle sa /help-public
+  app/Http/Controllers/Admin/SettingsController.php    <- validation ng 2 teksto
+  app/Http/Controllers/Admin/FaqAdminController.php    <- flush pagkatapos ng move
+  database/seeders/FaqSeeder.php                       <- flush pagkatapos ng faq:seed
+
+KUNG MAY MAG-FAIL NA TEST: i-copy ang buong error message at ipadala mo sa akin.
