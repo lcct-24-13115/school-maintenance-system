@@ -29,7 +29,7 @@
 
         <div class="auth-credit">
             <img src="{{ asset('images/intel-logo.png') }}" alt="INTEL">
-            <span>Developed by <b>INTEL</b></span>
+            <span>Powered by <b>INTEL</b></span>
         </div>
     </div>
 

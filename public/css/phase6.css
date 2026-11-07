@@ -190,3 +190,7 @@ a:focus-visible,button:focus-visible,summary:focus-visible,[tabindex]:focus-visi
 
 /* full width: no nested padding */
 .content .content{padding-left:0;padding-right:0;padding-top:0}
+
+/* Login: Forgot password right-aligned above the button */
+.auth-row.auth-row-end{justify-content:flex-end;margin:2px 0 14px}
+.auth-card .field .hint{margin-top:8px;line-height:1.5}
