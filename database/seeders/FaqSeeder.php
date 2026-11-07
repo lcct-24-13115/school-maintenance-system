@@ -75,6 +75,11 @@ class FaqSeeder extends Seeder
             $result['added']++;
         }
 
+        // saveQuietly() above sends no model events, so the cached Help lists are cleared here (Phase 5C).
+        if ($result['added'] > 0 || $result['updated'] > 0) {
+            \App\Support\FaqCache::flush();
+        }
+
         return $result;
     }
 }

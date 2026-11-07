@@ -133,6 +133,12 @@ class Faq extends Model
     /** What this person may read, in display order. The table is small, so the audience is filtered in PHP (same on SQLite and MySQL). @return Collection<int, Faq> */
     public static function visibleTo(?User $user): Collection
     {
+        return \App\Support\FaqCache::visible($user);   // Phase 5C: cached 10 minutes per audience, cleared on any admin change
+    }
+
+    /** The real query behind visibleTo(). Only FaqCache calls it (on a cache miss). @return Collection<int, Faq> */
+    public static function visibleToFresh(?User $user): Collection
+    {
         return static::query()->published()->when($user === null, fn ($q) => $q->publicOnly())->ordered()->get()
             ->filter(fn (Faq $faq) => $faq->isVisibleTo($user))
             ->values();
