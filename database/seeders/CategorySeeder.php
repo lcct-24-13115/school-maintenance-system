@@ -11,8 +11,8 @@ class CategorySeeder extends Seeder
     {
         $categories = [
             Category::TYPE_MATERIALS => ['Plumbing (faucets, pipes)', 'Electrical', 'Carpentry / Civil Works'],
-            Category::TYPE_SUPPLIES => ['Office Supplies', 'Cleaning Supplies'],
-            Category::TYPE_EQUIPMENT => ['Computers / IT', 'Air Conditioning', 'Water Pumps', 'Furniture', 'Electrical Equipment'],
+            Category::TYPE_SUPPLIES => ['Cleaning Supplies'],
+            Category::TYPE_EQUIPMENT => ['Air Conditioning', 'Water Pumps', 'Furniture', 'Electrical Equipment'],
         ];
 
         foreach ($categories as $type => $names) {
