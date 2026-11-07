@@ -107,6 +107,8 @@
             </div>
         </section>
 
+        @include('tickets._pm', ['ticket' => $ticket])
+
         {{-- Items --}}
         @if ($ticket->items->isNotEmpty())
             <section class="card">

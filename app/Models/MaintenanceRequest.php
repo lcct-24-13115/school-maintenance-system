@@ -328,6 +328,18 @@ class MaintenanceRequest extends Model
 
     // ---- relations -----------------------------------------------------------------------------
 
+    /** Made by the PM Scheduler (still true after the schedule is deleted, because pm_due_date stays). */
+    public function isPmGenerated(): bool
+    {
+        return $this->pm_schedule_id !== null || $this->pm_due_date !== null;
+    }
+
+    /** The checklist of a PM ticket (a copy of the schedule's template). */
+    public function pmChecklist(): HasMany
+    {
+        return $this->hasMany(PmTicketChecklistItem::class, 'request_id')->orderBy('sort_order')->orderBy('id');
+    }
+
     public function pmSchedule(): BelongsTo
     {
         return $this->belongsTo(PmSchedule::class);
