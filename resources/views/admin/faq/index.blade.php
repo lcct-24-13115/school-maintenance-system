@@ -31,6 +31,9 @@
             <a href="{{ route('help.index') }}" class="btn push"><i class="fa-solid fa-circle-question"></i> View Help page</a>
         </div>
 
+        {{-- What to write next (Phase 5B) --}}
+        @include('admin.faq._insights')
+
         {{-- Filters --}}
         <form method="GET" action="{{ route('admin.faq.index') }}" class="card">
             <div class="p6-grid p6-filters">
