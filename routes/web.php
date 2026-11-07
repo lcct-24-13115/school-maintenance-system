@@ -138,6 +138,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [EquipmentController::class, 'store'])->name('store');
         Route::put('/{equipment}', [EquipmentController::class, 'update'])->name('update');
         Route::delete('/{equipment}', [EquipmentController::class, 'destroy'])->name('destroy');
+        Route::get('/{equipment}/history', \App\Http\Controllers\Admin\EquipmentHistoryController::class)->name('history');
     });
 
     Route::get('/admin/audit-logs', [AuditLogController::class, 'index'])->name('admin.audit-logs.index');

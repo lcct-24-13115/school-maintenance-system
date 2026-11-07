@@ -91,6 +91,7 @@
                                     <td data-label="Serial no.">{{ $e->serial_no ?: '—' }}</td>
                                     <td data-label="PM schedules">{{ $e->pm_schedules_count }}</td>
                                     <td data-label="Actions" style="text-align:right;white-space:nowrap">
+                                        <a href="{{ route('admin.equipment.history', $e) }}" class="btn btn-sm" title="Maintenance history"><i class="fa-solid fa-clock-rotate-left"></i> History</a>
                                         <button type="button" class="btn btn-sm" @click="edit = !edit"><i class="fa-solid fa-pen"></i> Edit</button>
                                         <form method="POST" action="{{ route('admin.equipment.destroy', $e) }}" style="display:inline"
                                               onsubmit="return confirm({{ \Illuminate\Support\Js::from($confirm) }})">
