@@ -138,7 +138,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/{pmSchedule}/history', \App\Http\Controllers\Admin\PmScheduleHistoryController::class)->name('history');
     });
 
-    // ---- Maintenance Calendar (Phase 1): JSON feed. Capability manage_pm_schedules is checked in the controller (others get 403) ----
+    // ---- Maintenance Calendar: the page (PM E4) and the JSON feed (Phase 1). view_pm_schedules or manage_pm_schedules is checked in the controller (others get 403) ----
+    Route::get('/maintenance-calendar', [\App\Http\Controllers\MaintenanceCalendarController::class, 'index'])->name('maintenance-calendar.index');
     Route::get('/maintenance-calendar/events', [\App\Http\Controllers\MaintenanceCalendarController::class, 'events'])->middleware('throttle:60,1')->name('maintenance-calendar.events');
 
     Route::prefix('admin/equipment')->name('admin.equipment.')->group(function () {

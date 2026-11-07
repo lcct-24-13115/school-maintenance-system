@@ -18,7 +18,7 @@
 
         <p class="p6-note">
             A PM schedule repeats on its own: for example <b>Aircon Cleaning</b> every 3 months or <b>Generator Checkup</b> every month.
-            A ticket is made automatically every day at 1:00 AM, a few days before each due date. The calendar comes in a later phase.
+            A ticket is made automatically every day at 1:00 AM, a few days before each due date. See every due date on the <a href="{{ route('maintenance-calendar.index') }}"><b>PM calendar</b></a>.
         </p>
 
         @php $canManage = (bool) auth()->user()?->can_do('manage_pm_schedules'); @endphp

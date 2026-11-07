@@ -76,6 +76,9 @@
         @endif
 
         @if ($u->canViewPm())
+            <a href="{{ route('maintenance-calendar.index') }}" class="{{ request()->routeIs('maintenance-calendar.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-calendar-days"></i> PM calendar
+            </a>
             <a href="{{ route('admin.pm-schedules.index') }}" class="{{ request()->routeIs('admin.pm-schedules.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-calendar-check"></i> PM schedules
             </a>
