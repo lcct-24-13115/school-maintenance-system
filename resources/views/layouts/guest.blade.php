@@ -27,6 +27,11 @@
             {{ $slot }}
         </main>
 
+        @if (request()->routeIs('login', 'register', 'password.request', 'password.reset'))
+            <link rel="stylesheet" href="{{ asset('css/help.css') }}?v={{ @filemtime(public_path('css/help.css')) }}">
+            <a class="auth-help-link" href="{{ route('help.public') }}"><i class="fa-regular fa-circle-question" aria-hidden="true"></i> Help &amp; FAQ</a>
+        @endif
+
         <div class="auth-credit">
             <img src="{{ asset('images/intel-logo.png') }}" alt="INTEL">
             <span>Powered by <b>INTEL</b></span>

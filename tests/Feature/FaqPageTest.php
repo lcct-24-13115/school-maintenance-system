@@ -476,4 +476,50 @@ class FaqPageTest extends TestCase
         $this->assertSame('Custom hours', \App\Models\Setting::get('help_office_hours'));
         $this->assertSame('custom@example.test', \App\Models\Setting::get('help_contact_email'));
     }
+
+    // ---------- Phase 2D: the menu and the sign-in pages ----------
+
+    public function test_the_menu_has_help_for_every_role(): void
+    {
+        foreach (['custodian', 'maintenance', 'president', 'finance', 'requester', 'depthead', 'treasurer'] as $who) {
+            $this->as($who, route('profile.edit', [], false))->assertOk()
+                ->assertSee('href="'.route('help.index').'"', false)
+                ->assertSee('Help &amp; FAQ', false)
+                ->assertSee('fa-circle-question', false);
+        }
+    }
+
+    public function test_the_menu_item_is_highlighted_on_the_help_page(): void
+    {
+        $this->faq('Something');
+
+        $this->as('requester')->assertOk()->assertSee('class="active"', false);
+        $this->as('requester', route('profile.edit', [], false))->assertOk()->assertDontSee('class="active"', false);
+    }
+
+    public function test_the_sign_in_pages_link_to_the_public_help_below_the_card(): void
+    {
+        config(['school.allow_public_registration' => true]);
+
+        $pages = [
+            '/login',
+            '/register',
+            '/forgot-password',
+            route('password.reset', ['token' => 'abc'], false),
+        ];
+
+        foreach ($pages as $page) {
+            $this->get($page)->assertOk()
+                ->assertSee('href="'.route('help.public').'"', false)
+                ->assertSee('Help &amp; FAQ', false)
+                ->assertSeeInOrder(['</main>', 'class="auth-help-link"', 'class="auth-credit"'], false);
+        }
+    }
+
+    public function test_the_public_help_page_does_not_show_the_sign_in_pill(): void
+    {
+        $this->faq('Public one', ['is_public' => true]);
+
+        $this->get('/help-public')->assertOk()->assertDontSee('class="auth-help-link"', false);
+    }
 }

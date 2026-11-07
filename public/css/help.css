@@ -63,3 +63,9 @@
 .help-contact span{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere;line-height:1.4}
 .help-contact b{font-size:12.5px;color:var(--text-2);text-transform:uppercase;letter-spacing:.04em}
 .help-signin{margin:0;font-size:14px}
+
+/* "Help & FAQ" pill under the card of the sign-in pages (Phase 2D) */
+.auth-help-link{align-self:center;display:inline-flex;align-items:center;gap:8px;padding:8px 18px;border-radius:999px;background:rgba(255,255,255,.94);border:1px solid var(--line);color:var(--navy);font-size:13.5px;font-weight:700;text-decoration:none;box-shadow:0 8px 22px -12px rgba(14,32,60,.5)}
+.auth-help-link i{color:var(--deep)}
+.auth-help-link:hover{background:#fff;border-color:var(--blue);color:var(--deep);text-decoration:none}
+@media(max-width:575.98px){.auth-help-link{margin:14px 0 4px;box-shadow:none}}

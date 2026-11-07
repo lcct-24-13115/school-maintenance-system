@@ -41,6 +41,10 @@
             <i class="fa-solid fa-bell"></i> Notifications
         </a>
 
+        <a href="{{ route('help.index') }}" class="{{ request()->routeIs('help.*') ? 'active' : '' }}">
+            <i class="fa-solid fa-circle-question"></i> Help &amp; FAQ
+        </a>
+
         @if ($u->can_do('view_analytics') || $u->canViewPmReports() || $u->can_do('manage_settings') || $u->can_do('manage_categories') || $u->can_do('manage_users') || $u->can_do('manage_qr_codes') || $u->can_do('view_audit_logs'))
             <div class="nav-sec">Administration</div>
         @endif
