@@ -50,6 +50,7 @@ class StaffTicketRulesTest extends TestCase
             'name' => 'Test '.$key,
             'password' => Hash::make('password'),
             'role_id' => Role::where('slug', $roleSlug)->firstOrFail()->id,
+            'department_id' => \App\Models\Department::maintenanceId(),   // 4B: Staff / Head see their own department's tickets
             'email_verified_at' => now(),
             'is_active' => $active,
         ]);

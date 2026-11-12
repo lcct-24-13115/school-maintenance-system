@@ -44,7 +44,7 @@ class TicketActionsTest extends TestCase
         $maint = \App\Models\Role::where('slug', 'maintenance_admin')->value('id');
         $req = \App\Models\Role::where('slug', 'requester')->value('id');
         $dept = \App\Models\Department::query()->orderBy('id')->value('id');
-        foreach ([['maintenance2', 'Test Maintenance Staff 2', $maint, null], ['maintenance3', 'Test Maintenance Staff 3', $maint, null], ['requester2', 'Test Requester 2', $req, $dept]] as [$key, $name, $role, $d]) {
+        foreach ([['maintenance2', 'Test Maintenance Staff 2', $maint, \App\Models\Department::maintenanceId()], ['maintenance3', 'Test Maintenance Staff 3', $maint, \App\Models\Department::maintenanceId()], ['requester2', 'Test Requester 2', $req, $dept]] as [$key, $name, $role, $d]) {
             \App\Models\User::updateOrCreate(['email' => $key.'@lcctanauan.edu.ph'], [
                 'name' => $name,
                 'password' => \Illuminate\Support\Facades\Hash::make('password'),

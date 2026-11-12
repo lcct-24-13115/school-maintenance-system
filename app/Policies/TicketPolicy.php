@@ -18,6 +18,15 @@ class TicketPolicy
         return (bool) $user->is_active;
     }
 
+    /**
+     * Phase 4B: one rule for seeing a ticket, MaintenanceRequest::isVisibleTo() (same as the list scope):
+     *  - the requester and the assignee: always
+     *  - Department Staff / Head: only tickets whose assigned_department_id is their own department
+     *  - System Administrator: every ticket
+     * A ticket that is not visible is a 404 before this runs (Route::bind('ticket')); this is the second lock
+     * for code that calls Gate / can() directly. Every other ability below starts from view, so a hidden ticket
+     * never reveals which actions exist.
+     */
     public function view(User $user, MaintenanceRequest $ticket): bool
     {
         return $ticket->isVisibleTo($user);

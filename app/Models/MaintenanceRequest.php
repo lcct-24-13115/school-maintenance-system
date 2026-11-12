@@ -252,8 +252,13 @@ class MaintenanceRequest extends Model
      * Keep it in step with isVisibleTo() below (a test compares the two).
      *
      *  - your own tickets and tickets assigned to you: always
-     *  - confidential tickets: only with view_confidential (plus the two cases above)
-     *  - non-confidential tickets: with view_all_tickets, or your own department for department roles
+     *  - Department Staff / Head / Maintenance Admin (school.department_scoped_roles, Phase 4B): ONLY the tickets
+     *    whose assigned_department_id is their own users.department_id. view_all_tickets does not widen this.
+     *    No department on the user = no department tickets at all. Confidential ones still need view_confidential.
+     *  - System Administrator (school.global_roles) and the other roles: the matrix decides
+     *    (confidential: view_confidential; non-confidential: view_all_tickets, or own department for department_head)
+     *
+     * A ticket the user may not see is a 404 on every route (Route::bind('ticket') in AppServiceProvider).
      */
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
@@ -263,6 +268,22 @@ class MaintenanceRequest extends Model
 
         return $query->where(function (Builder $q) use ($user) {
             $q->where('requester_id', $user->id)->orWhere('assigned_to', $user->id);
+
+            if (self::isRestrictedToAssignedDepartment($user)) {
+                $departmentId = $user->scopedDepartmentId();
+
+                if ($departmentId !== null) {
+                    $q->orWhere(function (Builder $d) use ($user, $departmentId) {
+                        $d->where('assigned_department_id', $departmentId);
+
+                        if (! $user->can_do('view_confidential')) {
+                            $d->where('is_confidential', false);
+                        }
+                    });
+                }
+
+                return;
+            }
 
             if ($user->can_do('view_confidential')) {
                 $q->orWhere('is_confidential', true);
@@ -287,12 +308,27 @@ class MaintenanceRequest extends Model
             return true;
         }
 
+        if (self::isRestrictedToAssignedDepartment($user)) {
+            $departmentId = $user->scopedDepartmentId();
+
+            return $departmentId !== null
+                && $this->assigned_department_id !== null
+                && (int) $this->assigned_department_id === $departmentId
+                && (! $this->is_confidential || $user->can_do('view_confidential'));
+        }
+
         if ($this->is_confidential) {
             return $user->can_do('view_confidential');
         }
 
         return $user->can_do('view_all_tickets')
             || ($user->seesOwnDepartment() && (int) $this->department_id === (int) $user->department_id);
+    }
+
+    /** Staff / Head / Maintenance Admin see by assigned_department_id; a global role (System Administrator) never does. */
+    private static function isRestrictedToAssignedDepartment(User $user): bool
+    {
+        return $user->isDepartmentScoped() && ! $user->isGlobalRole();
     }
 
     // ---- helpers -------------------------------------------------------------------------------
