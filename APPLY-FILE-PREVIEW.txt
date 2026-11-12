@@ -1,0 +1,31 @@
+FILE PREVIEW BAGO I-SEND (thumbnail + ✕ pang-tanggal)
+=====================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+
+  git add -A ; git commit -m "Before file preview"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\file-preview-patch.zip" -DestinationPath . -Force
+  php artisan optimize:clear
+  php artisan view:clear
+  php artisan test --filter=FilePickerPreviewTest
+  php artisan test --filter=AttachmentViewerTest
+  php artisan test --filter=AttachmentTest
+
+(Kung ayaw ng Expand-Archive: i-right-click ang zip > Extract All, tapos i-copy ang mga folder sa project at i-Replace.)
+
+WALANG migration, WALANG npm run build.
+
+Binago:
+  resources/views/components/file-picker.blade.php   <- thumbnail ng larawan, "PDF" badge, ibang file = badge ng uri; ✕ sa bawat file
+  resources/views/partials/file-viewer.blade.php     <- naka-@once na: isang beses lang lalabas kahit dalawang beses i-include
+Bago:
+  tests/Feature/FilePickerPreviewTest.php
+  APPLY-FILE-PREVIEW.txt
+
+Paano gumagana:
+  Sa kahit anong form na may <x-file-picker> (new request, reply, actions, ticket page):
+  - Pagkapili ng file lumalabas ang listahan: thumbnail (larawan), badge (PDF / DOCX / XLSX...), pangalan, laki.
+  - I-click ang thumbnail ng larawan o PDF -> bubukas ang pop-up viewer (zoom, prev/next) bago pa i-send. Esc = isara.
+  - ✕ = tanggalin ang file sa listahan (hindi pa ito nai-upload kaya walang audit log).
+  - Walang pagbabago sa server; pareho pa rin ang mga limit at validation.
+Rollback: git checkout -- .  at burahin ang bagong file.

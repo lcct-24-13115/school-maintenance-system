@@ -50,7 +50,18 @@ class AttachmentTest extends TestCase
     /** user('requester') => requester@lcctanauan.edu.ph */
     private function user(string $name): User
     {
-        return User::where('email', $name.'@lcctanauan.edu.ph')->firstOrFail();
+        $email = $name.'@lcctanauan.edu.ph';
+
+        // "requester2" = an unrelated requester from another department; the seeder has none, so make it on first use.
+        if ($name === 'requester2' && ! User::where('email', $email)->exists()) {
+            $base = User::where('email', 'requester@lcctanauan.edu.ph')->firstOrFail();
+            $copy = $base->replicate();
+            $copy->email = $email;
+            $copy->department_id = \App\Models\Department::where('id', '!=', $base->department_id)->value('id') ?? $base->department_id;
+            $copy->save();
+        }
+
+        return User::where('email', $email)->firstOrFail();
     }
 
     private function category(string $type): Category
@@ -484,7 +495,7 @@ class AttachmentTest extends TestCase
         $this->assertFalse($can('finance'));         // can see it, but not add
         $this->assertFalse($can('president'));
 
-        TicketWorkflow::disapprove($ticket, $this->user('president'), 'No budget');
+        TicketWorkflow::disapprove($ticket, $this->user('maintenance'), 'No budget');
         $ticket->refresh();
 
         $this->assertFalse($can('requester'));       // terminal ticket: the requester can no longer add
@@ -527,7 +538,7 @@ class AttachmentTest extends TestCase
         $open = $this->open($this->user('requester'));
         $this->actingAs($this->user('finance'))->post(route('tickets.attachments.store', $open), ['files' => [$this->png()]])->assertForbidden();
 
-        TicketWorkflow::disapprove($open, $this->user('president'), 'No budget');
+        TicketWorkflow::disapprove($open, $this->user('maintenance'), 'No budget');
         $this->actingAs($this->user('requester'))->post(route('tickets.attachments.store', $open), ['files' => [$this->png()]])->assertForbidden();
 
         $this->assertCount(1, $ticket->attachments()->get());

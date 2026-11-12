@@ -4,6 +4,7 @@
     Plain files in /public (no build step): css/file-viewer.css and js/file-viewer.js.
     Include once per page, inside @push('scripts') or at the end of the page.
 --}}
+@once
 <link rel="stylesheet" href="{{ asset('css/file-viewer.css') }}?v={{ @filemtime(public_path('css/file-viewer.css')) }}">
 
 <dialog id="file-viewer" class="fv" aria-labelledby="fv-title">
@@ -33,3 +34,4 @@
 </dialog>
 
 <script src="{{ asset('js/file-viewer.js') }}?v={{ @filemtime(public_path('js/file-viewer.js')) }}" defer></script>
+@endonce

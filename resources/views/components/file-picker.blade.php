@@ -5,7 +5,7 @@
     "Take photo" opens the camera on phones; "Choose files" opens the gallery / file manager (several at once).
     Both add to ONE list; the hidden real input (name="files[]") is filled from that list on every change.
     Limits come from config/school.php -> attachments (the server checks everything again).
-    Phase 5 (design): LCCT classes (.btn, .row2, .alert, .pf-row). The script below is unchanged.
+    Preview before sending: thumbnails for pictures/PDF (click opens the pop-up viewer), a badge for other files, and an X to remove.
 --}}
 @php
     $max = \App\Services\AttachmentService::maxFiles();
@@ -46,14 +46,28 @@
         </div>
     </template>
 
-    <ul style="list-style:none;margin:10px 0 0;padding:0" x-show="files.length">
-        <template x-for="(f, i) in files" :key="i + '-' + f.name + '-' + f.size">
-            <li class="pf-row" style="padding:9px 0">
-                <div style="min-width:0">
-                    <div style="font-weight:700;font-size:14px;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="f.name"></div>
+    {{-- Preview before sending: picture thumbnail (click = pop-up viewer) or a file-type badge, name, size and an X to take it out. --}}
+    <ul class="fp-list" x-show="files.length" x-cloak>
+        <template x-for="(f, i) in files" :key="i + '-' + f.name + '-' + f.size + '-' + f.lastModified">
+            <li class="fp-item">
+                <template x-if="previews[i] && kinds[i]">
+                    <a :href="previews[i]" class="fp-thumb" data-file-view
+                       :data-kind="kinds[i]" :data-name="f.name" :data-src="previews[i]"
+                       :data-meta="human(f.size) + ' · not sent yet'" :aria-label="'Preview ' + f.name">
+                        <img x-show="kinds[i] === 'image'" :src="previews[i]" alt="">
+                        <span x-show="kinds[i] === 'pdf'" class="fp-badge" style="background:#fdecec;color:#b42318">PDF</span>
+                    </a>
+                </template>
+                <template x-if="!(previews[i] && kinds[i])">
+                    <span class="fp-thumb fp-thumb-static" aria-hidden="true"><span class="fp-badge" x-text="ext(f.name)"></span></span>
+                </template>
+                <div class="fp-meta">
+                    <div class="fp-name" x-text="f.name"></div>
                     <div class="hint" style="margin:0" x-text="human(f.size)"></div>
                 </div>
-                <button type="button" @click="remove(i)" class="btn btn-sm btn-danger" :aria-label="'Remove ' + f.name"><i class="fa-solid fa-xmark"></i> Remove</button>
+                <button type="button" @click="remove(i)" class="fp-x" :aria-label="'Remove ' + f.name" title="Remove">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </li>
         </template>
     </ul>
@@ -64,6 +78,8 @@
         document.addEventListener('alpine:init', () => {
             Alpine.data('filePicker', (cfg) => ({
                 files: [],
+                previews: [],   // object URL per file (pictures and PDFs only), same order as files
+                kinds: [],      // 'image' | 'pdf' | ''
                 notes: [],
                 max: cfg.max,
                 add(event) {
@@ -81,12 +97,18 @@
                             continue;   // same file picked twice
                         }
                         this.files.push(f);
+                        const e = this.ext(f.name), kind = /^(jpe?g|png|webp)$/.test(e) ? 'image' : (e === 'pdf' ? 'pdf' : '');
+                        this.kinds.push(kind);
+                        this.previews.push(kind ? URL.createObjectURL(f) : '');
                     }
                     event.target.value = '';   // allow picking the same file again after removing it
                     this.sync();
                 },
                 remove(i) {
+                    if (this.previews[i]) { URL.revokeObjectURL(this.previews[i]); }
                     this.files.splice(i, 1);
+                    this.previews.splice(i, 1);
+                    this.kinds.splice(i, 1);
                     this.notes = [];
                     this.sync();
                 },
@@ -95,6 +117,10 @@
                     this.files.forEach(f => dt.items.add(f));
                     this.$refs.final.files = dt.files;
                 },
+                ext(name) {
+                    const i = name.lastIndexOf('.');
+                    return i < 0 ? '' : name.slice(i + 1).toLowerCase();
+                },
                 human(bytes) {
                     if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
                     return Math.max(1, Math.round(bytes / 1024)) + ' KB';
@@ -102,4 +128,27 @@
             }));
         });
     </script>
+@endonce
+
+@once
+    <style>
+        .fp-list{list-style:none;margin:10px 0 0;padding:0}
+        .fp-item{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px dashed var(--line)}
+        .fp-item:last-child{border-bottom:0}
+        .fp-thumb{flex:none;width:56px;height:56px;border-radius:12px;overflow:hidden;display:grid;place-items:center;background:var(--mist,#f1f6fc);border:1px solid var(--line);text-decoration:none}
+        a.fp-thumb{cursor:zoom-in}
+        a.fp-thumb:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+        .fp-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+        .fp-badge{font-size:11px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--deep,#1b3355);padding:3px 6px;border-radius:6px}
+        .fp-meta{min-width:0;flex:1}
+        .fp-name{font-weight:700;font-size:14px;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .fp-x{flex:none;width:38px;height:38px;border-radius:50%;border:1.5px solid var(--line);background:#fff;color:#b42318;cursor:pointer;display:grid;place-items:center;font-size:15px}
+        .fp-x:hover{background:#fdecec;border-color:#f3b7b2}
+        .fp-x:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+        [x-cloak]{display:none!important}
+    </style>
+    {{-- the same pop-up viewer as the ticket page (rendered once per page) --}}
+    @push('scripts')
+        @include('partials.file-viewer')
+    @endpush
 @endonce
