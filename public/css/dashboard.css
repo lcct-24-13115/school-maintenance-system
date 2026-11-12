@@ -1,0 +1,55 @@
+/* Maintenance dashboard (Staff / Head / Admin) */
+.dash-2,.dash-half{display:grid;gap:20px;margin-bottom:20px}
+.dash-2{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.dash-half{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.dash-2>.card,.dash-half>.card{margin-bottom:0}
+@media (max-width:1100px){.dash-2,.dash-half{grid-template-columns:minmax(0,1fr)}}
+
+.dash-sec{display:flex;align-items:center;gap:10px;margin:6px 0 12px;font-size:12.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--deep)}
+.card-h .more{font-size:13px;font-weight:700;color:var(--deep);text-decoration:none}
+.card-h .more:hover{text-decoration:underline}
+.card-h small{font-size:12.5px;color:var(--text-3);font-weight:600}
+.stat.is-zero .v{color:var(--text-3)}
+
+/* Priority queue */
+.pq-desc{display:block;font-size:12.5px;color:var(--text-3);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pq-badges{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pq-due{display:block;margin-top:4px;font-size:12px;color:var(--text-3)}
+
+/* Trend chart (inline SVG) */
+.trend svg{display:block;width:100%;height:auto}
+.trend .tr-grid{stroke:var(--line);stroke-width:1}
+.trend .tr-line{fill:none;stroke:var(--deep);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.trend .tr-area{fill:rgba(94,148,207,.16)}
+.trend .tr-dot{fill:#fff;stroke:var(--deep);stroke-width:2}
+.trend text{fill:var(--text-3);font-size:11px;font-family:var(--font-body)}
+.trend-note{margin-top:8px;font-size:13px;color:var(--text-2)}
+.trend-note b{color:var(--navy)}
+
+/* Service levels */
+.sl-grid{display:grid;grid-template-columns:1fr;gap:12px}
+.sl{padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--mist)}
+.sl .k{font-size:12.5px;font-weight:700;color:var(--text-2)}
+.sl .v{font-family:var(--font-display);font-size:30px;font-weight:600;letter-spacing:-.02em;color:var(--navy);line-height:1.15;margin-top:2px}
+.sl small{display:block;margin-top:2px;font-size:12px;color:var(--text-3)}
+
+/* Recent activity */
+.act{list-style:none;margin:0;padding:0}
+.act li{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #e9f0f8}
+.act li:last-child{border-bottom:0}
+.act .ic{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--sky);color:var(--deep);font-size:13px}
+.act .tx{min-width:0;font-size:14px;line-height:1.35;color:var(--ink)}
+.act .tx a{font-weight:800;color:var(--navy);text-decoration:none}
+.act .tx a:hover{text-decoration:underline}
+.act small{display:block;font-size:12px;color:var(--text-3)}
+
+/* Staff workload */
+.wl{list-style:none;margin:0;padding:0}
+.wl li{padding:10px 0;border-bottom:1px solid #e9f0f8}
+.wl li:last-child{border-bottom:0}
+.wl .top{display:flex;justify-content:space-between;gap:10px;font-size:14px;font-weight:700;color:var(--navy)}
+.wl .top span:last-child{font-weight:600;color:var(--text-2);font-size:12.5px;white-space:nowrap}
+.wl .bar{height:6px;margin-top:7px;border-radius:99px;background:var(--line);overflow:hidden}
+.wl .bar>span{display:block;height:100%;border-radius:99px;background:var(--blue)}
+.wl .bar.hot>span{background:var(--red)}
+.wl .bad{color:var(--red);font-weight:800}

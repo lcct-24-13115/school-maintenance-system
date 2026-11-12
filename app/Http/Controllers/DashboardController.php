@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Enums\TicketStatus;
 use App\Models\Inventory;
 use App\Models\MaintenanceRequest;
+use App\Models\RequestStatusLog;
+use App\Services\ReportMetrics;
+use App\Services\TicketWorkflow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -40,10 +43,64 @@ class DashboardController extends Controller
         ]);
     }
 
-    /** Maintenance staff land straight on the big-button card board. */
-    public function maintenance(): RedirectResponse
+        /** Staff, Head and Maintenance Admin: the full dashboard (Needs attention, Priority queue, trend, service levels, activity, workload). */
+    public function maintenance(Request $request): View
     {
-        return redirect()->route('maintenance.board');
+        $user = $request->user();
+        $visible = fn () => MaintenanceRequest::query()->visibleTo($user);   // every number starts here: nobody counts a ticket they may not see
+
+        $assignable = array_map(fn (TicketStatus $s) => $s->value, TicketWorkflow::assignableStatuses());
+
+        // "Needs attention" tiles, each linking to the ticket list with the same filter
+        $attention = [
+            'Urgent' => $this->card($visible()->active()->where('is_emergency', true)->count(), route('tickets.index', ['emergency' => 1])),
+            'Overdue' => $this->card($visible()->overdue()->count(), route('tickets.index', ['overdue' => 1])),
+            'Unassigned' => $this->card(
+                $visible()->active()->whereNull('assigned_to')->whereIn('status', $assignable)->count(),
+                route('tickets.index', ['assigned_to' => 'unassigned', 'status' => $assignable])
+            ),
+            'Assigned to me' => $this->card($visible()->active()->where('assigned_to', $user->id)->count(), route('tickets.index', ['assigned_to' => $user->id])),
+        ];
+
+        // Service levels + trend: the last 30 days
+        $window = new ReportMetrics($user, now()->subDays(29)->toDateString());
+        $first = $window->firstResponse();
+        $service = [
+            'first_response' => $first['avg_hours'],
+            'answered' => $first['answered'],
+            'of' => $first['of'],
+            'resolution' => $window->averageHours('submitted_at', 'completed_at'),
+        ];
+        $trend = $window->daily();
+
+        // Priority queue: active tickets with the nearest target date first (no target date last)
+        $queue = $visible()->pending()
+            ->with(['category:id,name', 'assignee:id,name'])
+            ->orderByRaw('due_at IS NULL')->orderBy('due_at')->orderByDesc('is_emergency')->orderBy('id')
+            ->limit(8)->get();
+
+        // Recent activity (internal notes are left out)
+        $activity = RequestStatusLog::query()
+            ->whereIn('request_id', $visible()->select('id'))
+            ->where('action', '!=', RequestStatusLog::ACTION_NOTE)
+            ->with(['user:id,name', 'request:id,ticket_no'])
+            ->latest('id')->limit(8)->get();
+
+        // Staff workload: for the Head and the Admin only (Staff only see their own tickets anyway)
+        $workload = $user->isStaffOnly() ? null : array_slice((new ReportMetrics($user))->workload(), 0, 8);
+
+        $lastUpdate = $visible()->orderByDesc('updated_at')->first(['updated_at'])?->updated_at;
+
+        return view('dashboards.maintenance', [
+            'title' => 'Maintenance Dashboard',
+            'attention' => $attention,
+            'service' => $service,
+            'trend' => $trend,
+            'queue' => $queue,
+            'activity' => $activity,
+            'workload' => $workload,
+            'lastUpdate' => $lastUpdate,
+        ]);
     }
 
     public function finance(Request $request): View
