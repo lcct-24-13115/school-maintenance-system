@@ -24,7 +24,12 @@ class CategoryController extends Controller
     {
         $this->authorizeManage($request);
 
-        $categories = Category::query()->withCount('requests')->ordered()->get()->groupBy('type');
+        $categories = Category::query()
+            ->withCount('requests')
+            ->with(['subcategories' => fn ($q) => $q->withCount('requests')->ordered()])
+            ->ordered()
+            ->get()
+            ->groupBy('type');
 
         return view('admin.categories', [
             'types' => Category::typeLabels(),

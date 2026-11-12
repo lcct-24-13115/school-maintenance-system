@@ -48,13 +48,25 @@
 
                 <div class="field">
                     <label class="lbl" for="category_id">Maintenance category</label>
-                    <select id="category_id" name="category_id" x-ref="category">
+                    <select id="category_id" name="category_id" x-ref="category" @change="filterSubcategories()">
                         <option value="">— Choose one —</option>
                         @foreach ($categories as $c)
                             <option value="{{ $c->id }}" data-type="{{ $c->type }}" @selected(old('category_id') == $c->id)>{{ $c->name }}@if ($c->is_locked && $c->name === \App\Models\Category::OTHER) ({{ $requestTypes[$c->type] ?? ucfirst($c->type) }})@endif</option>
                         @endforeach
                     </select>
                     @error('category_id')<p class="field-err">{{ $message }}</p>@enderror
+                </div>
+
+                {{-- Optional subcategory: only shown when the chosen category has some. --}}
+                <div class="field" x-show="hasSubs" style="display:none">
+                    <label class="lbl" for="subcategory_id">Subcategory <span class="hint" style="display:inline">(optional)</span></label>
+                    <select id="subcategory_id" name="subcategory_id" x-ref="subcategory">
+                        <option value="">— Not sure / none —</option>
+                        @foreach ($subcategories as $sc)
+                            <option value="{{ $sc->id }}" data-category="{{ $sc->category_id }}" @selected(old('subcategory_id') == $sc->id)>{{ $sc->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('subcategory_id')<p class="field-err">{{ $message }}</p>@enderror
                 </div>
 
                 {{-- Items: only when a request type is chosen. Rows sent without a type are ignored by the server. --}}
@@ -181,11 +193,14 @@
                 requestType: cfg.requestType,
                 items: cfg.items,
                 allOptions: [],
+                allSubOptions: [],
+                hasSubs: false,
 
                 init() {
                     // wait one tick so every x-ref inside the form exists
                     this.$nextTick(() => {
                         this.allOptions = Array.from(this.$refs.category.querySelectorAll('option[data-type]'));
+                        this.allSubOptions = Array.from(this.$refs.subcategory.querySelectorAll('option[data-category]'));
                         this.filterCategories();
                     });
                     this.$watch('requestType', () => this.filterCategories());
@@ -199,6 +214,19 @@
                     const keep = this.allOptions.filter(o => this.requestType === '' || o.dataset.type === this.requestType);
                     keep.forEach(o => select.appendChild(o));
                     select.value = keep.some(o => o.value === current) ? current : '';
+                    this.filterSubcategories();
+                },
+
+                // Show only the subcategories of the chosen category; hide the whole field when there are none.
+                filterSubcategories() {
+                    const select = this.$refs.subcategory;
+                    const category = this.$refs.category.value;
+                    const current = select.value;
+                    this.allSubOptions.forEach(o => o.remove());
+                    const keep = this.allSubOptions.filter(o => o.dataset.category === category);
+                    keep.forEach(o => select.appendChild(o));
+                    select.value = keep.some(o => o.value === current) ? current : '';
+                    this.hasSubs = keep.length > 0;
                 },
 
                 addItem() {

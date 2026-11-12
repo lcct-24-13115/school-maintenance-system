@@ -3,6 +3,20 @@
     // open the filter panel when any filter besides the search box is active
     $otherFilters = collect($filters)->except('q')->filter()->isNotEmpty();
     $isHistory = $mode === 'history';
+    $me = auth()->user();
+
+    // clickable column headers (desktop); phones use the "Sort by" box in the filter panel
+    $columns = [
+        'ticket' => 'Ticket', 'status' => 'Status', 'location' => 'Location', 'category' => 'Category',
+        'requester' => 'Requester', 'assigned' => 'Assigned to', 'submitted' => 'Submitted',
+        'completed' => $isHistory ? 'Closed / completed' : 'Completed',
+    ];
+    $sortUrl = fn (string $key) => route($listRoute, array_merge(
+        request()->except('page'),
+        ['sort' => $key, 'dir' => ($sort === $key && $dir === 'asc') ? 'desc' : 'asc']
+    ));
+    $sortIcon = fn (string $key) => $sort === $key ? ($dir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort';
+    $priorityNow = $filters['priority'] ?: ($filters['emergency'] ? 'emergency' : '');
 @endphp
 
 <x-app-layout>
@@ -16,9 +30,9 @@
            class="btn {{ $isHistory ? 'btn-primary' : '' }}"><i class="fa-solid fa-clock-rotate-left"></i> Ticket History</a>
     </div>
 
-    {{-- Search + filters (GET, so every result page can be bookmarked and pagination keeps them) --}}
+    {{-- Search + filters + sort (GET, so every result page can be bookmarked and pagination keeps them) --}}
     <form method="GET" action="{{ route($listRoute) }}" class="card"
-          x-data="{ open: {{ $otherFilters ? 'true' : 'false' }} }">
+          x-data="{ open: {{ $otherFilters || $sort ? 'true' : 'false' }} }">
         <div class="filters" style="margin-bottom:0">
             <input type="search" name="q" value="{{ $filters['q'] }}" aria-label="Search tickets"
                    placeholder="Search ticket no, description, location, reason, requester">
@@ -62,6 +76,14 @@
 
                 @unless ($isHistory)
                 <div class="field" style="margin:0">
+                    <label class="lbl" for="f-priority">Priority</label>
+                    <select id="f-priority" name="priority">
+                        <option value="">All priorities</option>
+                        <option value="emergency" @selected($priorityNow === 'emergency')>Emergency</option>
+                        <option value="routine" @selected($priorityNow === 'routine')>Routine</option>
+                    </select>
+                </div>
+                <div class="field" style="margin:0">
                     <label class="lbl" for="f-category">Category</label>
                     <select id="f-category" name="category_id">
                         <option value="">All categories</option>
@@ -74,8 +96,12 @@
                     <label class="lbl" for="f-assigned">Assigned to</label>
                     <select id="f-assigned" name="assigned_to">
                         <option value="">Anyone</option>
-                        <option value="unassigned" @selected($filters['assigned_to'] === 'unassigned')>Unassigned</option>
+                        @if ($me->isMaintenanceTeam())
+                            <option value="me" @selected($filters['assigned_to'] === 'me' || (string) $filters['assigned_to'] === (string) $me->id)>Me</option>
+                        @endif
+                        <option value="unassigned" @selected($filters['assigned_to'] === 'unassigned')>Unassigned (none)</option>
                         @foreach ($assignees as $a)
+                            @continue($me->isMaintenanceTeam() && $a->id === $me->id)
                             <option value="{{ $a->id }}" @selected((string) $filters['assigned_to'] === (string) $a->id)>{{ $a->name }}</option>
                         @endforeach
                     </select>
@@ -90,11 +116,27 @@
                     </select>
                 </div>
                 @endunless
+
+                <div class="field" style="margin:0">
+                    <label class="lbl" for="f-sort">Sort by</label>
+                    <select id="f-sort" name="sort">
+                        <option value="">Default order</option>
+                        @foreach ($sortOptions as $value => $label)
+                            <option value="{{ $value }}" @selected($sort === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="field" style="margin:0">
+                    <label class="lbl" for="f-dir">Order</label>
+                    <select id="f-dir" name="dir">
+                        <option value="asc" @selected($dir === 'asc')>Ascending (A–Z, oldest first)</option>
+                        <option value="desc" @selected($dir === 'desc')>Descending (Z–A, newest first)</option>
+                    </select>
+                </div>
             </div>
 
             <div style="display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:16px">
                 @unless ($isHistory)
-                    <label class="check"><input type="checkbox" name="emergency" value="1" @checked($filters['emergency'])> Emergency only</label>
                     <label class="check"><input type="checkbox" name="overdue" value="1" @checked($filters['overdue'])> Overdue only</label>
                 @endunless
                 <label class="check"><input type="checkbox" name="mine" value="1" @checked($filters['mine'])> Only tickets I filed</label>
@@ -103,8 +145,8 @@
 
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px">
             <button class="btn btn-primary">Apply</button>
-            @if ($hasFilters)
-                <a href="{{ route($listRoute) }}" class="btn btn-danger">Clear filters</a>
+            @if ($hasFilters || $sort)
+                <a href="{{ route($listRoute) }}" class="btn btn-danger">{{ $hasFilters ? 'Clear filters' : 'Clear sort' }}</a>
             @endif
             @if ($canExport)
                 {{-- same search + filters as the list; every matching ticket, not just this page --}}
@@ -128,21 +170,29 @@
             </x-empty-state>
         </div>
     @else
-        <p class="hint" style="margin:0 0 10px">{{ $tickets->total() }} ticket(s) · {{ $isHistory ? 'most recently finished first' : 'emergencies first, then oldest first' }}</p>
+        <p class="hint" style="margin:0 0 10px">
+            {{ $tickets->total() }} ticket(s) ·
+            @if ($sort)
+                sorted by {{ strtolower($sortOptions[$sort]) }} ({{ $dir === 'asc' ? 'ascending' : 'descending' }})
+            @else
+                {{ $isHistory ? 'most recently finished first' : 'emergencies first, then oldest first' }}
+            @endif
+        </p>
 
         {{-- Desktop: table. Phones: the .stack rule in style.css turns every row into a card. --}}
         <div class="table-wrap">
             <table class="stack">
                 <thead>
                     <tr>
-                        <th>Ticket</th>
-                        <th>Status</th>
-                        <th>Location</th>
-                        <th>Category</th>
-                        <th>Requester</th>
-                        <th>Assigned to</th>
-                        <th>Submitted</th>
-                        <th>{{ $isHistory ? 'Closed / completed' : 'Completed' }}</th>
+                        @foreach ($columns as $key => $label)
+                            <th aria-sort="{{ $sort === $key ? ($dir === 'asc' ? 'ascending' : 'descending') : 'none' }}">
+                                <a href="{{ $sortUrl($key) }}" title="Sort by {{ strtolower($label) }}"
+                                   style="color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+                                    {{ $label }}
+                                    <i class="fa-solid {{ $sortIcon($key) }}" style="{{ $sort === $key ? '' : 'opacity:.35' }}"></i>
+                                </a>
+                            </th>
+                        @endforeach
                     </tr>
                 </thead>
                 <tbody>
@@ -153,7 +203,7 @@
                                 <div style="display:flex;flex-wrap:wrap;gap:6px">@include('tickets._badges', ['ticket' => $t])</div>
                             </td>
                             <td data-label="Location">{{ $t->location }}</td>
-                            <td data-label="Category">{{ $t->category?->name }}</td>
+                            <td data-label="Category">{{ $t->category?->name }}@if ($t->subcategory)<div class="sub">{{ $t->subcategory->name }}</div>@endif</td>
                             <td data-label="Requester">{{ $t->requester->name }}<div class="sub">{{ $t->department?->name }}</div></td>
                             <td data-label="Assigned to">{{ $t->assignee?->name ?? '—' }}</td>
                             <td data-label="Submitted" class="mono" style="white-space:nowrap">{{ $fmt($t->submitted_at) }}</td>
@@ -164,7 +214,7 @@
             </table>
         </div>
 
-        {{-- Pager (keeps the search + filters because the controller uses withQueryString()) --}}
+        {{-- Pager (keeps the search + filters + sort because the controller uses withQueryString()) --}}
         @if ($tickets->hasPages())
             @php
                 $cur = $tickets->currentPage();

@@ -34,7 +34,7 @@ class MaintenanceRequest extends Model
     public const PRIORITY_EMERGENCY = 'emergency';
 
     protected $fillable = [
-        'ticket_no', 'requester_id', 'department_id', 'category_id',
+        'ticket_no', 'requester_id', 'department_id', 'category_id', 'subcategory_id',
         'request_type', 'maintenance_type', 'location', 'description', 'needed_by', 'reason',
         'priority', 'is_emergency', 'emergency_reason', 'emergency_flagged_by', 'emergency_flagged_at',
         'is_confidential',
@@ -83,6 +83,14 @@ class MaintenanceRequest extends Model
                 $category = Category::find($ticket->category_id);
                 if ($category && $category->type !== $ticket->request_type) {
                     throw new DomainException('Category does not match the request type (materials/equipment/supplies).');
+                }
+            }
+
+            // Rule 1b: a subcategory must belong to the ticket's own category (it is optional).
+            if ($ticket->subcategory_id && $ticket->isDirty(['category_id', 'subcategory_id'])) {
+                $belongs = Subcategory::whereKey($ticket->subcategory_id)->where('category_id', $ticket->category_id)->exists();
+                if (! $belongs) {
+                    throw new DomainException('The subcategory does not belong to the chosen category.');
                 }
             }
 
@@ -354,6 +362,11 @@ class MaintenanceRequest extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function subcategory(): BelongsTo
+    {
+        return $this->belongsTo(Subcategory::class);
     }
 
     public function items(): HasMany

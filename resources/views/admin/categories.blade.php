@@ -25,6 +25,7 @@
             <b>Hide</b> a category to stop offering it on new tickets (old tickets keep it).
             <b>Locked</b> categories cannot be deleted, renamed or retyped.
             <b>Deleting</b> a category moves its tickets to <b>Other</b> of the same type.
+            Open <b>Subcategories</b> under a category to add optional sub-types (for example Plumbing &rsaquo; Leaking faucet).
         </p>
 
         {{-- Add --}}
@@ -202,6 +203,62 @@
                                                     <button type="button" class="btn btn-sm" @click="edit = false">Cancel</button>
                                                 </div>
                                             </form>
+                                        </td>
+                                    </tr>
+
+                                    {{-- Subcategories of this category --}}
+                                    <tr>
+                                        <td colspan="4" style="padding-top:0;border-top:0">
+                                            <details @if ($c->subcategories->isNotEmpty() || (string) old('_sub_for') === (string) $c->id || old('_sub_edit')) open @endif>
+                                                <summary style="cursor:pointer;font-size:13px;color:var(--text-3)">
+                                                    <i class="fa-solid fa-sitemap"></i> Subcategories ({{ $c->subcategories->count() }})
+                                                </summary>
+
+                                                @foreach ($c->subcategories as $s)
+                                                    @php
+                                                        $subEdit = (string) old('_sub_edit') === (string) $s->id;
+                                                        $subConfirm = $s->requests_count > 0
+                                                            ? "Delete \"{$s->name}\"? Its {$s->requests_count} ticket(s) keep the category and lose only the subcategory."
+                                                            : "Delete \"{$s->name}\"?";
+                                                    @endphp
+                                                    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0;@if ($s->is_hidden) opacity:.62 @endif">
+                                                        <form method="POST" action="{{ route('admin.categories.subcategories.update', $s) }}" style="display:flex;gap:8px;flex:1 1 260px;align-items:center">
+                                                            @csrf
+                                                            @method('PUT')
+                                                            <input type="hidden" name="_sub_edit" value="{{ $s->id }}">
+                                                            <input type="text" name="name" maxlength="100" required aria-label="Subcategory name"
+                                                                   value="{{ $subEdit ? old('name') : $s->name }}" style="flex:1">
+                                                            <button class="btn btn-sm" title="Save name"><i class="fa-solid fa-floppy-disk"></i></button>
+                                                        </form>
+                                                        <span class="hint" style="display:inline;white-space:nowrap">{{ $s->requests_count }} ticket(s)@if ($s->is_hidden) · hidden @endif</span>
+
+                                                        <form method="POST" action="{{ route('admin.categories.subcategories.toggle', $s) }}" style="display:inline">
+                                                            @csrf
+                                                            @method('PATCH')
+                                                            <button class="btn btn-sm" title="{{ $s->is_hidden ? 'Show on new tickets' : 'Hide from new tickets' }}">
+                                                                <i class="fa-solid {{ $s->is_hidden ? 'fa-eye' : 'fa-eye-slash' }}"></i> {{ $s->is_hidden ? 'Show' : 'Hide' }}
+                                                            </button>
+                                                        </form>
+
+                                                        <form method="POST" action="{{ route('admin.categories.subcategories.destroy', $s) }}" style="display:inline"
+                                                              onsubmit="return confirm({{ \Illuminate\Support\Js::from($subConfirm) }})">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button class="btn btn-sm btn-danger" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                                                        </form>
+                                                    </div>
+                                                    @if ($subEdit) @error('name')<div class="field-err">{{ $message }}</div>@enderror @endif
+                                                @endforeach
+
+                                                <form method="POST" action="{{ route('admin.categories.subcategories.store', $c) }}" style="display:flex;gap:8px;margin:10px 0 4px;align-items:center">
+                                                    @csrf
+                                                    <input type="hidden" name="_sub_for" value="{{ $c->id }}">
+                                                    <input type="text" name="name" maxlength="100" required placeholder="New subcategory, e.g. Leaking faucet" aria-label="New subcategory name"
+                                                           value="{{ (string) old('_sub_for') === (string) $c->id ? old('name') : '' }}" style="flex:1">
+                                                    <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Add</button>
+                                                </form>
+                                                @if ((string) old('_sub_for') === (string) $c->id) @error('name')<div class="field-err">{{ $message }}</div>@enderror @endif
+                                            </details>
                                         </td>
                                     </tr>
                                 </tbody>

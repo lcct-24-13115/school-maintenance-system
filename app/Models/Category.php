@@ -67,6 +67,11 @@ class Category extends Model
         return $this->hasMany(Inventory::class);
     }
 
+    public function subcategories(): HasMany
+    {
+        return $this->hasMany(Subcategory::class);
+    }
+
     /** The locked "Other" category of a type. Created on the spot when it does not exist yet. */
     public static function otherFor(string $type): self
     {
@@ -94,9 +99,11 @@ class Category extends Model
             // withTrashed(): deleted (soft) tickets also point at this category and the foreign key would block the delete.
             // Plain UPDATE on purpose: the tickets keep their history and their request_type, and the model
             // rule that checks the type is satisfied because Other has the same type.
-            $moved = MaintenanceRequest::withTrashed()->where('category_id', $this->id)->update(['category_id' => $other->id]);
+            // subcategory_id is cleared: a subcategory belongs to ONE category and "Other" has none of these.
+            $moved = MaintenanceRequest::withTrashed()->where('category_id', $this->id)->update(['category_id' => $other->id, 'subcategory_id' => null]);
             Inventory::withTrashed()->where('category_id', $this->id)->update(['category_id' => $other->id]);
 
+            $this->subcategories()->delete();
             $this->delete();
 
             return $moved;

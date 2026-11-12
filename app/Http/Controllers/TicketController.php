@@ -99,7 +99,7 @@ class TicketController extends Controller
 
         $query = MaintenanceRequest::query()
             ->visibleTo($user)   // never list what the user may not see
-            ->with(['requester', 'department', 'category', 'assignee']);
+            ->with(['requester', 'department', 'category', 'subcategory', 'assignee']);
 
         $history ? $query->history() : $query->active();
 
@@ -262,7 +262,7 @@ class TicketController extends Controller
         Gate::authorize('view', $ticket);
 
         $ticket->load([
-            'requester.department', 'department', 'category', 'assignee', 'president', 'emergencyFlagger',
+            'requester.department', 'department', 'category', 'subcategory', 'assignee', 'president', 'emergencyFlagger',
             'items', 'attachments', 'statusLogs.user',
         ]);
 

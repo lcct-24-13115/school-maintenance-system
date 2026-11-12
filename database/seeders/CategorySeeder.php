@@ -26,5 +26,22 @@ class CategorySeeder extends Seeder
         foreach (array_keys($categories) as $type) {
             Category::otherFor($type);
         }
+
+        // Starter subcategories (optional sub-types). firstOrCreate: re-seeding never undoes what an admin changed.
+        $subcategories = [
+            [Category::TYPE_MATERIALS, 'Plumbing (faucets, pipes)', ['Leaking faucet', 'Clogged drain', 'Broken pipe', 'Toilet / flush problem']],
+            [Category::TYPE_MATERIALS, 'Electrical', ['Lights', 'Outlets / switches', 'Wiring', 'Circuit breaker']],
+            [Category::TYPE_MATERIALS, 'Carpentry / Civil Works', ['Doors and windows', 'Walls and ceiling', 'Roof leak']],
+            [Category::TYPE_EQUIPMENT, 'Air Conditioning', ['Not cooling', 'Water leaking', 'Noisy', 'Remote / control problem']],
+            [Category::TYPE_EQUIPMENT, 'Furniture', ['Chairs', 'Tables and desks', 'Cabinets and shelves']],
+        ];
+
+        foreach ($subcategories as [$type, $categoryName, $names]) {
+            $category = Category::where('name', $categoryName)->where('type', $type)->first();
+
+            foreach ($names as $i => $name) {
+                $category?->subcategories()->firstOrCreate(['name' => $name], ['sort_order' => $i + 1]);
+            }
+        }
     }
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\SubcategoryController;
 use App\Http\Controllers\Admin\EmailLogController;
 use App\Http\Controllers\Admin\QrCodeController;
 use App\Http\Controllers\Admin\FaqAdminController;
@@ -160,6 +161,12 @@ Route::middleware('auth')->group(function () {
         Route::patch('/{category}/visibility', [CategoryController::class, 'toggle'])->name('toggle');
         Route::post('/{category}/move', [CategoryController::class, 'move'])->name('move');
         Route::delete('/{category}', [CategoryController::class, 'destroy'])->name('destroy');
+
+        // Subcategories live inside a category (same capability: manage_categories).
+        Route::post('/{category}/subcategories', [SubcategoryController::class, 'store'])->name('subcategories.store');
+        Route::put('/subcategories/{subcategory}', [SubcategoryController::class, 'update'])->name('subcategories.update');
+        Route::patch('/subcategories/{subcategory}/visibility', [SubcategoryController::class, 'toggle'])->name('subcategories.toggle');
+        Route::delete('/subcategories/{subcategory}', [SubcategoryController::class, 'destroy'])->name('subcategories.destroy');
     });
 
     // ---- QR codes (Phase 17). Capability manage_qr_codes is checked in the controller (others get 403) ----

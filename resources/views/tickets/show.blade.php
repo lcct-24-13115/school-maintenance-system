@@ -92,7 +92,7 @@
             <div class="card-h"><h3>Details</h3></div>
             <div class="kv">
                 <div><div class="k">Location</div><div style="word-break:break-word">{{ $ticket->location }}</div></div>
-                <div><div class="k">Category</div><div>{{ $ticket->category?->name ?? '—' }}</div></div>
+                <div><div class="k">Category</div><div>{{ $ticket->category?->name ?? '—' }}@if ($ticket->subcategory) <span style="color:var(--text-3)">›</span> {{ $ticket->subcategory->name }}@endif</div></div>
                 <div><div class="k">Maintenance type</div><div>{{ ucfirst((string) $ticket->maintenance_type) }}</div></div>
                 <div><div class="k">Request type</div><div>{{ $ticket->request_type ? ucfirst($ticket->request_type) : '—' }}</div></div>
                 <div><div class="k">Department</div><div>{{ $ticket->department?->name ?? '—' }}</div></div>

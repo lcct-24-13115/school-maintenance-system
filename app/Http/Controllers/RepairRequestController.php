@@ -6,6 +6,7 @@ use App\Http\Requests\Forms\StoreRepairRequestRequest;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\MaintenanceRequest;
+use App\Models\Subcategory;
 use App\Rules\AdvanceNotice;
 use App\Services\FormNotifier;
 use App\Services\TicketWorkflow;
@@ -32,6 +33,7 @@ class RepairRequestController extends Controller
             'emergencyBypass' => $canFlag && config('school.emergency_bypasses_advance_notice'),
             'departments' => Department::orderBy('name')->get(),
             'categories' => Category::visible()->ordered()->get(['id', 'name', 'type', 'is_locked']),
+            'subcategories' => Subcategory::visible()->ordered()->get(['id', 'category_id', 'name']),
             'requestTypes' => [
                 Category::TYPE_MATERIALS => 'Materials',
                 Category::TYPE_EQUIPMENT => 'Equipment',
@@ -56,6 +58,7 @@ class RepairRequestController extends Controller
             $ticket = TicketWorkflow::open($request->user(), [
                 'department_id' => $data['department_id'],
                 'category_id' => $data['category_id'],
+                'subcategory_id' => $data['subcategory_id'] ?? null,
                 'request_type' => $data['request_type'] ?? null,
                 'maintenance_type' => 'repair',
                 'location' => $data['location'],

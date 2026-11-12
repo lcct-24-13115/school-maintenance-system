@@ -66,6 +66,10 @@ class StoreRepairRequestRequest extends FormRequest
                     $query->where('type', $type);
                 }
             })],
+            // Optional. When given it must be a visible subcategory of the chosen category.
+            'subcategory_id' => ['nullable', Rule::exists('subcategories', 'id')->where(function ($query) {
+                $query->where('is_hidden', false)->where('category_id', $this->input('category_id'));
+            })],
             'location' => ['required', 'string', 'max:255'],
             'job_description' => ['required', 'string', 'max:1000'],
             'reason' => ['required', 'string', 'max:2000'],
@@ -91,6 +95,7 @@ class StoreRepairRequestRequest extends FormRequest
         return [
             'category_id.required' => 'Please choose the maintenance category (plumbing, electrical...).',
             'category_id.exists' => 'Please choose a category that matches the request type.',
+            'subcategory_id.exists' => 'Please choose a subcategory that belongs to the chosen category.',
             'request_type.in' => 'Please choose Materials, Equipment, Supplies, or leave the request type empty.',
             'location.required' => 'Please tell us where the problem is (building / room).',
             'needed_by.required' => 'Please pick the date you need this done.',

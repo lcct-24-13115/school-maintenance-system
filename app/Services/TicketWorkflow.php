@@ -66,6 +66,7 @@ class TicketWorkflow
                         'requester_id' => $requester->id,
                         'department_id' => $data['department_id'] ?? $requester->department_id,
                         'category_id' => $data['category_id'],
+                        'subcategory_id' => $data['subcategory_id'] ?? null,
                         'request_type' => $data['request_type'] ?? null,
                         'maintenance_type' => $data['maintenance_type'] ?? 'repair',
                         'location' => $data['location'],
