@@ -134,7 +134,14 @@ class TicketPolicy
 
     public function assign(User $user, MaintenanceRequest $ticket): bool
     {
-        return $this->can($user, $ticket, 'assign');
+        if (! $this->can($user, $ticket, 'assign')) {
+            return false;
+        }
+
+        // The Head may act on any ticket. A staff-only member may only act on a ticket that is assigned to them
+        // (they transfer it). Taking an unassigned ticket is the board's [ACCEPT TASK].
+        return ! $user->isStaffOnly()
+            || ($ticket->assigned_to !== null && (int) $ticket->assigned_to === (int) $user->id);
     }
 
     public function work(User $user, MaintenanceRequest $ticket): bool

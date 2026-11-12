@@ -58,7 +58,7 @@ class TicketMailer
         ?string $note = null,
         ?array $meta = null,
     ): void {
-        self::guard(function () use ($ticket, $from, $to, $action, $by, $note) {
+        self::guard(function () use ($ticket, $from, $to, $action, $by, $note, $meta) {
             $who = self::name($by);
 
             // Assigned / reassigned: the new assignee and the requester.
@@ -73,7 +73,12 @@ class TicketMailer
                 $verb = $action === RequestStatusLog::ACTION_REASSIGNMENT ? 'reassigned' : 'assigned';
 
                 self::deliver($ticket, 'assigned', 'Ticket '.$verb, "{$who} {$verb} the ticket to {$assignee->name}.",
-                    self::people($ticket->requester, $assignee), $by);
+                    self::people(
+                        $ticket->requester,
+                        $assignee,
+                        // a reassignment also tells the person who no longer has the ticket (never the one who did it)
+                        $action === RequestStatusLog::ACTION_REASSIGNMENT ? User::find($meta['from_user_id'] ?? null) : null,
+                    ), $by);
 
                 return;
             }

@@ -190,8 +190,16 @@
                                 @if ($log->from_status){{ \App\Enums\TicketStatus::tryFrom($log->from_status)?->label() }} &rarr; @endif{{ \App\Enums\TicketStatus::tryFrom($log->to_status)?->label() }}</span>@endif</b>
                             <span>· {{ $fmt($log->created_at) }} · {{ $log->user?->name ?? 'System' }}</span>
                         </div>
-                        @if ($log->note)
-                            <div class="body">{{ $log->note }}</div>
+                        @php
+                            $shownNote = $log->note;
+                            // A reassignment's reason is for the staff side: the requester sees who, not why.
+                            $why = $log->action === \App\Models\RequestStatusLog::ACTION_REASSIGNMENT ? ($log->meta['reason'] ?? null) : null;
+                            if (filled($why) && ! auth()->user()->can('viewInternalNotes', $ticket)) {
+                                $shownNote = trim(\Illuminate\Support\Str::replaceLast($why, '', (string) $log->note));
+                            }
+                        @endphp
+                        @if ($shownNote)
+                            <div class="body">{{ $shownNote }}</div>
                         @endif
                     </div>
                 @empty
