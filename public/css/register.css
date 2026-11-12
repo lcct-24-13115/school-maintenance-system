@@ -1,24 +1,43 @@
-/* "I am a ..." tiles on /register. Own class names (rt-*) so the ticket form's .tile-* styles are not touched. */
+/* /register: segmented "I am a" control + numbered sections. Own class names (rt-*, reg-*) so other pages are not touched. */
 [data-reg-field][hidden],[data-reg-optional][hidden]{display:none!important}
-.rt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.rt-opt{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:64px;padding:9px 8px;
-  border:2px solid transparent;background:#edf4fb;border-radius:16px;cursor:pointer;text-align:center;user-select:none;transition:all .2s}
-.rt-opt:hover{background:#e2eefa;transform:translateY(-2px)}
+.auth-card.wide:has(.reg){max-width:600px}
+
+.reg .eyebrow,.reg .form-title,.reg .form-sub{text-align:left}
+.reg .form-sub{margin-bottom:4px}
+
+.reg-sec{margin-top:20px;padding-top:18px;border-top:1px dashed var(--line)}
+.reg-sec:first-of-type{border-top:0;padding-top:4px}
+.reg-step{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-family:var(--font-body);font-size:12.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--deep)}
+.reg-step b{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--gold);color:var(--navy);font-size:12px;letter-spacing:0}
+.reg-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.reg-2col .field{margin-bottom:0}
+
+/* segmented control */
+.rt-grid{display:flex;gap:4px;padding:4px;background:#e4eef9;border-radius:999px}
+.rt-opt{position:relative;flex:1;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 12px;
+  border:0;background:transparent;border-radius:999px;cursor:pointer;text-align:center;user-select:none;transition:background .2s,color .2s,box-shadow .2s}
+.rt-opt:hover{background:rgba(255,255,255,.65)}
 .rt-opt input{position:absolute;opacity:0;pointer-events:none}
-.rt-opt i{font-size:18px;color:var(--text-3);transition:color .15s}
-.rt-opt span{font-size:12.5px;font-weight:700;color:var(--text-2);line-height:1.25}
-.rt-opt:has(input:checked){border-color:var(--blue);background:#fff;box-shadow:0 8px 20px -10px rgba(47,93,149,.5)}
-.rt-opt:has(input:checked) i{color:var(--deep)}
-.rt-opt:has(input:checked) span{color:var(--navy)}
+.rt-opt i{font-size:15px;color:var(--text-3);transition:color .15s}
+.rt-opt span{font-size:13px;font-weight:700;color:var(--text-2);line-height:1.2}
+.rt-opt:has(input:checked){background:var(--navy);box-shadow:0 8px 18px -10px rgba(27,51,85,.9)}
+.rt-opt:has(input:checked) i{color:var(--gold)}
+.rt-opt:has(input:checked) span{color:#fff}
 .rt-opt:has(input:focus-visible){outline:3px solid var(--blue);outline-offset:2px}
-@media (max-width:480px){.rt-grid{grid-template-columns:repeat(2,1fr)}}
-@media (prefers-reduced-motion:reduce){.rt-opt{transition:none}.rt-opt:hover{transform:none}}
+
+.reg-submit.btn-primary{margin-top:22px;background:var(--gold);border-color:var(--gold);color:var(--navy)}
+.reg-submit.btn-primary:hover{background:#ffc928;border-color:#ffc928;color:var(--navy)}
+
+@media (max-width:560px){.reg-2col{grid-template-columns:1fr}.reg-2col .field{margin-bottom:14px}}
+@media (max-width:480px){.rt-grid{flex-direction:column;border-radius:22px}.rt-opt{justify-content:flex-start;padding:10px 16px}}
+@media (prefers-reduced-motion:reduce){.rt-opt{transition:none}}
+
 /* admin "Waiting for approval" panel */
 .rt-badge{display:inline-block;margin-top:4px;padding:2px 9px;border-radius:99px;background:#e6f0fa;color:var(--deep);font-size:11.5px;font-weight:700}
 .rt-note{margin-top:6px;font-size:12.5px;line-height:1.45;color:var(--text-2);word-break:break-word}
 .rt-note b{color:var(--navy)}
 
-/* password strength meter + hint under it (same look as the reference registration page) */
+/* password strength meter + hint under it */
 .meter{height:5px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:8px}
 .meter>span{display:block;height:100%;width:0;border-radius:99px;background:var(--red);transition:width .25s,background .25s}
 .meter[data-level="1"]>span{width:25%;background:var(--red)}

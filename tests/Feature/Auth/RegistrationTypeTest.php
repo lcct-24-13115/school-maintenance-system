@@ -28,13 +28,18 @@ class RegistrationTypeTest extends TestCase
         ], $extra);
     }
 
-    public function test_form_shows_every_type_tile(): void
+    public function test_form_shows_every_type_option(): void
     {
         $response = $this->get('/register')->assertOk();
 
         foreach (config('registration.types') as $key => $type) {
             $response->assertSee('value="'.$key.'"', false)->assertSee($type['label']);
         }
+    }
+
+    public function test_only_student_faculty_and_parent_exist(): void
+    {
+        $this->assertSame(['STUDENT', 'FACULTY/STAFF', 'PARENT/GUARDIAN'], array_keys(config('registration.types')));
     }
 
     public function test_student_needs_nothing_extra_and_is_saved_with_its_type(): void
@@ -48,14 +53,35 @@ class RegistrationTypeTest extends TestCase
         $this->assertTrue($user->isPending());
     }
 
-    public function test_only_student_and_faculty_tiles_exist(): void
+    public function test_parent_must_name_the_student(): void
     {
-        $this->assertSame(['STUDENT', 'FACULTY/STAFF'], array_keys(config('registration.types')));
+        $this->from('/register')
+            ->post('/register', $this->payload(['requester_type' => 'PARENT/GUARDIAN', 'email' => 'nanay@gmail.com']))
+            ->assertSessionHasErrors('affiliation');
+
+        $this->assertSame(0, User::count());
+    }
+
+    public function test_parent_may_use_a_personal_email_and_always_waits_for_approval(): void
+    {
+        // Even with approval switched off, someone without a school email is never let in automatically.
+        config(['school.registration.require_approval' => false]);
+
+        $this->post('/register', $this->payload([
+            'requester_type' => 'PARENT/GUARDIAN', 'email' => 'nanay@gmail.com',
+            'affiliation' => 'Juan Dela Cruz, BSIT 2nd year',
+        ]))->assertRedirect('/login');
+
+        $this->assertGuest();
+        $user = User::where('email', 'nanay@gmail.com')->firstOrFail();
+        $this->assertTrue($user->isPending());
+        $this->assertSame('PARENT/GUARDIAN', $user->requester_type);
+        $this->assertNull($user->department_id);
     }
 
     public function test_removed_types_are_refused(): void
     {
-        foreach (['ALUMNI', 'PARENT/GUARDIAN', 'EXTERNAL ORGANIZATION', 'OTHER'] as $type) {
+        foreach (['ALUMNI', 'EXTERNAL ORGANIZATION', 'OTHER'] as $type) {
             $this->from('/register')
                 ->post('/register', $this->payload(['requester_type' => $type]))
                 ->assertSessionHasErrors('requester_type');
@@ -72,6 +98,7 @@ class RegistrationTypeTest extends TestCase
 
         $this->assertSame(0, User::count());
     }
+
     public function test_student_still_needs_the_school_email(): void
     {
         $this->from('/register')
