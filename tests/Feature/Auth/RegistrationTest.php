@@ -19,6 +19,7 @@ class RegistrationTest extends TestCase
 
     public function test_registration_is_closed_by_default(): void
     {
+        config(['school.allow_public_registration' => false]);
         $this->get('/register')->assertNotFound();
         $this->post('/register', $this->payload('a@lcctanauan.edu.ph'))->assertNotFound();
         $this->assertGuest();

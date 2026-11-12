@@ -26,7 +26,11 @@
     <p class="eyebrow">Requester registration</p>
     <h1 class="form-title">Request an account</h1>
     <p class="form-sub">
-        Accounts are reviewed by the Maintenance office before they can be used.
+        @if (config('school.registration.require_approval'))
+            A Maintenance Admin must approve your account before you can sign in.
+        @else
+            Fill in the form to create your account.
+        @endif
         @if (config('school.registration.require_verification'))
             We will first verify your e-mail address.
         @endif

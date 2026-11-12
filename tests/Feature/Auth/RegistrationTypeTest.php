@@ -48,32 +48,30 @@ class RegistrationTypeTest extends TestCase
         $this->assertTrue($user->isPending());
     }
 
-    public function test_alumni_must_give_program_and_purpose(): void
+    public function test_only_student_and_faculty_tiles_exist(): void
     {
-        $this->from('/register')
-            ->post('/register', $this->payload(['requester_type' => 'ALUMNI', 'email' => 'maria@gmail.com']))
-            ->assertSessionHasErrors(['affiliation', 'purpose']);
+        $this->assertSame(['STUDENT', 'FACULTY/STAFF'], array_keys(config('registration.types')));
+    }
+
+    public function test_removed_types_are_refused(): void
+    {
+        foreach (['ALUMNI', 'PARENT/GUARDIAN', 'EXTERNAL ORGANIZATION', 'OTHER'] as $type) {
+            $this->from('/register')
+                ->post('/register', $this->payload(['requester_type' => $type]))
+                ->assertSessionHasErrors('requester_type');
+        }
 
         $this->assertSame(0, User::count());
     }
 
-    public function test_alumni_may_use_a_personal_email_and_always_waits_for_approval(): void
+    public function test_faculty_must_use_the_school_email(): void
     {
-        // Even with approval switched off, someone without a school email is never let in automatically.
-        config(['school.registration.require_approval' => false]);
+        $this->from('/register')
+            ->post('/register', $this->payload(['requester_type' => 'FACULTY/STAFF', 'email' => 'maria@gmail.com']))
+            ->assertSessionHasErrors('email');
 
-        $this->post('/register', $this->payload([
-            'requester_type' => 'ALUMNI', 'email' => 'maria@gmail.com',
-            'affiliation' => 'BSIT, Batch 2018', 'purpose' => 'I need to report a broken gate near the alumni hall.',
-        ]))->assertRedirect('/login');
-
-        $this->assertGuest();
-        $user = User::where('email', 'maria@gmail.com')->firstOrFail();
-        $this->assertTrue($user->isPending());
-        $this->assertSame('ALUMNI', $user->requester_type);
-        $this->assertNull($user->department_id);
+        $this->assertSame(0, User::count());
     }
-
     public function test_student_still_needs_the_school_email(): void
     {
         $this->from('/register')
