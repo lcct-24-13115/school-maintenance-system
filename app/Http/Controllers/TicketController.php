@@ -116,7 +116,7 @@ class TicketController extends Controller
             'categories' => $history ? collect() : Category::orderBy('name')->get(['id', 'name']),
             'departments' => $history ? collect() : Department::orderBy('name')->get(['id', 'name']),
             'assignees' => $history ? collect() : User::query()->where('is_active', true)
-                ->whereHas('role', fn ($q) => $q->where('slug', Role::MAINTENANCE_ADMIN))
+                ->whereHas('role', fn ($q) => $q->whereIn('slug', Role::maintenanceSlugs()))
                 ->orderBy('name')->get(['id', 'name']),
         ]);
     }

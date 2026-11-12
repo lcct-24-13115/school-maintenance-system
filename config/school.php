@@ -63,7 +63,7 @@ return [
     // Roles that may use the repair request form (/repairs/create).
     // Default keeps Phase 1 behaviour (every role). CONFIRM WITH CLIENT
     'filing_roles' => [
-        'requester', 'department_head', 'treasurer', 'custodian', 'maintenance_admin', 'finance', 'president',
+        'requester', 'department_head', 'treasurer', 'custodian', 'staff', 'head', 'maintenance_admin', 'finance', 'president',
     ],
 
     // Phase 16 (Reports): CONFIRM WITH CLIENT
@@ -109,9 +109,9 @@ return [
     */
     'workflow' => [
         // CONFIRM WITH CLIENT: who the final signatory/authorizer is.
-        'authorizers' => ['maintenance_admin'],
+        'authorizers' => ['head', 'maintenance_admin'],
         // CONFIRM WITH CLIENT: who may formally close a ticket.
-        'closers' => ['maintenance_admin'],
+        'closers' => ['head', 'maintenance_admin'],
         // CONFIRM WITH CLIENT: what must be on file before closing.
         'closure_requires' => ['authorization', 'signed_evidence'],
         // CONFIRM WITH CLIENT: may the authorizer approve directly from Submitted?

@@ -86,7 +86,7 @@ class RepairRequest extends Model
 
     private function assertMaintenance(User $staff): void
     {
-        if (! $staff->hasRole(Role::MAINTENANCE_ADMIN)) {
+        if (! $staff->isMaintenanceTeam()) {
             throw new DomainException('Only maintenance staff can do this.');
         }
     }

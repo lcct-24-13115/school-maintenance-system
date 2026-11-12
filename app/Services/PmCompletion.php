@@ -6,7 +6,6 @@ use App\Enums\TicketStatus;
 use App\Models\MaintenanceRequest;
 use App\Models\PmSchedule;
 use App\Models\RequestStatusLog;
-use App\Models\Role;
 use App\Models\User;
 use DomainException;
 use Illuminate\Support\Carbon;
@@ -60,7 +59,7 @@ class PmCompletion
         // ---- technician: active maintenance staff; default = the assignee, then the person completing ----
         $technician = User::query()->find($data['technician_id'] ?? $ticket->assigned_to ?? $by->id);
 
-        if (! $technician || ! $technician->is_active || ! $technician->hasRole(Role::MAINTENANCE_ADMIN)) {
+        if (! $technician || ! $technician->is_active || ! $technician->isMaintenanceTeam()) {
             throw new DomainException('The technician must be an active maintenance staff member.');
         }
 

@@ -2,7 +2,6 @@
 
 namespace App\Notifications;
 
-use App\Models\Role;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
 
@@ -22,7 +21,7 @@ class FormActivity extends Notification
 
     public function toArray(object $notifiable): array
     {
-        $url = (in_array($this->payload['form_type'], ['repair', 'ticket'], true) && $notifiable->hasRole(Role::MAINTENANCE_ADMIN))
+        $url = (in_array($this->payload['form_type'], ['repair', 'ticket'], true) && $notifiable->isMaintenanceTeam())
             ? route('maintenance.board')
             : route('notifications.index');
 

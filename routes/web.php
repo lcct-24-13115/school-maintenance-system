@@ -44,7 +44,7 @@ Route::middleware('auth')->group(function () {
         ->middleware(CheckRole::class.':'.Role::REQUESTER.','.Role::DEPARTMENT_HEAD.','.Role::TREASURER)->name('requester.dashboard');
 
     Route::get('/maintenance/dashboard', [DashboardController::class, 'maintenance'])
-        ->middleware(CheckRole::class.':'.Role::MAINTENANCE_ADMIN)->name('maintenance.dashboard');
+        ->middleware(CheckRole::class.':'.implode(',', Role::maintenanceSlugs()))->name('maintenance.dashboard');
 
     Route::get('/finance/dashboard', [DashboardController::class, 'finance'])
         ->middleware(CheckRole::class.':'.Role::FINANCE)->name('finance.dashboard');
@@ -113,7 +113,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/attachments/{attachment}', [AttachmentController::class, 'destroy'])->name('attachments.destroy');
 
     // ---- Maintenance card board ----
-    Route::middleware(CheckRole::class.':'.Role::MAINTENANCE_ADMIN)->prefix('maintenance')->name('maintenance.')->group(function () {
+    Route::middleware(CheckRole::class.':'.implode(',', Role::maintenanceSlugs()))->prefix('maintenance')->name('maintenance.')->group(function () {
         Route::get('/board', [MaintenanceBoardController::class, 'index'])->name('board');
         Route::get('/board/cards', [MaintenanceBoardController::class, 'cards'])->name('board.cards');
         Route::post('/tickets/{ticket}/accept', [MaintenanceBoardController::class, 'accept'])->name('accept');
@@ -124,7 +124,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/settings', [SettingsController::class, 'edit'])->name('admin.settings.edit');
     Route::put('/admin/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
 
-    // ---- Audit trail (Merge Phase M3). Read-only. Capability view_audit_logs is checked in the controller (others get 403) ----
+    // ---- Audit trail (Merge Phase M3). Read-only (the CSV export only reads). Capability view_audit_logs is checked in the controller (others get 403) ----
     // ---- Reports (Merge Phase M4). view_analytics opens the page, export_reports the CSV; both checked in the controller (others get 403) ----
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
@@ -163,6 +163,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::get('/admin/audit-logs', [AuditLogController::class, 'index'])->name('admin.audit-logs.index');
+    Route::get('/admin/audit-logs/export', [AuditLogController::class, 'export'])->middleware('throttle:20,1')->name('admin.audit-logs.export');
 
     // ---- E-mail log (Admin). Capability view_email_log is checked in the controller BEFORE the id is looked up (others get 403) ----
     Route::prefix('admin/email-log')->name('admin.email-log.')->group(function () {

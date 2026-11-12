@@ -271,7 +271,7 @@ class TicketWorkflow
      */
     public static function assign(MaintenanceRequest $ticket, User $assignee, ?User $by = null, ?string $note = null): MaintenanceRequest
     {
-        if (! $assignee->is_active || ! $assignee->hasRole(Role::MAINTENANCE_ADMIN)) {
+        if (! $assignee->is_active || ! $assignee->isMaintenanceTeam()) {
             throw new DomainException('A ticket can only be assigned to active maintenance staff.');
         }
 
@@ -321,7 +321,7 @@ class TicketWorkflow
     /** Board button [ACCEPT TASK]: take the ticket and start working on it. */
     public static function startWork(MaintenanceRequest $ticket, User $staff): MaintenanceRequest
     {
-        if (! $staff->is_active || ! $staff->hasRole(Role::MAINTENANCE_ADMIN)) {
+        if (! $staff->is_active || ! $staff->isMaintenanceTeam()) {
             throw new DomainException('Only maintenance staff can accept a task.');
         }
 
@@ -349,7 +349,7 @@ class TicketWorkflow
         ?string $problems = null,
         ?string $recommendations = null,
     ): MaintenanceRequest {
-        if (! $staff->is_active || ! $staff->hasRole(Role::MAINTENANCE_ADMIN)) {
+        if (! $staff->is_active || ! $staff->isMaintenanceTeam()) {
             throw new DomainException('Only maintenance staff can complete a task.');
         }
 

@@ -102,7 +102,7 @@ class MaintenanceCalendarController extends Controller
             'equipmentList' => Equipment::orderBy('name')->get(['id', 'name']),
             'categories' => Category::orderBy('name')->get(['id', 'name']),
             'assignees' => User::where('is_active', true)
-                ->whereHas('role', fn ($q) => $q->where('slug', Role::MAINTENANCE_ADMIN))
+                ->whereHas('role', fn ($q) => $q->whereIn('slug', Role::maintenanceSlugs()))
                 ->orderBy('name')->get(['id', 'name']),
         ]);
     }

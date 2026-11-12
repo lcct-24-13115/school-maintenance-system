@@ -247,7 +247,7 @@ class TicketMailer
 
     private static function admins(): Collection
     {
-        return self::withRole(Role::MAINTENANCE_ADMIN);
+        return self::withRole(Role::maintenanceSlugs());
     }
 
     private static function authorizers(): Collection
@@ -261,10 +261,11 @@ class TicketMailer
         return $users;
     }
 
-    private static function withRole(string $slug): Collection
+    /** @param string|list<string> $slug one role slug or a list of them */
+    private static function withRole(string|array $slug): Collection
     {
         return User::query()->where('is_active', true)
-            ->whereHas('role', fn ($q) => $q->where('slug', $slug))
+            ->whereHas('role', fn ($q) => $q->whereIn('slug', (array) $slug))
             ->get();
     }
 }

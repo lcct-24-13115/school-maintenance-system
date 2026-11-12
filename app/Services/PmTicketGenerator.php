@@ -259,7 +259,7 @@ class PmTicketGenerator
             $ticket = TicketWorkflow::transition($ticket, TicketStatus::Approved, null, 'Pre-approved: scheduled preventive maintenance.');
 
             $assignee = $s->assignee;
-            if ($assignee && $assignee->is_active && $assignee->hasRole(Role::MAINTENANCE_ADMIN)) {
+            if ($assignee && $assignee->is_active && $assignee->isMaintenanceTeam()) {
                 $ticket = TicketWorkflow::assign($ticket, $assignee, null, 'Assigned by the PM schedule.');
             }
         }
@@ -281,13 +281,13 @@ class PmTicketGenerator
         foreach ([$s->created_by, $s->assigned_to] as $id) {
             $user = $id ? User::find($id) : null;
 
-            if ($user && $user->is_active && $user->hasRole(Role::MAINTENANCE_ADMIN)) {
+            if ($user && $user->is_active && $user->isMaintenanceTeam()) {
                 return $user;
             }
         }
 
         return User::query()->where('is_active', true)
-            ->whereHas('role', fn ($q) => $q->where('slug', Role::MAINTENANCE_ADMIN))
+            ->whereHas('role', fn ($q) => $q->whereIn('slug', Role::maintenanceSlugs()))
             ->orderBy('id')->first();
     }
 

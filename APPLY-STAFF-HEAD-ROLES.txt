@@ -1,0 +1,75 @@
+STAFF AT HEAD ROLES (Requester < Staff < Head < Admin, kagaya ng sa teacher)
+============================================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+
+  cd C:\laragon\www\school-maintenance-system
+  git add -A ; git commit -m "Before Staff and Head roles"
+  tar -xf "$env:USERPROFILE\Downloads\staff-head-roles-patch.zip" -C .
+  php artisan migrate
+  php artisan db:seed --class=FaqSeeder
+  php artisan optimize:clear
+  php artisan test --filter=StaffHeadRolesTest
+  php artisan test --filter=TicketActionsTest
+  php artisan test --filter=FaqModelTest
+  php artisan test
+
+DI MO MA-EXTRACT ANG ZIP? Gamitin ang terminal (piliin ang isa), sa loob ng project folder:
+  A) tar -xf "$env:USERPROFILE\Downloads\staff-head-roles-patch.zip" -C .
+  B) Expand-Archive -Path "$env:USERPROFILE\Downloads\staff-head-roles-patch.zip" -DestinationPath . -Force
+Kung nasa ibang folder ang zip, palitan ang path (hal. "C:\Users\ikaw\Desktop\staff-head-roles-patch.zip").
+
+MAY MIGRATION: 2026_11_22_000001_add_staff_and_head_roles.php
+  - Nagdadagdag ng 2 role: "Maintenance Staff" (staff) at "Head of Maintenance" (head).
+  - Ang dating role na maintenance_admin ay "Maintenance Admin" na ang pangalan (dati "Head of Maintenance").
+    KEEP NIYA ANG LAHAT NG POWERS NIYA NGAYON. Walang account na nawalan ng kapangyarihan.
+  - Ang dating "Staff only" na tick box ay pinalitan ng totoong Staff role: ang bawat Maintenance Admin na naka-tick
+    na "staff only" ay nagiging Staff, tapos tinatanggal ang column na users.staff_only.
+  - Safe i-run ulit. Walang "npm install", walang "npm run build".
+
+ANG MGA ROLE NGAYON
+  Student (requester)   nagpa-file ng repair request, sarili niyang tickets lang
+  Maintenance Staff     gumagawa ng trabaho: kumukuha ng unassigned ticket, naglilipat ng SARILING ticket (may dahilan),
+                        nag-aaccept/nagko-complete ng task, nagtatanong sa requester, nag-flag ng emergency,
+                        tumitingin ng PM schedules at calendar (hindi nagbabago)
+  Head of Maintenance   lahat ng kaya ng Staff + nag-aassign kahit kanino, send for authorization, approve/disapprove,
+                        close, escalate, clear emergency, confidential tickets, Reports/CSV/PDF, PM schedules at PM report,
+                        Audit log, FAQ manager
+  Maintenance Admin     lahat ng kaya ng Head + Users, Settings, Categories, QR codes, E-mail log
+  Finance, Custodian    walang pagbabago
+
+PAANO MAGLAGAY NG STAFF O HEAD
+  Mag-login bilang Maintenance Admin > Users > "Add user" (piliin ang role), o i-Edit ang kasalukuyang account at palitan ang Role.
+  (Hindi mo mababago ang sarili mong role. Magpa-edit sa ibang Maintenance Admin.)
+
+BAGO / BINAGO
+  Bago:
+    database/migrations/2026_11_22_000001_add_staff_and_head_roles.php
+    tests/Feature/StaffHeadRolesTest.php
+    APPLY-STAFF-HEAD-ROLES.txt
+  Binago (ino-overwrite):
+    config/permissions.php          <- bagong 'head' at 'staff' (dito mo babaguhin ang powers ng bawat role)
+    config/school.php               <- authorizers at closers = head + maintenance_admin; filing_roles may staff, head
+    app/Models/Role.php             <- Role::STAFF, Role::HEAD, Role::maintenanceSlugs()
+    app/Models/User.php             <- isMaintenanceTeam(); isStaffOnly() = role Staff; dashboard ng 3 role
+    routes/web.php                  <- Maintenance dashboard at board: Staff, Head at Admin
+    app/Http/Controllers/Admin/UserController.php, resources/views/admin/users.blade.php  <- wala na ang "staff only" tick box
+    app/Services/*, app/Http/Controllers/*, app/Notifications/FormActivity.php, app/Models/RepairRequest.php
+                                    <- "maintenance staff" = Staff + Head + Admin (assign, alerts, PM, notifications)
+    database/seeders/RoleSeeder.php, database/data/faq_starter/part2.php  <- bagong roles at FAQ audience
+    tests/Feature/TicketActionsTest.php, tests/Feature/FaqModelTest.php   <- inayos para sa bagong roles
+
+MGA DESISYON NA KAILANGANG I-CONFIRM (nasa config/permissions.php at config/school.php)
+  - Staff ay HINDI nakakakita ng confidential tickets, hindi nagko-close, hindi nag-aauthorize.
+  - Head ay nagma-manage ng FAQ at PM schedules (kagaya ng teacher na may faq.manage ang Head). Admin pa rin ang may Users/Settings/Categories/E-mail log.
+  - Ang mga bagong ticket alert ay natatanggap pa rin ng LAHAT ng maintenance (Staff, Head, Admin), kagaya ng dati.
+
+ROLLBACK
+  php artisan migrate:rollback --step=1     (ibabalik ang Staff -> Maintenance Admin na naka-"staff only", Head -> Maintenance Admin)
+  git checkout -- .
+  Remove-Item database\migrations\2026_11_22_000001_add_staff_and_head_roles.php, tests\Feature\StaffHeadRolesTest.php
+
+I-PUSH SA GITHUB (kung okay na ang test)
+  git add -A
+  git commit -m "Add Staff and Head roles (Requester < Staff < Head < Admin)"
+  git push

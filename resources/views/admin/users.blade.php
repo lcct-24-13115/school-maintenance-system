@@ -163,13 +163,7 @@
                     </div>
                 </div>
 
-                <div class="field">
-                    <input type="hidden" name="staff_only" value="0">
-                    <label style="display:flex;gap:8px;align-items:flex-start;font-weight:500">
-                        <input type="checkbox" name="staff_only" value="1" style="width:auto;margin-top:3px">
-                        <span>Staff only (Maintenance Admin role) &mdash; can take an unassigned ticket and transfer their own ticket with a reason, but cannot assign tickets to other people. Leave unticked for the Head of Maintenance.</span>
-                    </label>
-                </div>
+                <div class="p6-hint">Maintenance Staff take and do the work (they can only assign tickets to themselves). The Head of Maintenance also assigns anyone, authorizes, closes and reads the audit log. The Maintenance Admin also manages users, settings and categories.</div>
 
                 <div class="field">
                     <label for="u-emp">Employee no. <span class="hint" style="display:inline">(optional)</span></label>
@@ -344,16 +338,6 @@
                                                 @if ($isEdit) @error('department_id')<div class="field-err">{{ $message }}</div>@enderror @endif
                                             </div>
                                         </div>
-
-                                        @if ($u->hasRole(\App\Models\Role::MAINTENANCE_ADMIN))
-                                            <div class="field">
-                                                <input type="hidden" name="staff_only" value="0">
-                                                <label style="display:flex;gap:8px;align-items:flex-start;font-weight:500">
-                                                    <input type="checkbox" name="staff_only" value="1" @checked($u->staff_only) style="width:auto;margin-top:3px">
-                                                    <span>Staff only &mdash; can take an unassigned ticket and transfer their own ticket with a reason, but cannot assign tickets to other people. Leave unticked for the Head of Maintenance.</span>
-                                                </label>
-                                            </div>
-                                        @endif
 
                                         <div class="p6-save">
                                             <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-floppy-disk"></i> Save</button>

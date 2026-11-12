@@ -24,7 +24,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected $fillable = [
         'role_id', 'department_id', 'employee_no',
-        'name', 'email', 'password', 'is_active', 'staff_only',
+        'name', 'email', 'password', 'is_active',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -35,7 +35,6 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
-            'staff_only' => 'boolean',
             'decided_at' => 'datetime',
         ];
     }
@@ -108,14 +107,20 @@ class User extends Authenticatable implements MustVerifyEmail
         return in_array($this->role?->slug, $slugs, true);
     }
 
+    /** Staff, Head or Maintenance Admin: the people on the maintenance side. */
+    public function isMaintenanceTeam(): bool
+    {
+        return $this->hasRole(...Role::maintenanceSlugs());
+    }
+
     /**
-     * A maintenance account marked "staff only" (Users page): it may take an unassigned ticket and transfer its OWN
-     * ticket (a reason is required), but may not assign tickets to other people. A maintenance admin without the
-     * mark is the Head: assigns and reassigns anyone.
+     * Maintenance Staff (role "staff"): may take an unassigned ticket and transfer their OWN ticket (a reason is
+     * required), but may not assign tickets to other people. The Head and the Maintenance Admin assign anyone.
+     * (Before the Staff / Head roles existed this was a "staff only" tick box on a Maintenance Admin account.)
      */
     public function isStaffOnly(): bool
     {
-        return $this->hasRole(Role::MAINTENANCE_ADMIN) && (bool) $this->staff_only;
+        return $this->hasRole(Role::STAFF);
     }
 
     /**
@@ -176,7 +181,7 @@ class User extends Authenticatable implements MustVerifyEmail
     public function dashboardRoute(): string
     {
         return match ($this->role?->slug) {
-            Role::MAINTENANCE_ADMIN => 'maintenance.dashboard',
+            Role::STAFF, Role::HEAD, Role::MAINTENANCE_ADMIN => 'maintenance.dashboard',
             Role::FINANCE => 'finance.dashboard',
             Role::CUSTODIAN => 'custodian.dashboard',
             Role::PRESIDENT => 'president.dashboard',

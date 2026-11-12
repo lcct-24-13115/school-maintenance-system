@@ -248,10 +248,10 @@ class FaqModelTest extends TestCase
         $this->assertContains('How do I send a repair request?', $this->seen($this->user('requester')));
     }
 
-    public function test_only_the_maintenance_admin_may_manage_the_faq(): void
+    public function test_only_the_maintenance_admin_and_the_head_may_manage_the_faq(): void
     {
         foreach ((array) config('permissions') as $slug => $capabilities) {
-            $this->assertSame($slug === 'maintenance_admin', in_array('manage_faq', $capabilities, true), $slug);
+            $this->assertSame(in_array($slug, ['maintenance_admin', 'head'], true), in_array('manage_faq', $capabilities, true), $slug);
         }
 
         $this->assertTrue($this->user('maintenance')->canManageFaq());

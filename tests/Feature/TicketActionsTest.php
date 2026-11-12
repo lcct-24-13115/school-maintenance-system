@@ -442,10 +442,10 @@ class TicketActionsTest extends TestCase
         $this->assertDatabaseHas('request_status_logs', ['request_id' => $ticket->id, 'action' => 'reassignment']);
     }
 
-    public function test_a_staff_only_member_can_transfer_their_own_ticket_but_needs_a_reason(): void
+    public function test_a_staff_member_can_transfer_their_own_ticket_but_needs_a_reason(): void
     {
         $staff = $this->user('maintenance2');
-        $staff->update(['staff_only' => true]);
+        $staff->update(['role_id' => \App\Models\Role::where('slug', 'staff')->value('id')]);   // the Staff role (was the "staff only" tick box)
         $ticket = $this->assigned('maintenance2');     // the Head assigned it to maintenance2
         $target = $this->user('maintenance3');
         $url = route('tickets.assign', $ticket);
@@ -460,10 +460,10 @@ class TicketActionsTest extends TestCase
         $this->assertDatabaseHas('request_status_logs', ['request_id' => $ticket->id, 'action' => 'reassignment']);
     }
 
-    public function test_a_staff_only_member_cannot_assign_or_reassign_other_peoples_tickets(): void
+    public function test_a_staff_member_cannot_assign_or_reassign_other_peoples_tickets(): void
     {
         $staff = $this->user('maintenance2');
-        $staff->update(['staff_only' => true]);
+        $staff->update(['role_id' => \App\Models\Role::where('slug', 'staff')->value('id')]);   // the Staff role (was the "staff only" tick box)
         $other = $this->user('maintenance3');
 
         $theirs = $this->assigned('maintenance3');
@@ -477,10 +477,10 @@ class TicketActionsTest extends TestCase
         $this->assertNull($open->fresh()->assigned_to);
     }
 
-    public function test_the_workflow_itself_refuses_a_staff_only_member_who_assigns_to_someone_else(): void
+    public function test_the_workflow_itself_refuses_a_staff_member_who_assigns_to_someone_else(): void
     {
         $staff = $this->user('maintenance2');
-        $staff->update(['staff_only' => true]);
+        $staff->update(['role_id' => \App\Models\Role::where('slug', 'staff')->value('id')]);   // the Staff role (was the "staff only" tick box)
         $ticket = $this->approved();
 
         $this->expectException(DomainException::class);

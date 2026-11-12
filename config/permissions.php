@@ -44,8 +44,11 @@
 */
 
 return [
-    // CONFIRM WITH CLIENT: the proposal only names "Admin" and "Finance" as initial groups.
-    // maintenance_admin is the proposal's "Admin".
+    // Role model (same four-level idea as the reference system): Requester (Student) < Staff < Head < Admin.
+    //   staff             does the work: takes / transfers its OWN tickets, completes tasks, asks the requester for info.
+    //   head              Staff + assigns anyone, sends for authorization, authorizes, closes, escalates, reports, audit log, FAQ.
+    //   maintenance_admin Head + users, settings, categories, QR codes, e-mail log, PM schedules (the system Admin).
+    // CONFIRM WITH CLIENT / TEACHER: the exact split of powers between Staff, Head and Admin.
     'maintenance_admin' => [
         'view_all_tickets', 'view_confidential', 'flag_emergency', 'clear_emergency',
         'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users', 'manage_settings', 'manage_categories', 'manage_qr_codes', 'manage_pm_schedules', 'view_pm_reports',
@@ -54,6 +57,23 @@ return [
         'view_email_log',
         // CONFIRM WITH CLIENT (Help & FAQ): who writes the FAQ.
         'manage_faq',
+    ],
+
+    // Head of Maintenance: everything the Admin can do EXCEPT managing users / settings / categories / QR codes / the e-mail log.
+    'head' => [
+        'view_all_tickets', 'view_confidential', 'flag_emergency', 'clear_emergency',
+        'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports',
+        'manage_pm_schedules', 'view_pm_reports',
+        'cancel_own', 'reopen_own', 'request_info', 'escalate', 'view_audit_logs',
+        'manage_faq',
+    ],
+
+    // Maintenance Staff: sees all (non-confidential) tickets and does the work. 'assign' is limited by the policy to
+    // taking an unassigned ticket / transferring their OWN ticket (User::isStaffOnly). Can look at PM schedules, not change them.
+    'staff' => [
+        'view_all_tickets', 'flag_emergency', 'send_for_authorization', 'assign', 'work', 'add_attachment',
+        'request_info', 'view_pm_schedules',
+        'cancel_own', 'reopen_own',
     ],
 
     // CONFIRM WITH CLIENT: Finance sees all tickets EXCEPT confidential ones.

@@ -230,7 +230,7 @@ class PmNotifier
 
     private static function admins(): Collection
     {
-        return self::withRole(Role::MAINTENANCE_ADMIN);
+        return self::withRole(Role::maintenanceSlugs());
     }
 
     /** CONFIRM WITH CLIENT: school.pm.supervisor_roles (default: the President). */
@@ -245,9 +245,10 @@ class PmNotifier
         return $users;
     }
 
-    private static function withRole(string $slug): Collection
+    /** @param string|list<string> $slug one role slug or a list of them */
+    private static function withRole(string|array $slug): Collection
     {
-        return User::query()->where('is_active', true)->whereHas('role', fn ($q) => $q->where('slug', $slug))->get();
+        return User::query()->where('is_active', true)->whereHas('role', fn ($q) => $q->whereIn('slug', (array) $slug))->get();
     }
 
     /** The bell (database + live) and one queued email per person. Never to someone who may not see the ticket. */

@@ -137,7 +137,7 @@ class TicketActions
     {
         return User::query()
             ->where('is_active', true)
-            ->whereHas('role', fn ($q) => $q->where('slug', Role::MAINTENANCE_ADMIN))
+            ->whereHas('role', fn ($q) => $q->whereIn('slug', Role::maintenanceSlugs()))
             ->withCount(['assignedRequests as open_tickets_count' => fn ($q) => $q->pending()])
             ->orderBy('name')
             ->get();

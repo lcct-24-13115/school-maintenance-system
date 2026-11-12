@@ -174,7 +174,7 @@ class PmScheduleController extends Controller
     /** @return array<string, mixed> */
     private function validated(Request $request): array
     {
-        $maintenanceRoleIds = Role::where('slug', Role::MAINTENANCE_ADMIN)->pluck('id');
+        $maintenanceRoleIds = Role::whereIn('slug', Role::maintenanceSlugs())->pluck('id');
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:150'],
@@ -233,7 +233,7 @@ class PmScheduleController extends Controller
                 ->map(fn ($e) => ['id' => $e->id, 'name' => $e->name, 'facility_id' => $e->facility_id])->values(),
             'categories' => Category::orderBy('name')->get(['id', 'name']),
             'assignees' => User::where('is_active', true)
-                ->whereHas('role', fn ($q) => $q->where('slug', Role::MAINTENANCE_ADMIN))
+                ->whereHas('role', fn ($q) => $q->whereIn('slug', Role::maintenanceSlugs()))
                 ->orderBy('name')->get(['id', 'name']),
             'frequencies' => PmSchedule::frequencyLabels(),
             'priorities' => PmSchedule::priorityLabels(),
