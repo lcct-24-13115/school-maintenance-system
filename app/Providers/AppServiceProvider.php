@@ -10,11 +10,16 @@ use App\Observers\FaqObserver;
 use App\Observers\UserObserver;
 use App\Policies\TicketPolicy;
 use App\Services\AuditLogger;
+use App\Services\EmailLogger;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Mail\Events\MessageSent;
+use Illuminate\Queue\Events\JobExceptionOccurred;
+use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
@@ -51,6 +56,7 @@ class AppServiceProvider extends ServiceProvider
             return Faq::query()->where('id', $value)->firstOrFail();
         });
         $this->registerAuditListeners();
+        $this->registerEmailLogListeners();
 
         // The model is MaintenanceRequest but the policy is named for what it is: the ticket.
         Gate::policy(MaintenanceRequest::class, TicketPolicy::class);
@@ -77,6 +83,20 @@ class AppServiceProvider extends ServiceProvider
                 ->with('request')
                 ->firstOrFail();
         });
+    }
+
+    /**
+     * E-mail log: every e-mail the mailer handles is recorded, with its real result.
+     * EmailLogger never throws, so a logging problem can never stop an e-mail.
+     * A queued e-mail that throws is caught here (JobExceptionOccurred / JobFailed); one sent directly is caught by
+     * the exception reporter in bootstrap/app.php.
+     */
+    private function registerEmailLogListeners(): void
+    {
+        Event::listen(MessageSending::class, fn (MessageSending $e) => EmailLogger::sending($e));
+        Event::listen(MessageSent::class, fn (MessageSent $e) => EmailLogger::sent($e));
+        Event::listen(JobExceptionOccurred::class, fn (JobExceptionOccurred $e) => EmailLogger::failed($e->exception));
+        Event::listen(JobFailed::class, fn (JobFailed $e) => EmailLogger::failed($e->exception));
     }
 
     /**

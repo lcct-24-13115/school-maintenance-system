@@ -1,0 +1,58 @@
+E-MAIL LOG PAGE (Admin)
+=======================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before e-mail log"
+  tar -xf "$env:USERPROFILE\Downloads\email-log-patch.zip" -C .
+  php artisan migrate
+  php artisan optimize:clear
+  php artisan test --filter=EmailLogTest
+  php artisan test
+
+(Kung ayaw gumana ang tar: Right-click sa zip > "Extract All...", kopyahin ang laman sa project folder at i-overwrite.
+ Kung may Windows PowerShell: Expand-Archive -Path "...zip" -DestinationPath . -Force)
+
+MAY MIGRATION: 2026_11_18_000001_create_email_logs_table.php (bagong table: email_logs). Walang binubura.
+
+Bago:
+  database/migrations/2026_11_18_000001_create_email_logs_table.php
+  app/Models/EmailLog.php
+  app/Services/EmailLogger.php                              <- nakikinig sa mailer: sending / delivered / failed
+  app/Http/Controllers/Admin/EmailLogController.php         <- list + filters, details, "Send again"
+  resources/views/admin/email-log/index.blade.php
+  resources/views/admin/email-log/show.blade.php
+  public/css/emaillog.css
+  tests/Feature/EmailLogTest.php
+  APPLY-EMAIL-LOG.txt
+
+Ino-overwrite (maliit na dagdag lang ang bawat isa):
+  routes/web.php                                  <- /admin/email-log, /admin/email-log/{id}, POST /admin/email-log/{id}/retry
+  config/permissions.php                          <- bagong capability view_email_log (maintenance_admin lang)
+  app/Providers/AppServiceProvider.php            <- registerEmailLogListeners()
+  app/Services/AuditLogger.php                    <- action na email_retried
+  resources/views/layouts/navigation.blade.php    <- "E-mail log" sa Administration
+  bootstrap/app.php                               <- kapag nag-error ang mail server, "Failed" ang naka-log
+
+Paano gumagana:
+  Bawat e-mail na ipinapadala ng system (ticket updates, password reset, test) ay may row sa E-mail Log:
+    Sending -> Delivered (may message id)   o   Failed (may eksaktong error)
+  "Not confirmed" = 10 minuto nang "Sending" pero walang sagot galing sa mailer.
+  Filters: status, kind, petsa, search (recipient / subject / ticket no.). May bilang sa taas (All / Delivered / Failed / Not confirmed).
+  Details page: lahat ng info + preview ng laman ng e-mail (sandboxed, hindi pwedeng mag-script).
+  "Send again": para sa failed na TICKET e-mail lang. Parehong row ang ina-update (tries +1), at naka-log sa Audit log.
+
+Mga rule:
+  Maintenance Admin lang ang may access. Iba = 403 (kahit hindi existing ang id).
+  Password-reset / verification e-mails: naka-log PERO WALANG laman (may secret link) kaya hindi sila pwedeng i-send again.
+  Error texts ay nire-redact (password=... ay hindi nase-save).
+  Kapag MAIL_MAILER=log o array: may dilaw na paalala sa taas na "Delivered" = naisulat lang sa log, hindi tunay na naipadala.
+  Hindi kailanman haharang ang logging sa pagpapadala ng e-mail o sa ticket action.
+
+Para makita agad:
+  1) Nasa .env: MAIL_MAILER=log (o smtp kung Brevo na)
+  2) php artisan mail:test someone@example.com
+  3) Buksan ang /admin/email-log bilang Maintenance Admin -> may "Test" row na Delivered
+  4) Kapag QUEUE_CONNECTION=database, patakbuhin: php artisan queue:work   (para ma-send ang ticket e-mails; lalabas sila dito)
+  5) Para subukan ang Failed: MAIL_MAILER=smtp na may maling MAIL_PASSWORD, tapos mail:test -> Failed + error
+
+Rollback: git checkout -- .   at   php artisan migrate:rollback --step=1   at burahin ang mga "Bago" na file sa itaas.

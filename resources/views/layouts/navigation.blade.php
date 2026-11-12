@@ -45,7 +45,7 @@
             <i class="fa-solid fa-circle-question"></i> Help &amp; FAQ
         </a>
 
-        @if ($u->can_do('view_analytics') || $u->canViewPmReports() || $u->can_do('manage_settings') || $u->can_do('manage_categories') || $u->can_do('manage_users') || $u->can_do('manage_qr_codes') || $u->can_do('view_audit_logs') || $u->canManageFaq())
+        @if ($u->can_do('view_analytics') || $u->canViewPmReports() || $u->can_do('manage_settings') || $u->can_do('manage_categories') || $u->can_do('manage_users') || $u->can_do('manage_qr_codes') || $u->can_do('view_audit_logs') || $u->can_do('view_email_log') || $u->canManageFaq())
             <div class="nav-sec">Administration</div>
         @endif
 
@@ -106,6 +106,12 @@
         @if ($u->can_do('view_audit_logs'))
             <a href="{{ route('admin.audit-logs.index') }}" class="{{ request()->routeIs('admin.audit-logs.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-clock-rotate-left"></i> Audit log
+            </a>
+        @endif
+
+        @if ($u->can_do('view_email_log'))
+            <a href="{{ route('admin.email-log.index') }}" class="{{ request()->routeIs('admin.email-log.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-envelope-open-text"></i> E-mail log
             </a>
         @endif
     </nav>

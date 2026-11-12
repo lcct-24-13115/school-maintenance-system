@@ -55,6 +55,8 @@ class AuditLogger
 
     public const EQUIPMENT_CHANGED = 'equipment_changed';
 
+    public const EMAIL_RETRIED = 'email_retried';   // an admin sent a failed ticket e-mail again (E-mail log)
+
     // Help & FAQ manager (Phase 3)
     public const FAQ_CREATED = 'faq_created';
 
@@ -93,7 +95,7 @@ class AuditLogger
         return [
             self::LOGIN, self::LOGOUT, self::LOGIN_FAILED, self::REGISTERED, self::PASSWORD_RESET,
             self::USER_CREATED, self::USER_UPDATED, self::USER_DEACTIVATED, self::USER_REACTIVATED, self::ROLE_CHANGED, self::USER_PASSWORD_RESET,
-            self::SETTINGS_UPDATED, self::CATEGORY_CHANGED, self::QR_CODE_CHANGED, self::PM_SCHEDULE_CHANGED, self::EQUIPMENT_CHANGED,
+            self::SETTINGS_UPDATED, self::CATEGORY_CHANGED, self::QR_CODE_CHANGED, self::PM_SCHEDULE_CHANGED, self::EQUIPMENT_CHANGED, self::EMAIL_RETRIED,
             self::FAQ_CREATED, self::FAQ_UPDATED, self::FAQ_PUBLISHED, self::FAQ_HIDDEN, self::FAQ_REORDERED, self::FAQ_DELETED,
             self::TICKET_STATUS, self::TICKET_ASSIGNED, self::TICKET_REASSIGNED,
             self::ATTACHMENT_UPLOADED, self::ATTACHMENT_DOWNLOADED,

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\EmailLogController;
 use App\Http\Controllers\Admin\QrCodeController;
 use App\Http\Controllers\Admin\PmScheduleController;
 use App\Http\Controllers\Admin\EquipmentController;
@@ -157,6 +158,13 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::get('/admin/audit-logs', [AuditLogController::class, 'index'])->name('admin.audit-logs.index');
+
+    // ---- E-mail log (Admin). Capability view_email_log is checked in the controller BEFORE the id is looked up (others get 403) ----
+    Route::prefix('admin/email-log')->name('admin.email-log.')->group(function () {
+        Route::get('/', [EmailLogController::class, 'index'])->name('index');
+        Route::get('/{id}', [EmailLogController::class, 'show'])->whereNumber('id')->name('show');
+        Route::post('/{id}/retry', [EmailLogController::class, 'retry'])->whereNumber('id')->middleware('throttle:20,1')->name('retry');
+    });
 
     // ---- FAQ manager (Help & FAQ Phase 3). Capability manage_faq is checked in the controller (others get 403) ----
     Route::prefix('admin/faq')->name('admin.faq.')->group(function () {

@@ -22,6 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', \App\Http\Middleware\RequireVerifiedEmail::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // E-mail log: when the mail server refuses or cannot be reached, the e-mail being sent is marked Failed with the reason.
+        $exceptions->report(function (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+            \App\Services\EmailLogger::failed($e);
+        });
+
         // Phase 3: an old or tampered verification link shows a friendly page instead of a bare 403.
         $exceptions->render(function (\Illuminate\Routing\Exceptions\InvalidSignatureException $e, Request $request) {
             if ($request->routeIs('verification.verify')) {
