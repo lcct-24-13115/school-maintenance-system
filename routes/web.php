@@ -124,7 +124,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/settings', [SettingsController::class, 'edit'])->name('admin.settings.edit');
     Route::put('/admin/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
 
-    // ---- Audit trail (Merge Phase M3). Read-only. Capability view_audit_logs is checked in the controller (others get 403) ----
+    // ---- Audit trail (Merge Phase M3). Read-only (the CSV export only reads). Capability view_audit_logs is checked in the controller (others get 403) ----
     // ---- Reports (Merge Phase M4). view_analytics opens the page, export_reports the CSV; both checked in the controller (others get 403) ----
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
@@ -163,6 +163,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::get('/admin/audit-logs', [AuditLogController::class, 'index'])->name('admin.audit-logs.index');
+    Route::get('/admin/audit-logs/export', [AuditLogController::class, 'export'])->middleware('throttle:20,1')->name('admin.audit-logs.export');
 
     // ---- E-mail log (Admin). Capability view_email_log is checked in the controller BEFORE the id is looked up (others get 403) ----
     Route::prefix('admin/email-log')->name('admin.email-log.')->group(function () {
