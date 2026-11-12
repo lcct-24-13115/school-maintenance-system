@@ -21,17 +21,32 @@
         @endif
 
         <p class="p6-note">
-            These are the choices in the <b>Maintenance category</b> list of the repair form.
+            Every category belongs to one department: pick the department below.
+            For the Maintenance Office these are the choices in the <b>Maintenance category</b> list of the repair form.
             <b>Hide</b> a category to stop offering it on new tickets (old tickets keep it).
             <b>Locked</b> categories cannot be deleted, renamed or retyped.
             <b>Deleting</b> a category moves its tickets to <b>Other</b> of the same type.
             Open <b>Subcategories</b> under a category to add optional sub-types (for example Plumbing &rsaquo; Leaking faucet).
         </p>
 
+        {{-- Which department's categories --}}
+        <form method="GET" action="{{ route('admin.categories.index') }}" class="card">
+            <div class="field" style="margin-bottom:0">
+                <label for="dept-pick">Department</label>
+                <select id="dept-pick" name="department" onchange="this.form.submit()">
+                    @foreach ($departments as $d)
+                        <option value="{{ $d->id }}" @selected($department && $d->id === $department->id)>{{ $d->name }}</option>
+                    @endforeach
+                </select>
+                <noscript><button type="submit" class="btn btn-sm">Show</button></noscript>
+            </div>
+        </form>
+
         {{-- Add --}}
         <form method="POST" action="{{ route('admin.categories.store') }}" class="card">
             @csrf
             <h3 class="p6-card-t">Add a category</h3>
+            <input type="hidden" name="department_id" value="{{ $department?->id }}">
 
             <div class="row2">
                 <div class="field">
@@ -81,7 +96,7 @@
                 <div class="card-h"><h3>{{ $typeLabel }} <span class="hint" style="font-family:var(--font-body);font-weight:400">({{ $list->count() }})</span></h3></div>
 
                 @if ($list->isEmpty())
-                    <div class="empty" style="padding:22px 16px"><i class="fa-solid fa-tags"></i>No {{ strtolower($typeLabel) }} categories yet.</div>
+                    <div class="empty" style="padding:22px 16px"><i class="fa-solid fa-tags"></i>No categories in this group yet.</div>
                 @else
                     <div class="table-wrap">
                         <table>

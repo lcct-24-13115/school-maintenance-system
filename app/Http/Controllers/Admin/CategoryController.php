@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Department;
 use App\Services\AuditLogger;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
@@ -12,7 +13,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
- * Categories admin (Phase 5): add / edit / hide / reorder / delete. Capability: manage_categories (others get 403).
+ * Categories admin (Phase 5, per department since multi-department Phase 2): add / edit / hide / reorder / delete. Capability: manage_categories (others get 403).
  *
  *  - hidden  : not offered on new tickets; old tickets keep showing it.
  *  - locked  : cannot be deleted, renamed or retyped (the "Other" categories are locked).
@@ -24,7 +25,14 @@ class CategoryController extends Controller
     {
         $this->authorizeManage($request);
 
+        // ?department=ID picks whose categories are shown; default = the Maintenance Office.
+        $departments = Department::service()->orderBy('name')->get(['id', 'name', 'code']);
+        $department = $departments->firstWhere('id', (int) $request->query('department'))
+            ?? $departments->firstWhere('code', Department::MAINTENANCE_CODE)
+            ?? $departments->first();
+
         $categories = Category::query()
+            ->ofDepartment($department?->id)
             ->withCount('requests')
             ->with(['subcategories' => fn ($q) => $q->withCount('requests')->ordered()])
             ->ordered()
@@ -32,8 +40,10 @@ class CategoryController extends Controller
             ->groupBy('type');
 
         return view('admin.categories', [
-            'types' => Category::typeLabels(),
+            'types' => Category::typeLabelsFor($department?->id),
             'categories' => $categories,
+            'departments' => $departments,
+            'department' => $department,
         ]);
     }
 
@@ -41,23 +51,30 @@ class CategoryController extends Controller
     {
         $this->authorizeManage($request);
 
+        $request->validate(['department_id' => ['nullable', 'exists:departments,id']]);
+        // No department sent = the Maintenance Office (the page before Phase 2 had no department field).
+        $departmentId = $request->filled('department_id') ? (int) $request->input('department_id') : Department::maintenanceId();
+
         $data = $request->validate([
-            'type' => ['required', Rule::in(array_keys(Category::typeLabels()))],
-            'name' => ['required', 'string', 'max:100', Rule::unique('categories', 'name')->where('type', $request->input('type'))],
+            'type' => ['required', Rule::in(array_keys(Category::typeLabelsFor($departmentId)))],
+            'name' => ['required', 'string', 'max:100', Rule::unique('categories', 'name')
+                ->where('type', $request->input('type'))
+                ->where(fn ($q) => $departmentId === null ? $q->whereNull('department_id') : $q->where('department_id', $departmentId))],
             'description' => ['nullable', 'string', 'max:500'],
             'is_hidden' => ['nullable', 'boolean'],
             'is_locked' => ['nullable', 'boolean'],
         ], [
-            'name.unique' => 'This type already has a category with that name.',
+            'name.unique' => 'This department already has a category with that name.',
         ]);
 
         $category = Category::create([
             'name' => trim($data['name']),
             'type' => $data['type'],
+            'department_id' => $departmentId,
             'description' => $data['description'] ?? null,
             'is_hidden' => $request->boolean('is_hidden'),
             'is_locked' => $request->boolean('is_locked'),
-            'sort_order' => ((int) Category::where('type', $data['type'])->max('sort_order')) + 1,
+            'sort_order' => ((int) Category::ofDepartment($departmentId)->where('type', $data['type'])->max('sort_order')) + 1,
         ]);
 
         $this->audit($request, "Category added: {$category->name} ({$category->type})", $category);
@@ -70,13 +87,16 @@ class CategoryController extends Controller
         $this->authorizeManage($request);
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:100', Rule::unique('categories', 'name')->where('type', $request->input('type', $category->type))->ignore($category->id)],
-            'type' => ['required', Rule::in(array_keys(Category::typeLabels()))],
+            'name' => ['required', 'string', 'max:100', Rule::unique('categories', 'name')
+                ->where('type', $request->input('type', $category->type))
+                ->where(fn ($q) => $category->department_id === null ? $q->whereNull('department_id') : $q->where('department_id', $category->department_id))
+                ->ignore($category->id)],
+            'type' => ['required', Rule::in(array_keys(Category::typeLabelsFor($category->department_id)))],
             'description' => ['nullable', 'string', 'max:500'],
             'is_hidden' => ['nullable', 'boolean'],
             'is_locked' => ['nullable', 'boolean'],
         ], [
-            'name.unique' => 'This type already has a category with that name.',
+            'name.unique' => 'This department already has a category with that name.',
         ]);
 
         // A locked category keeps its name and type. Only its description, visibility and lock can change.
@@ -100,7 +120,7 @@ class CategoryController extends Controller
         ]);
 
         if ($category->isDirty('type')) {
-            $category->sort_order = ((int) Category::where('type', $type)->max('sort_order')) + 1;
+            $category->sort_order = ((int) Category::ofDepartment($category->department_id)->where('type', $type)->max('sort_order')) + 1;
         }
 
         $changed = array_keys($category->getDirty());
@@ -135,7 +155,7 @@ class CategoryController extends Controller
 
         $direction = $request->validate(['direction' => ['required', Rule::in(['up', 'down'])]])['direction'];
 
-        $ids = array_map('intval', Category::where('type', $category->type)->ordered()->orderBy('id')->pluck('id')->all());
+        $ids = array_map('intval', Category::ofDepartment($category->department_id)->where('type', $category->type)->ordered()->orderBy('id')->pluck('id')->all());
         $i = array_search((int) $category->id, $ids, true);
         $j = $direction === 'up' ? $i - 1 : $i + 1;
 

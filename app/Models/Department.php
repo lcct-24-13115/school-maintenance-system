@@ -47,6 +47,11 @@ class Department extends Model
         return $this->belongsTo(User::class, 'head_user_id');
     }
 
+    public function categories(): HasMany
+    {
+        return $this->hasMany(Category::class);
+    }
+
     /** Tickets this department RECEIVES (assigned_department_id). `requests()` below = tickets it FILED. */
     public function receivedTickets(): HasMany
     {
