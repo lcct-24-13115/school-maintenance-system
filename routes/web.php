@@ -205,6 +205,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/{user}', [UserController::class, 'update'])->name('update');
         Route::patch('/{user}/status', [UserController::class, 'status'])->name('status');
         Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])->name('reset-password');
+        // Account approval: registrations wait until an admin decides (capability manage_users)
+        Route::post('/{user}/approve', [UserController::class, 'approve'])->name('approve');
+        Route::post('/{user}/reject', [UserController::class, 'reject'])->name('reject');
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

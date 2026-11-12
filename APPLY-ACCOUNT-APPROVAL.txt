@@ -1,0 +1,74 @@
+ACCOUNT APPROVAL (registration)
+===============================
+
+DEPENDS ON: ang E-mail log patch (email-log-patch.zip) ay naka-apply na. Ang zip na ito ay naglalaman ng mga bersyon ng
+routes/web.php, navigation.blade.php at AuditLogger.php na kasama na ang E-mail log.
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before account approval"
+  tar -xf "$env:USERPROFILE\Downloads\account-approval-patch.zip" -C .
+  php artisan migrate
+  php artisan optimize:clear
+  php artisan test --filter=AccountApprovalTest
+  php artisan test --filter=RegistrationTest
+  php artisan test
+
+(Kung ayaw gumana ang tar: Right-click sa zip > "Extract All...", kopyahin ang laman sa project folder at i-overwrite.
+ Kung may Windows PowerShell: Expand-Archive -Path "...zip" -DestinationPath . -Force)
+
+MAY MIGRATION: 2026_11_19_000001_add_approval_to_users_table.php
+  Dagdag na columns sa users: approval_status (default "approved"), decided_by, decided_at, rejection_reason.
+  LAHAT NG EXISTING NA ACCOUNT AY "approved" kaya walang titigil gumana.
+
+Bago:
+  database/migrations/2026_11_19_000001_add_approval_to_users_table.php
+  app/Mail/AccountMail.php
+  app/Services/AccountMailer.php
+  resources/views/emails/account.blade.php
+  tests/Feature/AccountApprovalTest.php
+  APPLY-ACCOUNT-APPROVAL.txt
+
+Ino-overwrite:
+  app/Models/User.php                                   <- STATUS_*, isApproved/isPending/isRejected, scopePending
+  app/Http/Controllers/Auth/RegisteredUserController.php <- pending ang bagong register, hindi auto-login
+  app/Http/Requests/Auth/LoginRequest.php               <- malinaw na mensahe para sa pending/rejected (kapag tama ang password lang)
+  app/Http/Controllers/Admin/UserController.php         <- approve(), reject(), pending list
+  resources/views/admin/users.blade.php                 <- "Waiting for approval" panel, Rejected badge
+  resources/views/auth/register.blade.php               <- paalala na kailangan ng approval
+  resources/views/layouts/navigation.blade.php          <- bilang ng naghihintay sa "Users"
+  app/Services/AuditLogger.php                          <- account_approved, account_rejected
+  routes/web.php                                        <- POST /admin/users/{user}/approve at /reject
+  config/school.php                                     <- registration.require_approval, registration.account_emails
+  .env.example                                          <- REQUIRE_ACCOUNT_APPROVAL, ACCOUNT_EMAILS
+  tests/Feature/Auth/RegistrationTest.php               <- 2 test ang may "require_approval = false" na (luma nilang inaasahan ang auto-login)
+
+Daloy:
+  1. Mag-register ang tao (/register) -> Pending. Hindi siya naka-login; dadalhin sa login page na may mensahe.
+  2. Naka-email ang lahat ng active na Maintenance Admin: "New account waiting for approval".
+  3. Sa Users page (Maintenance Admin) may dilaw na "Waiting for approval" panel at bilang sa menu.
+       Approve  -> pwede nang mag-sign in (Requester ang role; palitan sa Edit kung kailangan)
+       Reject   -> may optional na reason na makikita ng tao
+  4. Naka-email ang tao ng resulta. Naka-log sa Audit log (account_approved / account_rejected) at sa E-mail log.
+
+Mga rule:
+  Pending/rejected na tao: hindi makaka-sign in. Ang espesyal na mensahe ay lalabas LANG kapag tama ang password
+  (para walang makapag-probe kung anong email ang registered). Maling password = karaniwang "failed sign-in" at lock rules.
+  Ang Reject ay para sa Pending lang. Para pigilan ang active na tao, gamitin ang Deactivate.
+  Ang rejected ay pwedeng i-Approve ulit (nagbago ang isip).
+  Ang reason ng rejection ay HINDI kinokopya sa Audit log (nasa account at sa email lang).
+  Accounts na ginawa ng admin (Users > New user) o seeder ay laging approved.
+
+Switches (.env):
+  REQUIRE_ACCOUNT_APPROVAL=true    (false = gumagana agad ang bagong register, gaya dati)
+  ACCOUNT_EMAILS=true              (false = walang account e-mails; hindi nito binabago ang approval mismo)
+  Paalala: ang /register ay sarado pa rin maliban kung ALLOW_PUBLIC_REGISTRATION=true.
+  Kapag QUEUE_CONNECTION=database, patakbuhin ang: php artisan queue:work   (para ma-send ang account e-mails)
+
+Subukan:
+  1) .env: ALLOW_PUBLIC_REGISTRATION=true  tapos  php artisan config:clear
+  2) Buksan ang /register, gumawa ng account (school email) -> dapat dadalhin sa login na may mensahe
+  3) Subukang mag-login gamit iyon -> "waiting for approval"
+  4) Mag-login bilang Maintenance Admin -> Users -> Approve
+  5) Mag-login ulit bilang bagong tao -> pasok
+
+Rollback: git checkout -- .   at   php artisan migrate:rollback --step=1   at burahin ang mga "Bago" na file.

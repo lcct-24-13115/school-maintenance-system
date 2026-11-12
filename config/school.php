@@ -48,6 +48,12 @@ return [
         'require_verification' => (bool) env('REQUIRE_EMAIL_VERIFICATION', false),
         'email_domain' => env('SCHOOL_EMAIL_DOMAIN', 'lcctanauan.edu.ph'),
         'email_format' => env('SCHOOL_EMAIL_FORMAT', 'domain'),
+        // Account approval: true = a self-registered account is Pending until a Maintenance Admin approves it (it cannot sign in before).
+        // false = the account works at once (the old behaviour). Admin-made and seeded accounts are always approved.
+        // CONFIRM WITH CLIENT / TEACHER: the reference system makes every new registration wait for approval.
+        'require_approval' => (bool) env('REQUIRE_ACCOUNT_APPROVAL', true),
+        // ACCOUNT_EMAILS=false stops the account e-mails ("new registration waiting" to the admins, "approved / not approved" to the person).
+        'account_emails' => (bool) env('ACCOUNT_EMAILS', true),
     ],
 
     // Roles whose members also see the (non-confidential) tickets of their own department.

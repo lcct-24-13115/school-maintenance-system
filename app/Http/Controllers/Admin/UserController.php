@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
 use App\Rules\SchoolEmail;
+use App\Services\AccountMailer;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,10 @@ use Throwable;
  *  - activate / deactivate : an inactive account cannot sign in and its open sessions are ended.
  *  - reset      : a new temporary password (must be changed at next sign-in).
  *  - role / department : changed from the row's Edit panel.
+ *
+ *  - approve / reject : a self-registered account is Pending until an admin decides. A pending person cannot sign in.
+ *                 Approving also works on a rejected account (the admin may change their mind). A rejection can carry a reason
+ *                 that the person sees. Both are written to the audit log and e-mailed to the person (AccountMailer).
  *
  * Guards: you cannot deactivate yourself, change your own role, or reset your own password here (use Profile).
  * Because of that, the admin using this page always stays an active admin, so the system can never lock itself out.
@@ -60,6 +65,7 @@ class UserController extends Controller
             ->when($filters['role'] ?? null, fn ($query, $id) => $query->where('role_id', $id))
             ->when($filters['department'] ?? null, fn ($query, $id) => $query->where('department_id', $id))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('is_active', $status === 'active'))
+            ->where('approval_status', '!=', User::STATUS_PENDING)   // pending people have their own panel above the list
             ->orderBy('name')
             ->orderBy('id')
             ->paginate(self::PER_PAGE)
@@ -67,6 +73,8 @@ class UserController extends Controller
 
         return view('admin.users', [
             'users' => $users,
+            'pending' => User::query()->pending()->with('department:id,name,code')->oldest()->oldest('id')->limit(50)->get(),
+            'pendingTotal' => User::query()->pending()->count(),
             'filters' => $filters,
             'roles' => Role::query()->orderBy('name')->get(['id', 'name', 'slug']),
             'departments' => Department::query()->orderBy('name')->get(['id', 'name', 'code']),
@@ -135,6 +143,68 @@ class UserController extends Controller
         $user->save();                           // UserObserver@updated writes role_changed / user_updated
 
         return back()->with('status', "{$user->name} updated.");
+    }
+
+    /** Approve a registration (pending, or one that was rejected). The person can sign in right away. */
+    public function approve(Request $request, User $user): RedirectResponse
+    {
+        $this->authorizeManage($request);
+
+        if ($user->isApproved()) {
+            return back()->with('status', "{$user->name} is already approved.");
+        }
+
+        $user->forceFill([
+            'approval_status' => User::STATUS_APPROVED,
+            'decided_by' => $request->user()->id,
+            'decided_at' => now(),
+            'rejection_reason' => null,
+        ])->save();
+
+        AuditLogger::log(
+            AuditLogger::ACCOUNT_APPROVED,
+            "Account approved: {$user->name} ({$user->email})",
+            $user,
+            $request->user(),
+        );
+
+        AccountMailer::decided($user, true);
+
+        return back()->with('status', "{$user->name} was approved and can now sign in.");
+    }
+
+    /** Reject a registration that is waiting. The optional reason is shown to the person. */
+    public function reject(Request $request, User $user): RedirectResponse
+    {
+        $this->authorizeManage($request);
+
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:255']]);
+
+        if (! $user->isPending()) {
+            return back()->with('error', 'Only an account that is waiting for approval can be rejected. To stop an active person, deactivate the account instead.');
+        }
+
+        $reason = filled($data['reason'] ?? null) ? trim($data['reason']) : null;
+
+        $user->forceFill([
+            'approval_status' => User::STATUS_REJECTED,
+            'decided_by' => $request->user()->id,
+            'decided_at' => now(),
+            'rejection_reason' => $reason,
+        ])->save();
+
+        // The description holds no reason text: it stays on the account (and in the e-mail to the person).
+        AuditLogger::log(
+            AuditLogger::ACCOUNT_REJECTED,
+            "Account rejected: {$user->name} ({$user->email})",
+            $user,
+            $request->user(),
+            meta: ['has_reason' => $reason !== null],
+        );
+
+        AccountMailer::decided($user, false, $reason);
+
+        return back()->with('status', "{$user->name}'s registration was rejected.");
     }
 
     /** Activate or deactivate (PATCH /admin/users/{user}/status, is_active=1|0). Same value twice does nothing. */

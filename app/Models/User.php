@@ -15,6 +15,13 @@ class User extends Authenticatable implements MustVerifyEmail
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    /** Account approval (registration): pending -> approved | rejected. Accounts made by an admin or a seeder are approved. */
+    public const STATUS_APPROVED = 'approved';
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_REJECTED = 'rejected';
+
     protected $fillable = [
         'role_id', 'department_id', 'employee_no',
         'name', 'email', 'password', 'is_active',
@@ -28,7 +35,30 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'decided_at' => 'datetime',
         ];
+    }
+
+    /** May this account sign in as far as approval goes? (is_active is a separate switch.) */
+    public function isApproved(): bool
+    {
+        return ($this->approval_status ?? self::STATUS_APPROVED) === self::STATUS_APPROVED;
+    }
+
+    public function isPending(): bool
+    {
+        return $this->approval_status === self::STATUS_PENDING;
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->approval_status === self::STATUS_REJECTED;
+    }
+
+    /** Registrations still waiting for an admin. */
+    public function scopePending($query)
+    {
+        return $query->where('approval_status', self::STATUS_PENDING);
     }
 
     /** First letter of the name, shown when there is no profile photo. */

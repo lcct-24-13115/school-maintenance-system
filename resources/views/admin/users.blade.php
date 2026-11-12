@@ -47,6 +47,66 @@
             Every change is written to the <b>Audit log</b>.
         </p>
 
+        {{-- Account approval: people who registered themselves and wait for a decision --}}
+        @if ($pending->isNotEmpty())
+            <div class="card" style="border-color:#f1d78f;background:#fffbea">
+                <h3 class="p6-card-t">
+                    <i class="fa-solid fa-user-clock"></i> Waiting for approval
+                    <span class="badge nocap ab-file" style="margin-left:6px">{{ $pendingTotal }}</span>
+                </h3>
+                <p class="p6-card-s">
+                    These people registered themselves and <b>cannot sign in yet</b>. Approve them to let them in (they start as Requesters; change
+                    the role afterwards if needed), or reject them. They get an email with the result.
+                    @if ($pendingTotal > $pending->count())The oldest {{ $pending->count() }} are shown.@endif
+                </p>
+
+                <div class="table-wrap">
+                    <table class="stack">
+                        <thead>
+                            <tr>
+                                <th>Person</th>
+                                <th>Department</th>
+                                <th>Registered</th>
+                                <th style="text-align:right">Decision</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($pending as $p)
+                                <tr x-data="{ rejecting: false }">
+                                    <td data-label="Person" style="word-break:break-word">
+                                        <b>{{ $p->name }}</b>
+                                        <div class="sub" style="font-size:12.5px;color:var(--text-3)">{{ $p->email }}</div>
+                                    </td>
+                                    <td data-label="Department">{{ $p->department?->name ?? '—' }}</td>
+                                    <td data-label="Registered" style="white-space:nowrap">{{ $p->created_at?->format('M j, Y g:i A') }}</td>
+                                    <td data-label="Decision" style="text-align:right">
+                                        <form method="POST" action="{{ route('admin.users.approve', $p) }}" style="display:inline">
+                                            @csrf
+                                            <button class="btn btn-sm btn-ok"><i class="fa-solid fa-user-check"></i> Approve</button>
+                                        </form>
+                                        <button type="button" class="btn btn-sm btn-danger" @click="rejecting = !rejecting">
+                                            <i class="fa-solid fa-user-xmark"></i> Reject
+                                        </button>
+
+                                        <form method="POST" action="{{ route('admin.users.reject', $p) }}" x-show="rejecting" x-cloak style="display:none;margin-top:10px;text-align:left"
+                                              onsubmit="return confirm({{ \Illuminate\Support\Js::from("Reject the registration of {$p->name}?") }})">
+                                            @csrf
+                                            <div class="field" style="margin-bottom:8px">
+                                                <label for="rr-{{ $p->id }}">Reason <span class="hint" style="display:inline">(optional, the person will see it)</span></label>
+                                                <input id="rr-{{ $p->id }}" type="text" name="reason" maxlength="255" placeholder="e.g. Not a student or staff of LCCT">
+                                            </div>
+                                            <button class="btn btn-sm btn-danger"><i class="fa-solid fa-user-xmark"></i> Reject registration</button>
+                                            <button type="button" class="btn btn-sm" @click="rejecting = false">Cancel</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+
         {{-- Add --}}
         <div class="card" x-data="{ open: {{ $adding ? 'true' : 'false' }} }">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -191,7 +251,9 @@
                                 <td data-label="Role">{{ $u->role?->name ?? '—' }}</td>
                                 <td data-label="Department">{{ $u->department?->name ?? '—' }}</td>
                                 <td data-label="Status">
-                                    @if ($u->is_active)
+                                    @if ($u->isRejected())
+                                        <span class="badge nocap ab-fail" title="{{ $u->rejection_reason ?: 'Registration rejected' }}">Rejected</span>
+                                    @elseif ($u->is_active)
                                         <span class="badge nocap ab-ok">Active</span>
                                     @else
                                         <span class="badge nocap ab-fail">Inactive</span>
@@ -200,6 +262,13 @@
                                 <td data-label="Actions" style="text-align:right;white-space:nowrap">
                                     <button type="button" class="btn btn-sm" @click="edit = !edit"><i class="fa-solid fa-pen"></i> Edit</button>
 
+                                    @if (! $u->isApproved())
+                                        {{-- rejected registration: the only thing to do is change your mind --}}
+                                        <form method="POST" action="{{ route('admin.users.approve', $u) }}" style="display:inline">
+                                            @csrf
+                                            <button class="btn btn-sm btn-ok"><i class="fa-solid fa-user-check"></i> Approve</button>
+                                        </form>
+                                    @else
                                     @unless ($isMe)
                                         <form method="POST" action="{{ route('admin.users.reset-password', $u) }}" style="display:inline"
                                               onsubmit="return confirm({{ \Illuminate\Support\Js::from("Reset the password of {$u->name}? They will be signed out and must choose a new password.") }})">
@@ -221,6 +290,7 @@
                                             <button class="btn btn-sm btn-ok"><i class="fa-solid fa-user-check"></i> Activate</button>
                                         @endif
                                     </form>
+                                    @endif
                                 </td>
                             </tr>
 

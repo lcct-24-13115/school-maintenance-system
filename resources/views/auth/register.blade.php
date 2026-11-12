@@ -1,6 +1,11 @@
 <x-guest-layout wide>
     <h1 class="form-title">Create <span>account</span></h1>
-    <p class="form-sub">Register as a Requester to file maintenance tickets.</p>
+    <p class="form-sub">
+        Register as a Requester to file maintenance tickets.
+        @if (config('school.registration.require_approval', true))
+            A Maintenance Admin must approve your account before you can sign in.
+        @endif
+    </p>
 
     <form method="POST" action="{{ route('register') }}">
         @csrf

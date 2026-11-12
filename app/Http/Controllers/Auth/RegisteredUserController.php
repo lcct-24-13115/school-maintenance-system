@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
 use App\Rules\SchoolEmail;
+use App\Services\AccountMailer;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -37,7 +38,7 @@ class RegisteredUserController extends Controller
         ]);
 
         // Public registration always creates a Requester. Other roles are assigned by an admin.
-        $user = User::create([
+        $user = new User([
             'name' => $request->name,
             'email' => $request->email,
             'password' => $request->password,
@@ -45,7 +46,25 @@ class RegisteredUserController extends Controller
             'role_id' => Role::where('slug', Role::REQUESTER)->firstOrFail()->id,
         ]);
 
+        // Account approval: when it is on (default), the person waits until a Maintenance Admin approves the account.
+        $needsApproval = (bool) config('school.registration.require_approval', true);
+
+        if ($needsApproval) {
+            $user->forceFill(['approval_status' => User::STATUS_PENDING]);
+        }
+
+        $user->save();
+
         event(new Registered($user));
+
+        if ($needsApproval) {
+            AccountMailer::pending($user);   // tells the Maintenance Admins; never throws
+
+            return redirect()->route('login')->with('status',
+                'Thank you! Your registration was received. A Maintenance Admin must approve your account before you can sign in. '
+                .'You will get an email when it is decided.');
+        }
+
         Auth::login($user);
 
         return redirect()->route($user->dashboardRoute());

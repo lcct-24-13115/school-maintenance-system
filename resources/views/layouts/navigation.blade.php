@@ -64,6 +64,10 @@
         @if ($u->can_do('manage_users'))
             <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-users"></i> Users
+                @php($pendingUsers = \App\Models\User::query()->pending()->count())
+                @if ($pendingUsers > 0)
+                    <span class="badge nocap ab-file" style="margin-left:auto" title="Accounts waiting for approval">{{ $pendingUsers }}</span>
+                @endif
             </a>
         @endif
 

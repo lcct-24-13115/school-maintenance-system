@@ -33,7 +33,8 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register_with_a_school_email(): void
     {
-        config(['school.allow_public_registration' => true]);
+        // Account approval is off here: this is the "works at once" behaviour (see AccountApprovalTest for the default).
+        config(['school.allow_public_registration' => true, 'school.registration.require_approval' => false]);
         $this->seed(RoleSeeder::class);
 
         $this->post('/register', $this->payload('juan@lcctanauan.edu.ph'))->assertRedirect('/requester/dashboard');
@@ -54,7 +55,11 @@ class RegistrationTest extends TestCase
 
     public function test_student_number_format_when_selected(): void
     {
-        config(['school.allow_public_registration' => true, 'school.registration.email_format' => 'student_number']);
+        config([
+            'school.allow_public_registration' => true,
+            'school.registration.require_approval' => false,   // see AccountApprovalTest for the approval flow
+            'school.registration.email_format' => 'student_number',
+        ]);
         $this->seed(RoleSeeder::class);
 
         $this->from('/register')->post('/register', $this->payload('juan@lcctanauan.edu.ph'))->assertSessionHasErrors('email');
