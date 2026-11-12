@@ -39,9 +39,9 @@ class ReportController extends Controller
             'metrics' => $metrics,
             'attention' => $attention,
             'canAssign' => $canAssign,
-            // only loaded when a quick-assign form can be shown
+            // only loaded when a quick-assign form can be shown (Phase 4C: scoped to the actor)
             'staff' => $canAssign && collect($attention['items'])->contains('unassigned', true)
-                ? TicketActions::assignableStaff()
+                ? TicketActions::assignableStaffFor(null, $request->user())
                 : collect(),
             'charts' => [
                 'status' => $this->series($metrics['by_status']) + ['keys' => array_column($metrics['by_status'], 'key')],

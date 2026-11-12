@@ -59,17 +59,35 @@ class TicketActionController extends Controller
     {
         $isReassignment = $ticket->assigned_to !== null;
 
+        // Phase 4C: a cross-department assignment (assignee outside the ticket's department) also needs a reason,
+        // even when it is the first assignment. The workflow checks again, so a direct call cannot skip it.
+        $isCrossDepartment = $this->isCrossDepartment($ticket, $request->input('assignee_id'));
+
         return $this->act($request, $ticket, 'assign', 'assign', [
             'assignee_id' => ['required', 'integer', Rule::exists('users', 'id')],
-            'assign_note' => [Rule::requiredIf($isReassignment), 'nullable', 'string', 'max:500'],
+            'assign_note' => [Rule::requiredIf($isReassignment || $isCrossDepartment), 'nullable', 'string', 'max:500'],
         ], [
             'assignee_id.required' => 'Choose a staff member.',
-            'assign_note.required' => 'A reassignment needs a note explaining why.',
+            'assign_note.required' => $isCrossDepartment && ! $isReassignment
+                ? 'A cross-department transfer needs a reason explaining why.'
+                : 'A reassignment needs a note explaining why.',
         ],
             fn (array $data) => TicketWorkflow::assign(
                 $ticket, User::findOrFail($data['assignee_id']), $request->user(), $data['assign_note'] ?? null
             ),
             $isReassignment ? 'Reassigned.' : 'Assigned.');
+    }
+
+    /** Phase 4C: is the chosen assignee outside the ticket's assigned department? (No department is hardcoded.) */
+    private function isCrossDepartment(MaintenanceRequest $ticket, mixed $assigneeId): bool
+    {
+        if ($ticket->assigned_department_id === null || ! is_numeric($assigneeId)) {
+            return false;
+        }
+
+        $assignee = User::query()->find($assigneeId);
+
+        return $assignee !== null && TicketWorkflow::isCrossDepartmentAssignment($ticket, $assignee);
     }
 
     /** Staff rule: take an unassigned ticket (work starts later with [ACCEPT TASK]). */

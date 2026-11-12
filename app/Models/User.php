@@ -165,6 +165,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->isDepartmentScoped() && $this->department_id !== null ? (int) $this->department_id : null;
     }
 
+    /**
+     * Phase 4C: may this user assign a ticket to staff OUTSIDE the ticket's assigned_department_id?
+     * Only roles with the cross_department_transfer capability (Head, Maintenance Admin, System Administrator).
+     * A reason (assign_note) is still required for the cross-department assignment itself.
+     */
+    public function canTransferCrossDepartment(): bool
+    {
+        return $this->can_do('cross_department_transfer');
+    }
+
     /** Department-level visibility (e.g. Department Head). Configurable: school.department_visibility_roles. */
     public function seesOwnDepartment(): bool
     {

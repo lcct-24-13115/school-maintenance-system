@@ -26,9 +26,9 @@ Roles live in the `roles` table (`App\Models\Role`). The slug is what the code u
 | `custodian` | Property Custodian | Own tickets | No global powers. Files requests and sees only their own. |
 
 Which roles are scoped and which are global is configuration, not code: `school.department_scoped_roles` and `school.global_roles`
-(`Role::departmentScopedSlugs()`, `Role::globalSlugs()`, `User::scopedDepartmentId()`). **Phase 4A only defines this.**
-Ticket visibility and claim / assign / transfer are enforced per department in Phases 4B and 4C; until then the visibility
-table in section 3 is unchanged.
+(`Role::departmentScopedSlugs()`, `Role::globalSlugs()`, `User::scopedDepartmentId()`).
+Ticket visibility is enforced per department in Phase 4B (section 3) and claim / assign / transfer in Phase 4C
+(section 5). The full role × capability table is in [ROLE_PERMISSION_MATRIX.md](ROLE_PERMISSION_MATRIX.md).
 
 ### Retired roles (seeded only under PHPUnit, still known to the code)
 
@@ -74,8 +74,10 @@ One rule, written twice so lists and single pages always agree:
 | Person | Sees |
 |---|---|
 | Requester | Their own tickets (any role, any status). |
-| Assignee | Tickets assigned to them. |
-| Roles with `view_all_tickets` | Every non-confidential ticket. |
+| Assignee | Tickets assigned to them (any department). |
+| Department Staff / Head / Maintenance Admin | **Only** tickets whose `assigned_department_id` is their own `users.department_id` (Phase 4B). `view_all_tickets` does not widen this. Confidential ones still need `view_confidential`. |
+| System Administrator | Every ticket, including confidential (global). |
+| Roles with `view_all_tickets` (finance, president) | Every non-confidential ticket (global, not scoped). |
 | Roles with `view_confidential` | Also confidential tickets. Finance does **not**. |
 | Department Head (if the role is used) | Non-confidential tickets of their own department (`school.department_visibility_roles`). |
 
@@ -120,7 +122,7 @@ Submitted -> Pending Authorization -> Approved -> Assigned -> In Progress -> Wor
 | 5-working-day advance notice | Everyone, except people who may flag an emergency | `school.advance_notice`, `emergency_bypasses_advance_notice` |
 | Send for authorization | `send_for_authorization` | `TicketPolicy@sendForAuthorization` |
 | Approve / Disapprove | Roles in `school.workflow.authorizers`. May approve straight from Submitted (`authorize_from_submitted`). Inbox: `/approvals`. | `TicketPolicy@authorize`, `User::canAuthorize()` |
-| Assign / reassign | `assign`. Reassigning needs a note. | `TicketActionController@assign` |
+| Assign / reassign | `assign`. Reassigning needs a note. Phase 4C: Head assigns anyone in the department; Staff only claim / transfer inside their own department; cross-department (target outside the ticket's department) is Head / Admin only (`cross_department_transfer`) with a reason. | `TicketActionController@assign`, `TicketWorkflow::assign()` / `claim()` / `transfer()` |
 | Accept task, Mark completed (board) | `work` on the Maintenance board (`/maintenance/board`) | `MaintenanceBoardController` |
 | Close | Today a ticket reaches **Closed** only when the requester presses *Confirm resolved* on a Work Completed ticket. No staff "Close" button or route exists yet (the `close` capability and `TicketWorkflow::close()` are ready for one). The model refuses Closed unless an authorization is on record (`president_id` + `president_approved_at`, filled when the ticket is approved). The *signed evidence* part of the rule is **not enforced yet**, and `workflow.closers` / `workflow.closure_requires` are declared in config but not read by any code. | `MaintenanceRequest::booted()`, `TicketWorkflow::confirmResolved()` |
 | Cancel | The requester of that ticket, **before Assigned**, with a reason | `TicketWorkflow::cancelBlocker()` |

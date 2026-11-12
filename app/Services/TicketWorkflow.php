@@ -267,8 +267,32 @@ class TicketWorkflow
     }
 
     /**
+     * Is assigning $ticket to $assignee a cross-department transfer (Phase 4C)?
+     * Yes when the ticket has an assigned department and the assignee is not in it (including no department).
+     * A ticket with no assigned department (legacy rows) is never cross-department.
+     */
+    public static function isCrossDepartmentAssignment(MaintenanceRequest $ticket, User $assignee): bool
+    {
+        if ($ticket->assigned_department_id === null) {
+            return false;
+        }
+
+        return $assignee->department_id === null
+            || (int) $assignee->department_id !== (int) $ticket->assigned_department_id;
+    }
+
+    /**
      * Assign (or reassign) to an active maintenance staff member.
      * A reassignment needs a note. An Approved ticket becomes Assigned; other statuses keep theirs.
+     *
+     * Phase 4C department rules (no department is hardcoded; both sides come from the rows):
+     *  - a scoped actor (Staff / Head / Maintenance Admin) may only act on their own department's tickets,
+     *    unless they are the current assignee or the requester of the ticket (the visibility exceptions);
+     *  - Staff claim / transfer only inside their own department;
+     *  - Head assigns anyone in the department;
+     *  - assigning to staff outside the ticket's department is a cross-department transfer: only roles with
+     *    cross_department_transfer (Head / Maintenance Admin / System Administrator) and a reason is required.
+     * System callers (the PM scheduler) pass no $by and are not checked.
      */
     public static function assign(MaintenanceRequest $ticket, User $assignee, ?User $by = null, ?string $note = null): MaintenanceRequest
     {
@@ -297,6 +321,47 @@ class TicketWorkflow
             }
         }
 
+        // Phase 4C: a scoped actor acts only on their own department's tickets (assignee / requester excepted).
+        if ($by !== null && $by->isDepartmentScoped() && $ticket->assigned_department_id !== null) {
+            $isAssignee = $ticket->assigned_to !== null && (int) $ticket->assigned_to === (int) $by->id;
+            $isRequester = (int) $ticket->requester_id === (int) $by->id;
+
+            if (! $isAssignee && ! $isRequester
+                && ($by->scopedDepartmentId() === null || (int) $ticket->assigned_department_id !== (int) $by->scopedDepartmentId())) {
+                throw new DomainException("Ticket {$ticket->ticket_no} belongs to another department. Only that department's staff can work on it.");
+            }
+        }
+
+        // Phase 4C: Staff claim / transfer only inside their own department.
+        if ($by !== null && $by->isStaffOnly()) {
+            $claiming = $ticket->assigned_to === null && (int) $assignee->id === (int) $by->id;
+
+            if ($claiming && $ticket->assigned_department_id !== null
+                && ($by->scopedDepartmentId() === null || (int) $ticket->assigned_department_id !== (int) $by->scopedDepartmentId())) {
+                throw new DomainException("Ticket {$ticket->ticket_no} belongs to another department. You can only claim tickets of your own department.");
+            }
+
+            if (! $claiming && $by->scopedDepartmentId() !== null
+                && ($assignee->department_id === null || (int) $assignee->department_id !== (int) $by->scopedDepartmentId())) {
+                throw new DomainException('You can only transfer a ticket to a colleague in your own department. Cross-department transfers are for the Department Head or an administrator, with a reason.');
+            }
+        }
+
+        // Phase 4C: cross-department transfer (assignee outside the ticket's department).
+        // Staff are already limited to their own department above, so this check is for Head / Admin only:
+        // a cross-assigned staff member may still transfer to a colleague in their own department.
+        $crossDepartment = self::isCrossDepartmentAssignment($ticket, $assignee);
+
+        if ($crossDepartment && $by !== null && ! $by->isStaffOnly()) {
+            if (! $by->canTransferCrossDepartment()) {
+                throw new DomainException('Only the Department Head or an administrator can transfer a ticket to another department, with a reason.');
+            }
+
+            if (blank($note)) {
+                throw new DomainException('A cross-department transfer needs a reason explaining why.');
+            }
+        }
+
         $previous = $ticket->assignee;
         $isReassignment = $previous !== null;
 
@@ -315,7 +380,7 @@ class TicketWorkflow
             $isReassignment ? RequestStatusLog::ACTION_REASSIGNMENT : RequestStatusLog::ACTION_ASSIGNMENT,
             $by,
             trim($text),
-            ['from_user_id' => $previous?->id, 'to_user_id' => $assignee->id, 'reason' => $isReassignment ? trim((string) $note) : null],
+            ['from_user_id' => $previous?->id, 'to_user_id' => $assignee->id, 'reason' => ($isReassignment || $crossDepartment) ? trim((string) $note) : null, 'cross_department' => $crossDepartment],
         );
     }
 
@@ -323,6 +388,7 @@ class TicketWorkflow
      * Staff rule: CLAIM an unassigned ticket. The ticket becomes yours (Approved -> Assigned) but work does not
      * start yet: [ACCEPT TASK] on the board does that. Only an unassigned ticket can be claimed; if a colleague
      * took it a moment ago you get a clear message instead of overwriting them.
+     * Phase 4C: claim only inside the staff member's own department.
      */
     public static function claim(MaintenanceRequest $ticket, User $staff): MaintenanceRequest
     {
@@ -342,6 +408,11 @@ class TicketWorkflow
             throw new DomainException("Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\". It must be Approved before it can be claimed.");
         }
 
+        if ($staff->isDepartmentScoped() && $ticket->assigned_department_id !== null
+            && ($staff->scopedDepartmentId() === null || (int) $ticket->assigned_department_id !== (int) $staff->scopedDepartmentId())) {
+            throw new DomainException("Ticket {$ticket->ticket_no} belongs to another department. You can only claim tickets of your own department.");
+        }
+
         return self::assign($ticket, $staff, $staff, 'Claimed by '.$staff->name.'.');
     }
 
@@ -349,6 +420,8 @@ class TicketWorkflow
      * Staff rule: TRANSFER your OWN ticket to a colleague. The reason is required (it is kept in the history and the
      * audit trail, and shown to the staff side only). You cannot transfer someone else's ticket or an unassigned one,
      * and you cannot transfer it to yourself. The new person must be active maintenance staff.
+     * Phase 4C: Staff transfer only to a colleague in their own department. A cross-department transfer
+     * (target outside the ticket's department) is for Head / administrator only, with the same reason.
      */
     public static function transfer(MaintenanceRequest $ticket, User $from, User $to, ?string $reason): MaintenanceRequest
     {
@@ -366,6 +439,11 @@ class TicketWorkflow
 
         if ((int) $to->id === (int) $from->id) {
             throw new DomainException('Choose a colleague. The ticket is already yours.');
+        }
+
+        if ($from->isStaffOnly() && $from->scopedDepartmentId() !== null
+            && ($to->department_id === null || (int) $to->department_id !== (int) $from->scopedDepartmentId())) {
+            throw new DomainException('You can only transfer a ticket to a colleague in your own department. Cross-department transfers are for the Department Head or an administrator, with a reason.');
         }
 
         return self::assign($ticket, $to, $from, $reason);

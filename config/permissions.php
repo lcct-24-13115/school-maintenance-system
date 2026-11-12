@@ -34,20 +34,29 @@
 |   manage_faq          add, edit, order, hide and delete the Help & FAQ entries (Help & FAQ Phase 1). Everyone can READ the entries meant for their role.
 |   escalate           escalate to the President / authorizer (M2). Handing it back is the authorizer's
 |                      (school.workflow.authorizers), like approve/disapprove.
+|   cross_department_transfer  assign a ticket to staff OUTSIDE the ticket's assigned_department_id
+|                      (Phase 4C). Head / Maintenance Admin / System Administrator only, and a reason
+|                      (assign_note) is required. Department Staff never have it: they claim / transfer
+|                      only inside their own department.
 |
 | Requesters always see their own tickets, and staff always see tickets assigned to them;
 | that is not a capability. See also school.department_visibility_roles.
-| Phase 4B: staff, head and maintenance_admin (school.department_scoped_roles) see ONLY the tickets whose
+| Phase 4B/4C: staff, head and maintenance_admin (school.department_scoped_roles) see ONLY the tickets whose
 | assigned_department_id = their users.department_id, whatever this matrix says about view_all_tickets.
 | system_admin (school.global_roles) is not limited. See MaintenanceRequest::scopeVisibleTo().
+| Phase 4C assignment: Staff claim / transfer only inside their own department; Head assigns anyone in the
+| department; assigning to staff outside the ticket's department is a cross-department transfer
+| (cross_department_transfer + reason). See TicketWorkflow::assign() / claim() / transfer().
 */
 
 return [
-    // Role model (Phase 4A): Requester < Department Staff < Department Head < System Administrator.
-    //   requester         Student, Faculty and non-teaching Staff (told apart by users.requester_type). Files and follows own tickets.
+    // Role model (Phase 4A/4C): Requester < Department Staff < Department Head < System Administrator.
+    //   requester         Student, Faculty and non-teaching Staff (told apart by users.requester_type:
+    //                     STUDENT / FACULTY/STAFF in config/registration.php). Files and follows own tickets.
+    //                     They are NOT separate roles: same powers, same slug. See OPEN_QUESTIONS #100.
     //   staff             Department Staff: does the work, takes / transfers its OWN tickets, completes tasks, asks the requester for info.
     //   head              Department Head: Staff + assigns anyone in the department, sends for authorization, authorizes, closes, escalates, reports, audit log, FAQ.
-    //   maintenance_admin Admin of the Maintenance department: Head + users, settings, categories, QR codes, e-mail log (kept as is; see OPEN_QUESTIONS).
+    //   maintenance_admin Admin of the Maintenance department: Head + users, settings, categories, QR codes, e-mail log (kept as is; see OPEN_QUESTIONS #98).
     //   system_admin      System Administrator: GLOBAL, all of the above across every department.
     // Scope is NOT here: staff, head and maintenance_admin are limited to users.department_id
     // (school.department_scoped_roles); system_admin is global (school.global_roles). Phase 4B/4C enforce it.
@@ -60,6 +69,7 @@ return [
         'cancel_own', 'reopen_own', 'request_info', 'escalate', 'view_audit_logs',
         'view_email_log',
         'manage_faq',
+        'cross_department_transfer',
     ],
 
     'maintenance_admin' => [
@@ -70,18 +80,21 @@ return [
         'view_email_log',
         // CONFIRM WITH CLIENT (Help & FAQ): who writes the FAQ.
         'manage_faq',
+        'cross_department_transfer',
     ],
 
-    // Head of Maintenance: everything the Admin can do EXCEPT managing users / settings / categories / QR codes / the e-mail log.
+    // Department Head: everything the Admin can do EXCEPT managing users / settings / categories / QR codes / the e-mail log.
     'head' => [
         'view_all_tickets', 'view_confidential', 'flag_emergency', 'clear_emergency',
         'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports',
         'cancel_own', 'reopen_own', 'request_info', 'escalate', 'view_audit_logs',
         'manage_faq',
+        'cross_department_transfer',
     ],
 
-    // Maintenance Staff: sees all (non-confidential) tickets and does the work. 'assign' is limited by the policy to
-    // taking an unassigned ticket / transferring their OWN ticket (User::isStaffOnly).
+    // Department Staff: sees their own department's (non-confidential) tickets and does the work. 'assign' is limited by the policy to
+    // taking an unassigned ticket / transferring their OWN ticket (User::isStaffOnly). No cross_department_transfer:
+    // claim / transfer only inside their own department (Phase 4C).
     'staff' => [
         'view_all_tickets', 'flag_emergency', 'send_for_authorization', 'assign', 'work', 'add_attachment',
         'request_info',
