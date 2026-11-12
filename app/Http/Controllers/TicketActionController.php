@@ -72,6 +72,31 @@ class TicketActionController extends Controller
             $isReassignment ? 'Reassigned.' : 'Assigned.');
     }
 
+    /** Staff rule: take an unassigned ticket (work starts later with [ACCEPT TASK]). */
+    public function claim(Request $request, MaintenanceRequest $ticket): RedirectResponse
+    {
+        return $this->act($request, $ticket, 'claim', 'claim', [], [],
+            fn () => TicketWorkflow::claim($ticket, $request->user()),
+            'Claimed. The ticket is yours now. Press Accept Task on the board when you start the work.');
+    }
+
+    /** Staff rule: hand YOUR ticket to a colleague. The reason is required. */
+    public function transfer(Request $request, MaintenanceRequest $ticket): RedirectResponse
+    {
+        return $this->act($request, $ticket, 'transfer', 'transfer', [
+            'transfer_to' => ['required', 'integer', Rule::exists('users', 'id')],
+            'transfer_reason' => ['required', 'string', 'min:5', 'max:500'],
+        ], [
+            'transfer_to.required' => 'Choose a colleague to transfer the ticket to.',
+            'transfer_reason.required' => 'A transfer needs a reason.',
+            'transfer_reason.min' => 'Please write a short reason (at least 5 characters).',
+        ],
+            fn (array $data) => TicketWorkflow::transfer(
+                $ticket, $request->user(), User::findOrFail($data['transfer_to']), $data['transfer_reason']
+            ),
+            'Transferred. The ticket now belongs to your colleague.');
+    }
+
     public function flagEmergency(Request $request, MaintenanceRequest $ticket): RedirectResponse
     {
         return $this->act($request, $ticket, 'flagEmergency', 'flag', [

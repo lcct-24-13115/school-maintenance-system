@@ -144,6 +144,25 @@ class TicketPolicy
             || ($ticket->assigned_to !== null && (int) $ticket->assigned_to === (int) $user->id);
     }
 
+    /**
+     * Staff rule: a Maintenance Staff member may CLAIM an unassigned ticket (take it for themselves).
+     * The Head and the Maintenance Admin do not claim: they assign (assign above). "Is it really unassigned?"
+     * and "is it Approved?" are state rules, checked in TicketWorkflow::claim() with a clear message.
+     */
+    public function claim(User $user, MaintenanceRequest $ticket): bool
+    {
+        return $user->isStaffOnly() && $this->can($user, $ticket, 'work');
+    }
+
+    /**
+     * Staff rule: a Maintenance Staff member may TRANSFER their OWN ticket to a colleague, with a reason.
+     * "Is it really yours?", the reason and the target are checked in TicketWorkflow::transfer().
+     */
+    public function transfer(User $user, MaintenanceRequest $ticket): bool
+    {
+        return $user->isStaffOnly() && $this->can($user, $ticket, 'work');
+    }
+
     public function work(User $user, MaintenanceRequest $ticket): bool
     {
         return $this->can($user, $ticket, 'work');

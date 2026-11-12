@@ -8,7 +8,7 @@
 @endphp
 
 {{-- Action panel (Phase 4A logic, Phase 4 design). Each action shows ONLY when the status allows it AND the user has the capability;
-     the controllers check both again. Errors go to one bag per form (approve, disapprove, assign, flag, clear, note, escalate). --}}
+     the controllers check both again. Errors go to one bag per form (approve, disapprove, assign, claim, transfer, flag, clear, note, escalate). --}}
 <section class="card" id="actions">
     <div class="card-h"><h3>Actions</h3></div>
 
@@ -73,6 +73,43 @@
                     @if ($errors->disapprove->has('reason'))<p class="field-err">{{ $errors->disapprove->first('reason') }}</p>@endif
                 </div>
                 <button class="btn btn-danger">Disapprove</button>
+            </form>
+        @endif
+
+        {{-- Staff: claim an unassigned ticket --}}
+        @if ($has(A::CLAIM))
+            <form method="POST" action="{{ route('tickets.claim', $ticket) }}" style="{{ $box('#bcd5ee', 'var(--sky)') }}">
+                @csrf
+                <div class="lbl" style="font-size:16px"><i class="fa-solid fa-hand"></i> Claim this ticket</div>
+                <div class="hint" style="margin:0 0 10px;color:var(--text-2)">Nobody has this ticket yet. Claim it to make it yours. You start the work later with Accept Task.</div>
+                <button class="btn btn-primary">Claim this ticket</button>
+            </form>
+        @endif
+
+        {{-- Staff: transfer my own ticket (reason required) --}}
+        @if ($has(A::TRANSFER))
+            <form method="POST" action="{{ route('tickets.transfer', $ticket) }}" style="{{ $box('#bcd5ee', 'var(--sky)') }}">
+                @csrf
+                <div class="lbl" style="font-size:16px"><i class="fa-solid fa-right-left"></i> Transfer this ticket</div>
+                <div class="hint" style="margin:0 0 10px;color:var(--text-2)">This ticket is yours. Hand it to a colleague and tell them why.</div>
+                <div class="field">
+                    <label for="transfer_to" class="lbl">Transfer to</label>
+                    <select id="transfer_to" name="transfer_to" required>
+                        <option value="">Choose a colleague…</option>
+                        @foreach ($staff->where('id', '!=', auth()->id()) as $member)
+                            <option value="{{ $member->id }}" @selected((int) old('transfer_to') === $member->id)>
+                                {{ $member->name }} — {{ $member->open_tickets_count }} open {{ \Illuminate\Support\Str::plural('ticket', $member->open_tickets_count) }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @if ($errors->transfer->has('transfer_to'))<p class="field-err">{{ $errors->transfer->first('transfer_to') }}</p>@endif
+                </div>
+                <div class="field">
+                    <label for="transfer_reason" class="lbl">Reason (required)</label>
+                    <textarea id="transfer_reason" name="transfer_reason" rows="2" required minlength="5" maxlength="500" style="{{ $area }}">{{ old('transfer_reason') }}</textarea>
+                    @if ($errors->transfer->has('transfer_reason'))<p class="field-err">{{ $errors->transfer->first('transfer_reason') }}</p>@endif
+                </div>
+                <button class="btn btn-primary">Transfer</button>
             </form>
         @endif
 

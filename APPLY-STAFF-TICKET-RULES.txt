@@ -1,0 +1,67 @@
+STAFF RULES SA TICKET (claim ng unassigned + transfer ng sariling ticket na may reason)
+======================================================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+
+PINAKAMADALI: git patch (walang extract na kailangan)
+  cd C:\laragon\www\school-maintenance-system
+  git status                                   (dapat malinis; kung hindi, mag-commit muna)
+  git add -A ; git commit -m "Before Staff ticket rules"
+  git apply --check "$env:USERPROFILE\Downloads\staff-ticket-rules.patch"
+  git apply "$env:USERPROFILE\Downloads\staff-ticket-rules.patch"
+  php artisan optimize:clear
+  php artisan test --filter=StaffTicketRulesTest
+  php artisan test --filter=TicketActionsTest
+  php artisan test --filter=StaffHeadRolesTest
+  php artisan test
+
+  Kung "git apply --check" ay may error: HUWAG ituloy. Ipakita sa akin ang error.
+  Kung nasa ibang folder ang file, palitan ang path (hal. "C:\Users\ikaw\Desktop\staff-ticket-rules.patch").
+
+ALTERNATIBO: zip, i-extract gamit ang terminal (piliin ang isa)
+  A) tar -xf "$env:USERPROFILE\Downloads\staff-ticket-rules-patch.zip" -C .
+  B) Expand-Archive -Path "$env:USERPROFILE\Downloads\staff-ticket-rules-patch.zip" -DestinationPath . -Force
+  Tapos: php artisan optimize:clear ; php artisan test --filter=StaffTicketRulesTest
+
+WALANG MIGRATION. Walang "npm install", walang "npm run build".
+
+ANG BAGONG RULES NG STAFF (role: Maintenance Staff)
+  CLAIM      Sa ticket page, kung APPROVED (o Reopened) ang ticket at WALA pang assignee, may kahon na
+             "Claim this ticket". Pag pinindot, sa kanya na ang ticket (Approved -> Assigned).
+             HINDI pa nagsisimula ang trabaho: [ACCEPT TASK] sa board pa rin ang nagsisimula nito.
+             Kung may nauna nang nag-claim, may malinaw na error ("already assigned to ...") at walang nao-overwrite.
+  TRANSFER   Sa sariling ticket lang (assigned sa kanya), may kahon na "Transfer this ticket":
+             pumili ng kasamahan (active maintenance staff, hindi ang sarili) + REQUIRED na reason (5 to 500 characters).
+             Nasa history at audit log ang reason; ang requester ay nakakakita kung sino, hindi kung bakit.
+  HINDI KAYA NG STAFF
+             Mag-assign ng ticket sa ibang tao, mag-transfer ng ticket ng iba, mag-transfer ng unassigned.
+             (Ang Head at Maintenance Admin ay may Assign / Reassign pa rin, walang pagbabago.)
+             Ang Head at Admin ay walang Claim at Transfer button: Assign ang gamit nila.
+
+BAGO / BINAGO
+  Bago:
+    tests/Feature/StaffTicketRulesTest.php
+    APPLY-STAFF-TICKET-RULES.txt
+  Binago:
+    app/Policies/TicketPolicy.php                      <- claim() at transfer() (Staff role lang)
+    app/Services/TicketWorkflow.php                    <- claim() at transfer() (state rules + malinaw na error)
+    app/Services/TicketActions.php                     <- CLAIM at TRANSFER; Staff ay hindi na nakakakita ng Assign/Reassign form
+    app/Http/Controllers/TicketActionController.php    <- claim() at transfer()
+    app/Http/Controllers/TicketController.php          <- naglo-load ng staff dropdown para sa Transfer
+    routes/web.php                                     <- POST tickets/{ticket}/claim at /transfer
+    resources/views/tickets/_actions.blade.php         <- mga form ng Claim at Transfer
+
+PAALALA
+  - Ang lumang route tickets.assign ay gumagana pa rin para sa Staff (ginagamit ng mga lumang test) at pareho pa rin ang
+    rules nito (own ticket lang + reason). Ang bagong page ay Claim/Transfer na ang ipinapakita.
+  - Nag-email pa rin sa bagong assignee, sa requester at sa dating assignee (kapag transfer), gaya ng dati.
+  - Ang transfer ng ticket na In Progress ay nananatiling In Progress; ang bagong may-ari ang magtutuloy at magko-complete.
+
+ROLLBACK
+  git apply -R "$env:USERPROFILE\Downloads\staff-ticket-rules.patch"
+  (o:  git checkout -- . ; Remove-Item tests\Feature\StaffTicketRulesTest.php, APPLY-STAFF-TICKET-RULES.txt)
+
+I-PUSH SA GITHUB (kung okay na ang test)
+  git add -A
+  git commit -m "Staff ticket rules: claim unassigned tickets, transfer own tickets with a reason"
+  git push

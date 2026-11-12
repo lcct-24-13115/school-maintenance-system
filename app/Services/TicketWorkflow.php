@@ -318,6 +318,58 @@ class TicketWorkflow
         );
     }
 
+    /**
+     * Staff rule: CLAIM an unassigned ticket. The ticket becomes yours (Approved -> Assigned) but work does not
+     * start yet: [ACCEPT TASK] on the board does that. Only an unassigned ticket can be claimed; if a colleague
+     * took it a moment ago you get a clear message instead of overwriting them.
+     */
+    public static function claim(MaintenanceRequest $ticket, User $staff): MaintenanceRequest
+    {
+        if (! $staff->is_active || ! $staff->isMaintenanceTeam()) {
+            throw new DomainException('Only maintenance staff can claim a ticket.');
+        }
+
+        $ticket->refresh();   // look at the CURRENT row, not the copy the page was loaded with
+
+        if ($ticket->assigned_to !== null) {
+            throw new DomainException((int) $ticket->assigned_to === (int) $staff->id
+                ? "Ticket {$ticket->ticket_no} is already yours."
+                : "Ticket {$ticket->ticket_no} is already assigned to {$ticket->assignee?->name}. Only an unassigned ticket can be claimed.");
+        }
+
+        if (! in_array($ticket->status, self::assignableStatuses(), true)) {
+            throw new DomainException("Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\". It must be Approved before it can be claimed.");
+        }
+
+        return self::assign($ticket, $staff, $staff, 'Claimed by '.$staff->name.'.');
+    }
+
+    /**
+     * Staff rule: TRANSFER your OWN ticket to a colleague. The reason is required (it is kept in the history and the
+     * audit trail, and shown to the staff side only). You cannot transfer someone else's ticket or an unassigned one,
+     * and you cannot transfer it to yourself. The new person must be active maintenance staff.
+     */
+    public static function transfer(MaintenanceRequest $ticket, User $from, User $to, ?string $reason): MaintenanceRequest
+    {
+        $reason = trim((string) $reason);
+
+        if ($reason === '') {
+            throw new DomainException('A transfer needs a reason.');
+        }
+
+        $ticket->refresh();
+
+        if ($ticket->assigned_to === null || (int) $ticket->assigned_to !== (int) $from->id) {
+            throw new DomainException("Ticket {$ticket->ticket_no} is not assigned to you, so you cannot transfer it.");
+        }
+
+        if ((int) $to->id === (int) $from->id) {
+            throw new DomainException('Choose a colleague. The ticket is already yours.');
+        }
+
+        return self::assign($ticket, $to, $from, $reason);
+    }
+
     /** Board button [ACCEPT TASK]: take the ticket and start working on it. */
     public static function startWork(MaintenanceRequest $ticket, User $staff): MaintenanceRequest
     {

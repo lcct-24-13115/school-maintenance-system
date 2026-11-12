@@ -88,6 +88,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/approve', [TicketActionController::class, 'approve'])->name('approve');
         Route::post('/disapprove', [TicketActionController::class, 'disapprove'])->name('disapprove');
         Route::post('/assign', [TicketActionController::class, 'assign'])->name('assign');
+        // Staff rules: claim an unassigned ticket, transfer your own (reason required)
+        Route::post('/claim', [TicketActionController::class, 'claim'])->name('claim');
+        Route::post('/transfer', [TicketActionController::class, 'transfer'])->name('transfer');
         Route::post('/emergency', [TicketActionController::class, 'flagEmergency'])->name('emergency.flag');
         Route::post('/emergency/clear', [TicketActionController::class, 'clearEmergency'])->name('emergency.clear');
         Route::post('/notes', [TicketActionController::class, 'note'])->name('notes.store');

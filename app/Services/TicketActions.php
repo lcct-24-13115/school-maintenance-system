@@ -49,6 +49,11 @@ class TicketActions
     // Phase 12: hand the ticket up to the authorizer
     public const ESCALATE = 'escalate';
 
+    // Staff rules: a Maintenance Staff member claims an unassigned ticket and transfers their own (with a reason)
+    public const CLAIM = 'claim';
+
+    public const TRANSFER = 'transfer';
+
     /** @return list<string> */
     public static function for(MaintenanceRequest $ticket, User $user): array
     {
@@ -81,7 +86,16 @@ class TicketActions
             $actions[] = self::DISAPPROVE;
         }
 
-        if ($can('assign')) {
+        if ($user->isStaffOnly()) {
+            // Staff do not get the Assign / Reassign form: they claim an unassigned ticket or transfer their own.
+            if (in_array($status, TicketWorkflow::assignableStatuses(), true)) {
+                if ($ticket->assigned_to === null && $can('claim')) {
+                    $actions[] = self::CLAIM;
+                } elseif ($ticket->assigned_to !== null && (int) $ticket->assigned_to === (int) $user->id && $can('transfer')) {
+                    $actions[] = self::TRANSFER;
+                }
+            }
+        } elseif ($can('assign')) {
             if ($status === TicketStatus::Approved) {
                 $actions[] = self::ASSIGN;
             } elseif (in_array($status, [TicketStatus::Assigned, TicketStatus::InProgress, TicketStatus::Reopened], true)) {

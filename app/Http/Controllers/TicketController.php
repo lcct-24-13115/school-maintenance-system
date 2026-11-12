@@ -246,8 +246,8 @@ class TicketController extends Controller
         return view('tickets.show', [
             'ticket' => $ticket,
             'actions' => $actions,
-            // only loaded when the Assign / Reassign form will be shown
-            'staff' => array_intersect([TicketActions::ASSIGN, TicketActions::REASSIGN], $actions) !== []
+            // only loaded when the Assign / Reassign / Transfer form will be shown
+            'staff' => array_intersect([TicketActions::ASSIGN, TicketActions::REASSIGN, TicketActions::TRANSFER], $actions) !== []
                 ? TicketActions::assignableStaff()
                 : collect(),
         ]);
