@@ -5,6 +5,7 @@ namespace App\Models;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
@@ -16,10 +17,13 @@ class Category extends Model
 
     public const TYPE_SUPPLIES = 'supplies';
 
+    /** Categories of every department except the Maintenance Office have no materials/equipment/supplies split. */
+    public const TYPE_SERVICE = 'service';
+
     /** Name of the catch-all category (one per type, locked). Tickets of a deleted category move here. */
     public const OTHER = 'Other';
 
-    protected $fillable = ['name', 'type', 'description', 'is_active', 'sort_order', 'is_hidden', 'is_locked'];
+    protected $fillable = ['name', 'type', 'department_id', 'description', 'is_active', 'sort_order', 'is_hidden', 'is_locked'];
 
     protected function casts(): array
     {
@@ -39,6 +43,44 @@ class Category extends Model
             self::TYPE_EQUIPMENT => 'Equipment',
             self::TYPE_SUPPLIES => 'Supplies',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Until every caller names a department, a new category belongs to the Maintenance Office (as before Phase 2).
+        static::creating(function (self $category) {
+            $category->department_id ??= Department::maintenanceId();
+        });
+    }
+
+    /**
+     * The category groups (type => label) a department has. The Maintenance Office keeps Materials / Equipment / Supplies;
+     * every other department has one plain list.
+     *
+     * @return array<string, string>
+     */
+    public static function typeLabelsFor(?int $departmentId): array
+    {
+        $departmentId = $departmentId === null ? null : (int) $departmentId;
+
+        if ($departmentId === null || $departmentId === Department::maintenanceId()) {
+            return self::typeLabels();
+        }
+
+        return [self::TYPE_SERVICE => 'Categories'];
+    }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    /** Only the categories of one department (null = categories that have no department). */
+    public function scopeOfDepartment(Builder $query, ?int $departmentId): Builder
+    {
+        return $departmentId === null
+            ? $query->whereNull('department_id')
+            : $query->where('department_id', $departmentId);
     }
 
     /** Categories offered on new tickets (the repair form and its validation). Hidden ones are not. */
@@ -72,11 +114,13 @@ class Category extends Model
         return $this->hasMany(Subcategory::class);
     }
 
-    /** The locked "Other" category of a type. Created on the spot when it does not exist yet. */
-    public static function otherFor(string $type): self
+    /** The locked "Other" category of a type inside a department (default: the Maintenance Office). Created on the spot when it does not exist yet. */
+    public static function otherFor(string $type, ?int $departmentId = null): self
     {
+        $departmentId ??= Department::maintenanceId();
+
         return self::firstOrCreate(
-            ['name' => self::OTHER, 'type' => $type],
+            ['name' => self::OTHER, 'type' => $type, 'department_id' => $departmentId],
             ['description' => 'Catch-all. Tickets of a deleted category move here.', 'sort_order' => 999, 'is_locked' => true],
         );
     }
@@ -94,7 +138,7 @@ class Category extends Model
         }
 
         return DB::transaction(function (): int {
-            $other = self::otherFor($this->type);
+            $other = self::otherFor($this->type, $this->department_id);
 
             // withTrashed(): deleted (soft) tickets also point at this category and the foreign key would block the delete.
             // Plain UPDATE on purpose: the tickets keep their history and their request_type, and the model

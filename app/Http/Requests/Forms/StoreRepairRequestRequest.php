@@ -62,6 +62,9 @@ class StoreRepairRequestRequest extends FormRequest
             // When a request type is chosen the category must be of that type (the model enforces it too).
             'category_id' => ['required', Rule::exists('categories', 'id')->where(function ($query) use ($type) {
                 $query->where('is_hidden', false);
+                // This form files MAINTENANCE tickets: categories of other departments are not accepted here.
+                $maintenance = \App\Models\Department::maintenanceId();
+                $maintenance === null ? $query->whereNull('department_id') : $query->where('department_id', $maintenance);
                 if ($type) {
                     $query->where('type', $type);
                 }

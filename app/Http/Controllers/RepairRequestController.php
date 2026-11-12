@@ -32,7 +32,7 @@ class RepairRequestController extends Controller
             'canFlag' => $canFlag,
             'emergencyBypass' => $canFlag && config('school.emergency_bypasses_advance_notice'),
             'departments' => Department::orderBy('name')->get(),
-            'categories' => Category::visible()->ordered()->get(['id', 'name', 'type', 'is_locked']),
+            'categories' => Category::visible()->ofDepartment(Department::maintenanceId())->ordered()->get(['id', 'name', 'type', 'is_locked']),
             'subcategories' => Subcategory::visible()->ordered()->get(['id', 'category_id', 'name']),
             'requestTypes' => [
                 Category::TYPE_MATERIALS => 'Materials',
