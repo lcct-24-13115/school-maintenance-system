@@ -12,8 +12,9 @@ class RoleSeeder extends Seeder
         $roles = [
             [Role::REQUESTER, 'Student', 'Submits and tracks maintenance requests'],
             [Role::MAINTENANCE_ADMIN, 'Maintenance Admin', 'Manages users, settings and categories; can do everything the Head and Staff can'],
-            [Role::HEAD, 'Head of Maintenance', 'Reviews and authorizes requests, assigns the queue, closes tickets, reads reports and the audit log'],
-            [Role::STAFF, 'Maintenance Staff', 'Takes and completes tasks; can take an unassigned ticket or transfer their own'],
+            [Role::SYSTEM_ADMIN, 'System Administrator', 'Global: not tied to a department; manages users, settings and categories across all departments'],
+            [Role::HEAD, 'Department Head', 'Scoped to their department: reviews and authorizes requests, assigns the department queue, closes tickets, reads reports and the audit log'],
+            [Role::STAFF, 'Department Staff', 'Scoped to their department: takes and completes tasks; can take an unassigned ticket or transfer their own'],
             [Role::FINANCE, 'Finance', 'Budget review, receipts and expenditures'],
             [Role::CUSTODIAN, 'Property Custodian', 'Inventory, property tags and clearance'],
         ];

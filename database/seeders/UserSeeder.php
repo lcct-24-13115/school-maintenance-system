@@ -14,7 +14,8 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $accounts = [
-            [Role::MAINTENANCE_ADMIN, 'Head of Maintenance', 'maintenance@lcctanauan.edu.ph', null],
+            [Role::SYSTEM_ADMIN, 'System Administrator', 'sysadmin@lcctanauan.edu.ph', null],
+            [Role::MAINTENANCE_ADMIN, 'Head of Maintenance', 'maintenance@lcctanauan.edu.ph', Department::MAINTENANCE_CODE],
             [Role::CUSTODIAN, 'Property Custodian', 'custodian@lcctanauan.edu.ph', null],
             [Role::FINANCE, 'Finance', 'finance@lcctanauan.edu.ph', 'FIN'],
         ];

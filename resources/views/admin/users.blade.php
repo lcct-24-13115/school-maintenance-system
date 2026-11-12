@@ -163,7 +163,7 @@
                     </div>
                 </div>
 
-                <div class="p6-hint">Maintenance Staff take and do the work (they can only assign tickets to themselves). The Head of Maintenance also assigns anyone, authorizes, closes and reads the audit log. The Maintenance Admin also manages users, settings and categories.</div>
+                <div class="p6-hint">Department Staff take and do the work (they can only assign tickets to themselves). The Department Head also assigns anyone in the department, authorizes, closes and reads the audit log. Staff and Heads need a Department: their powers apply to that department only. The Maintenance Admin also manages users, settings and categories. The System Administrator works across all departments and needs no Department.</div>
 
                 <div class="field">
                     <label for="u-emp">Employee no. <span class="hint" style="display:inline">(optional)</span></label>

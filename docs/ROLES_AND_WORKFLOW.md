@@ -15,12 +15,20 @@ Roles live in the `roles` table (`App\Models\Role`). The slug is what the code u
 
 ### Roles created by `php artisan db:seed` (production)
 
-| Slug | Label shown | What they are for |
-|---|---|---|
-| `requester` | Student | Files and follows their own tickets. Students are loaded with `php artisan students:import`. |
-| `maintenance_admin` | Head of Maintenance | Runs the whole queue: approves, assigns, works, closes, manages users, categories, settings, QR codes, FAQ, reports. |
-| `finance` | Finance | Read-only view of every non-confidential ticket, reports and CSV export. |
-| `custodian` | Property Custodian | No global powers. Files requests and sees only their own. |
+| Slug | Label shown | Scope | What they are for |
+|---|---|---|---|
+| `requester` | Student | Own tickets | Student, Faculty and non-teaching Staff (told apart by `users.requester_type`). Files and follows their own tickets. Students are loaded with `php artisan students:import`. |
+| `staff` | Department Staff | Own department (`users.department_id`) | Does the work: takes an unassigned ticket, transfers their own, completes tasks, asks the requester for information. |
+| `head` | Department Head | Own department | Staff + assigns anyone in the department, sends for authorization, authorizes, closes, reports, audit log, FAQ. |
+| `maintenance_admin` | Maintenance Admin | Own department (the Maintenance department) | Department Head powers + users, settings, categories, QR codes, e-mail log. Kept as the admin of Maintenance (OPEN_QUESTIONS #98). |
+| `system_admin` | System Administrator | **Global** (all departments) | Same capabilities as `maintenance_admin`, not tied to a department. |
+| `finance` | Finance | (legacy, global) | Read-only view of every non-confidential ticket, reports and CSV export. |
+| `custodian` | Property Custodian | Own tickets | No global powers. Files requests and sees only their own. |
+
+Which roles are scoped and which are global is configuration, not code: `school.department_scoped_roles` and `school.global_roles`
+(`Role::departmentScopedSlugs()`, `Role::globalSlugs()`, `User::scopedDepartmentId()`). **Phase 4A only defines this.**
+Ticket visibility and claim / assign / transfer are enforced per department in Phases 4B and 4C; until then the visibility
+table in section 3 is unchanged.
 
 ### Retired roles (seeded only under PHPUnit, still known to the code)
 

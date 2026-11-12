@@ -138,6 +138,33 @@ class User extends Authenticatable implements MustVerifyEmail
         return in_array($capability, (array) config("permissions.{$slug}", []), true);
     }
 
+    /** System Administrator (Phase 4A): global, not tied to a department. */
+    public function isSystemAdmin(): bool
+    {
+        return $this->hasRole(Role::SYSTEM_ADMIN);
+    }
+
+    /** Role is global (acts across all departments). Configurable: school.global_roles. */
+    public function isGlobalRole(): bool
+    {
+        return $this->hasRole(...Role::globalSlugs());
+    }
+
+    /** Role is limited to the user's own department (users.department_id). Configurable: school.department_scoped_roles. */
+    public function isDepartmentScoped(): bool
+    {
+        return $this->hasRole(...Role::departmentScopedSlugs());
+    }
+
+    /**
+     * The department this user's powers are limited to, or null when they are not limited (global / requester roles).
+     * A scoped user WITHOUT a department has no department to act in: Phase 4B/4C treat that as "nothing".
+     */
+    public function scopedDepartmentId(): ?int
+    {
+        return $this->isDepartmentScoped() && $this->department_id !== null ? (int) $this->department_id : null;
+    }
+
     /** Department-level visibility (e.g. Department Head). Configurable: school.department_visibility_roles. */
     public function seesOwnDepartment(): bool
     {
@@ -166,7 +193,7 @@ class User extends Authenticatable implements MustVerifyEmail
     public function dashboardRoute(): string
     {
         return match ($this->role?->slug) {
-            Role::STAFF, Role::HEAD, Role::MAINTENANCE_ADMIN => 'maintenance.dashboard',
+            Role::STAFF, Role::HEAD, Role::MAINTENANCE_ADMIN, Role::SYSTEM_ADMIN => 'maintenance.dashboard',
             Role::FINANCE => 'finance.dashboard',
             Role::CUSTODIAN => 'custodian.dashboard',
             Role::PRESIDENT => 'president.dashboard',
