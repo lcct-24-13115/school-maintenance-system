@@ -1,5 +1,11 @@
 {{-- Sidebar (LCCT design). Same menu items and permission checks as the old top navigation. --}}
-@php $u = auth()->user(); @endphp
+@php
+    $u = auth()->user();
+    // "Your office" card: the signed-in user's department; accounts without one (e.g. the Maintenance head) show the maintenance office.
+    $office = $u->department;
+    $officeName = $office?->name ?? 'Maintenance Office';
+    $officeCode = $office && $office->code && strcasecmp($office->code, $office->name) !== 0 ? $office->code : null;
+@endphp
 
 <aside class="sidebar" :class="{ 'open': sb }">
     <div class="sb-head">
@@ -8,6 +14,14 @@
             <div class="brand">LCCT <span>Maintenance</span></div>
             <small>Ticketing System</small>
         </div>
+    </div>
+
+    <div class="sb-office" title="Your office: {{ $officeName }}">
+        <span class="sb-office-ic"><i class="fa-solid fa-building"></i></span>
+        <span class="sb-office-txt">
+            <small>Your office</small>
+            <strong>{{ $officeName }}@if ($officeCode) <span class="sb-office-abbr">({{ $officeCode }})</span>@endif</strong>
+        </span>
     </div>
 
     <nav class="nav">
@@ -45,14 +59,24 @@
             <i class="fa-solid fa-circle-question"></i> Help &amp; FAQ
         </a>
 
-        @if ($u->can_do('view_analytics') || $u->can_do('manage_settings') || $u->can_do('manage_categories') || $u->can_do('manage_users') || $u->can_do('manage_qr_codes') || $u->can_do('view_audit_logs') || $u->can_do('view_email_log') || $u->canManageFaq())
-            <div class="nav-sec">Administration</div>
+        @if ($u->can_do('view_analytics') || $u->can_do('manage_qr_codes'))
+            <div class="nav-sec">Office</div>
         @endif
 
         @if ($u->can_do('view_analytics'))
             <a href="{{ route('reports.index') }}" class="{{ request()->routeIs('reports.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-chart-column"></i> Reports
             </a>
+        @endif
+
+        @if ($u->can_do('manage_qr_codes'))
+            <a href="{{ route('admin.qr-codes.index') }}" class="{{ request()->routeIs('admin.qr-codes.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-qrcode"></i> QR codes
+            </a>
+        @endif
+
+        @if ($u->can_do('manage_settings') || $u->can_do('manage_categories') || $u->can_do('manage_users') || $u->can_do('view_audit_logs') || $u->can_do('view_email_log') || $u->canManageFaq())
+            <div class="nav-sec">Administration</div>
         @endif
 
         @if ($u->can_do('manage_users'))
@@ -80,12 +104,6 @@
         @if ($u->canManageFaq())
             <a href="{{ route('admin.faq.index') }}" class="{{ request()->routeIs('admin.faq.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-pen-to-square"></i> FAQ manager
-            </a>
-        @endif
-
-        @if ($u->can_do('manage_qr_codes'))
-            <a href="{{ route('admin.qr-codes.index') }}" class="{{ request()->routeIs('admin.qr-codes.*') ? 'active' : '' }}">
-                <i class="fa-solid fa-qrcode"></i> QR codes
             </a>
         @endif
 

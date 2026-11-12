@@ -23,16 +23,30 @@
     <link rel="stylesheet" href="{{ asset('css/register.css') }}?v={{ @filemtime(public_path('css/register.css')) }}">
     <script src="{{ asset('js/register.js') }}?v={{ @filemtime(public_path('js/register.js')) }}" defer></script>
 
-    <h1 class="form-title">Create <span>account</span></h1>
+    <p class="eyebrow">Requester registration</p>
+    <h1 class="form-title">Request an account</h1>
     <p class="form-sub">
-        Register to file maintenance tickets.
-        @if (config('school.registration.require_approval', true))
-            A Maintenance Admin must approve your account before you can sign in.
+        Accounts are reviewed by the Maintenance office before they can be used.
+        @if (config('school.registration.require_verification'))
+            We will first verify your e-mail address.
         @endif
     </p>
 
     <form method="POST" action="{{ route('register') }}" data-reg-rules="{{ json_encode($jsRules, JSON_UNESCAPED_UNICODE) }}">
         @csrf
+
+        <div class="field">
+            <label for="name">Full name</label>
+            <input id="name" type="text" name="name" value="{{ old('name') }}" required autofocus autocomplete="name">
+            @error('name')<div class="field-err">{{ $message }}</div>@enderror
+        </div>
+
+        <div class="field">
+            <label for="email">Email address</label>
+            <input id="email" type="email" name="email" value="{{ old('email') }}" required autocomplete="username">
+            <div class="hint" data-reg-email-help>{{ $emailHelp($cur) }}</div>
+            @error('email')<div class="field-err">{{ $message }}</div>@enderror
+        </div>
 
         <div class="field">
             <span class="lbl" id="rt-lbl">I am a</span>
@@ -46,25 +60,6 @@
                 @endforeach
             </div>
             @error('requester_type')<div class="field-err">{{ $message }}</div>@enderror
-        </div>
-
-        <div class="field">
-            <label for="name">Full Name</label>
-            <div class="input-wrap">
-                <i class="fa-solid fa-user ic"></i>
-                <input id="name" type="text" name="name" value="{{ old('name') }}" required autofocus autocomplete="name">
-            </div>
-            @error('name')<div class="field-err">{{ $message }}</div>@enderror
-        </div>
-
-        <div class="field">
-            <label for="email">Email</label>
-            <div class="input-wrap">
-                <i class="fa-solid fa-envelope ic"></i>
-                <input id="email" type="email" name="email" value="{{ old('email') }}" required autocomplete="username">
-            </div>
-            <div class="hint" data-reg-email-help>{{ $emailHelp($cur) }}</div>
-            @error('email')<div class="field-err">{{ $message }}</div>@enderror
         </div>
 
         <div class="field" data-reg-field="department" @if (! ($cur['department'] ?? false)) hidden @endif>
@@ -83,11 +78,8 @@
                 <span data-reg-label>{{ $cur['affiliation']['label'] }}</span>
                 <span class="hint" style="display:inline" data-reg-optional @if ($cur['affiliation']['required']) hidden @endif>(optional)</span>
             </label>
-            <div class="input-wrap">
-                <i class="fa-solid fa-id-badge ic"></i>
-                <input id="affiliation" type="text" name="affiliation" maxlength="190" value="{{ old('affiliation') }}"
-                       placeholder="{{ $cur['affiliation']['placeholder'] }}" @required($cur['affiliation']['required'])>
-            </div>
+            <input id="affiliation" type="text" name="affiliation" maxlength="190" value="{{ old('affiliation') }}"
+                   placeholder="{{ $cur['affiliation']['placeholder'] }}" @required($cur['affiliation']['required'])>
             <div class="hint" data-reg-help>{{ $cur['affiliation']['help'] }}</div>
             @error('affiliation')<div class="field-err">{{ $message }}</div>@enderror
         </div>
@@ -97,37 +89,30 @@
                 Why do you need an account?
                 <span class="hint" style="display:inline" data-reg-optional @if ($cur['purpose']['required']) hidden @endif>(optional)</span>
             </label>
-            <textarea id="purpose" name="purpose" rows="3" maxlength="500" style="min-height:84px"
+            <textarea id="purpose" name="purpose" rows="3" maxlength="500" style="min-height:84px" data-counter="500"
                       placeholder="{{ $cur['purpose']['placeholder'] }}" @required($cur['purpose']['required'])>{{ old('purpose') }}</textarea>
+            <div class="hint"><span data-counter-for="purpose">0</span> / 500 characters</div>
             @error('purpose')<div class="field-err">{{ $message }}</div>@enderror
         </div>
 
-        <div class="row2">
-            <div class="field">
-                <label for="password">Password</label>
-                <div class="input-wrap">
-                    <i class="fa-solid fa-lock ic"></i>
-                    <input id="password" type="password" name="password" required autocomplete="new-password">
-                </div>
-                @error('password')<div class="field-err">{{ $message }}</div>@enderror
-            </div>
-
-            <div class="field">
-                <label for="password_confirmation">Confirm Password</label>
-                <div class="input-wrap">
-                    <i class="fa-solid fa-lock ic"></i>
-                    <input id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password">
-                </div>
-                @error('password_confirmation')<div class="field-err">{{ $message }}</div>@enderror
-            </div>
+        <div class="field">
+            <label for="password">Password</label>
+            <input id="password" type="password" name="password" required autocomplete="new-password">
+            <div class="meter" data-meter-for="password" aria-hidden="true"><span></span></div>
+            <div class="hint" data-meter-text="password">At least 8 characters.</div>
+            @error('password')<div class="field-err">{{ $message }}</div>@enderror
         </div>
 
-        <button type="submit" class="btn btn-primary btn-block">
-            Register <i class="fa-solid fa-arrow-right"></i>
-        </button>
+        <div class="field">
+            <label for="password_confirmation">Confirm password</label>
+            <input id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password">
+            @error('password_confirmation')<div class="field-err">{{ $message }}</div>@enderror
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Submit request</button>
     </form>
 
     <div class="auth-foot">
-        Already registered? <a href="{{ route('login') }}">Log in</a>
+        <a href="{{ route('login') }}">Already have an account? Sign in</a>
     </div>
 </x-guest-layout>

@@ -1,5 +1,32 @@
 /* /register: the fields below "I am a" follow the chosen tile. The server checks the same rules (config/registration.php). */
 (function () {
+  /* character counter under "Why do you need an account?" */
+  var ta = document.querySelector('textarea[data-counter]');
+  var out = ta && document.querySelector('[data-counter-for="' + ta.id + '"]');
+  if (ta && out) {
+    var upd = function () { out.textContent = ta.value.length.toLocaleString(); };
+    ta.addEventListener('input', upd); upd();
+  }
+
+  /* password strength meter (Weak / Fair / Good / Strong) */
+  var meter = document.querySelector('[data-meter-for]');
+  var pw = meter && document.getElementById(meter.getAttribute('data-meter-for'));
+  var note = meter && document.querySelector('[data-meter-text]');
+  if (meter && pw) {
+    var labels = ['', 'Weak', 'Fair', 'Good', 'Strong'], base = note ? note.textContent : '';
+    pw.addEventListener('input', function () {
+      var v = pw.value, score = 0;
+      if (v.length >= 8) { score++; }
+      if (v.length >= 12) { score++; }
+      if (/[a-z]/.test(v) && /[A-Z]/.test(v)) { score++; }
+      if (/\d/.test(v) && /[^A-Za-z0-9]/.test(v)) { score++; }
+      if (!v) { score = 0; }
+      if (v.length > 0 && v.length < 8) { score = 1; }
+      meter.setAttribute('data-level', String(score));
+      if (note) { note.textContent = v ? 'Strength: ' + labels[score] : base; }
+    });
+  }
+
   var form = document.querySelector('form[data-reg-rules]');
   if (!form) { return; }
   var rules = {};

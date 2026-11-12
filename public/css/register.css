@@ -17,3 +17,11 @@
 .rt-badge{display:inline-block;margin-top:4px;padding:2px 9px;border-radius:99px;background:#e6f0fa;color:var(--deep);font-size:11.5px;font-weight:700}
 .rt-note{margin-top:6px;font-size:12.5px;line-height:1.45;color:var(--text-2);word-break:break-word}
 .rt-note b{color:var(--navy)}
+
+/* password strength meter + hint under it (same look as the reference registration page) */
+.meter{height:5px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:8px}
+.meter>span{display:block;height:100%;width:0;border-radius:99px;background:var(--red);transition:width .25s,background .25s}
+.meter[data-level="1"]>span{width:25%;background:var(--red)}
+.meter[data-level="2"]>span{width:50%;background:#d49a14}
+.meter[data-level="3"]>span{width:75%;background:#4f9a3f}
+.meter[data-level="4"]>span{width:100%;background:#1e8a4c}

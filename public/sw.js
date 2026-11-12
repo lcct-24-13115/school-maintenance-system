@@ -10,7 +10,7 @@
  * Every new release: change CACHE_VERSION below so phones drop the old cache.
  * This file must stay in /public (the site root) so its scope covers the whole app.
  */
-const CACHE_VERSION = 'v1-pwa1';
+const CACHE_VERSION = 'v1-pwa2';
 const STATIC_CACHE = 'lcct-static-' + CACHE_VERSION;
 const FONT_CACHE = 'lcct-fonts-' + CACHE_VERSION;
 const SCOPE = self.registration.scope;                       // e.g. https://site/  or  http://localhost/lcct/
