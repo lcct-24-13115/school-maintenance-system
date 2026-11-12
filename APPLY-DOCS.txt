@@ -1,0 +1,41 @@
+DOCS (ROLES_AND_WORKFLOW, SECURITY_AND_PRIVACY, TEST_PLAN, LIMITATIONS, PWA)
+============================================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+
+  cd C:\laragon\www\school-maintenance-system
+  git add -A ; git commit -m "Before docs"
+  tar -xf "$env:USERPROFILE\Downloads\docs-patch.zip" -C .
+  git status
+
+(Kung ayaw gumana ang tar:
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\docs-patch.zip" -DestinationPath . -Force
+ Kung nasa ibang folder ang zip, palitan ang path, hal. "C:\Users\ikaw\Desktop\docs-patch.zip".)
+
+WALANG migration. WALANG npm. WALANG composer. Markdown files lang, walang magbabago sa app.
+Walang ino-overwrite: puro bagong file sa docs/ at itong APPLY-DOCS.txt.
+
+Bago:
+  docs/ROLES_AND_WORKFLOW.md      <- sino ang puwedeng gumawa ng ano, statuses, SLA, scheduled jobs, accounts
+  docs/SECURITY_AND_PRIVACY.md    <- mga security control sa code, gagawin bago mag-live, Data Privacy Act notes
+  docs/TEST_PLAN.md               <- automated tests + manual test cases (blangko ang Result column)
+  docs/LIMITATIONS.md             <- mga kulang, hindi pa tapos, at dapat i-confirm sa school
+  docs/PWA.md                     <- paano gumagana, i-install, i-test, i-rollback ang PWA
+  APPLY-DOCS.txt
+
+I-CHECK ang resulta:
+  dir docs
+
+I-PUSH sa GitHub (branch main):
+  git add docs APPLY-DOCS.txt
+  git commit -m "Add ROLES_AND_WORKFLOW, SECURITY_AND_PRIVACY, TEST_PLAN, LIMITATIONS and PWA docs"
+  git push origin main
+
+BASAHIN MUNA ang docs/LIMITATIONS.md, items 1-6. Tatlong bagay ang nakita sa code (hindi ko in-edit):
+  1. config/school.php: workflow.authorizers at closers = ['maintenance_admin'], pero ['president'] pa rin ang
+     inaasahan ng docs/OPEN_QUESTIONS.md (#14, #16) at ng TicketActionsTest.
+  2. Walang staff na "Close" button; ang Closed ay galing lang sa "Confirm resolved" ng requester. Ang
+     closure_requires (signed evidence) at closers ay nasa config pero hindi binabasa ng code.
+  3. school.pm.supervisor_roles = ['president'] pero hindi na nase-seed ang President role.
+
+ROLLBACK:  git checkout -- .   at burahin ang 5 docs/*.md na bago at ang APPLY-DOCS.txt
