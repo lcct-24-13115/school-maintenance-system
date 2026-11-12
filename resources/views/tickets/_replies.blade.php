@@ -34,15 +34,7 @@
                 @endif
 
                 @foreach ($reply->attachments as $file)
-                    <div class="pf-row" style="flex-wrap:wrap;margin-top:8px">
-                        <div style="min-width:0;flex:1">
-                            <a href="{{ $file->url() }}" @if ($file->isInline()) target="_blank" rel="noopener" @endif style="word-break:break-all">
-                                <span aria-hidden="true">{{ $file->icon() }}</span> {{ $file->original_name }}
-                            </a>
-                            <div class="sub" style="font-size:12.5px;color:var(--text-3)">{{ $file->sizeForHumans() }}</div>
-                        </div>
-                        <a href="{{ $file->downloadUrl() }}" class="btn btn-sm"><i class="fa-solid fa-download"></i> Download</a>
-                    </div>
+                    <x-attachment-row :file="$file" :ticket="$ticket" :detail="false" style="flex-wrap:wrap;margin-top:8px" />
                 @endforeach
             </div>
         @empty

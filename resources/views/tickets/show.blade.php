@@ -137,20 +137,7 @@
             <div class="card-h"><h3>Attachments <span class="hint" style="font-family:var(--font-body);font-weight:400">({{ $ticketFiles->count() }})</span></h3></div>
 
             @forelse ($ticketFiles as $file)
-                <div class="pf-row" style="flex-wrap:wrap">
-                    <div style="min-width:0;flex:1">
-                        <a href="{{ $file->url() }}" @if ($file->isInline()) target="_blank" rel="noopener" @endif style="word-break:break-all">
-                            <span aria-hidden="true">{{ $file->icon() }}</span> {{ $file->original_name }}
-                        </a>
-                        <div class="sub" style="font-size:12.5px;color:var(--text-3)">
-                            {{ $file->sizeForHumans() }} · {{ $file->uploader?->name ?? 'unknown' }} · {{ $file->created_at?->format('M j, Y g:i A') }}
-                            @unless ($file->isRequestFile())
-                                <span class="badge pr-normal" style="margin-left:4px">{{ $file->kindLabel() }}</span>
-                            @endunless
-                        </div>
-                    </div>
-                    <a href="{{ $file->downloadUrl() }}" class="btn btn-sm"><i class="fa-solid fa-download"></i> Download</a>
-                </div>
+                <x-attachment-row :file="$file" :ticket="$ticket" />
             @empty
                 <div class="empty" style="padding:22px 16px"><i class="fa-solid fa-paperclip"></i>No attachments.</div>
             @endforelse
@@ -216,5 +203,6 @@
 
     @push('scripts')
         @include('partials.live-refresh', ['liveTicket' => $ticket])
+        @include('partials.file-viewer')
     @endpush
 </x-app-layout>

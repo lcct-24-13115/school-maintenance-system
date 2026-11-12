@@ -1,0 +1,62 @@
+ATTACHMENT VIEWER (pop-up na may prev/next at zoom) + REMOVE ATTACHMENT (naka-log sa audit)
+============================================================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before attachment viewer"
+  tar -xf "$env:USERPROFILE\Downloads\attachment-viewer-patch.zip" -C .
+  php artisan optimize:clear
+  php artisan test --filter=AttachmentViewerTest
+  php artisan test --filter=AttachmentTest
+  php artisan test --filter=AuditLogTest
+  php artisan test
+
+(Kung ayaw gumana ang tar: Expand-Archive -Path "$env:USERPROFILE\Downloads\attachment-viewer-patch.zip" -DestinationPath . -Force)
+
+WALANG migration, WALANG npm run build. Plain files sa public/ ang CSS at JS.
+
+Bago:
+  app/Policies/RequestAttachmentPolicy.php        <- sino ang pwedeng mag-remove (kusang nahahanap ng Laravel)
+  app/Services/DocxPreview.php                    <- text preview ng Word (.docx)
+  resources/views/components/attachment-row.blade.php   <- isang hilera ng file (ginagamit sa ticket page at sa replies)
+  resources/views/partials/file-viewer.blade.php  <- ang pop-up (dialog)
+  public/js/file-viewer.js
+  public/css/file-viewer.css
+  tests/Feature/AttachmentViewerTest.php
+  APPLY-ATTACHMENT-VIEWER.txt
+
+Ino-overwrite:
+  app/Http/Controllers/AttachmentController.php  <- dagdag: text() at destroy() (ang show() ay pareho pa rin)
+  app/Services/AuditLogger.php                    <- dagdag: ATTACHMENT_DELETED (lumalabas din sa filter ng Audit log)
+  routes/web.php                                  <- 2 linya: GET /attachments/{id}/text at DELETE /attachments/{id}
+  resources/views/tickets/show.blade.php          <- gumagamit na ng <x-attachment-row> + isinasama ang viewer
+  resources/views/tickets/_replies.blade.php      <- gumagamit na ng <x-attachment-row> (mga file sa loob ng reply)
+
+Paano gumagana ang viewer:
+  I-click ang pangalan ng file sa Attachments o sa conversation -> bubukas ang pop-up.
+  - Larawan (JPG/PNG/WebP): may zoom (+ / - / 100% na button, double-click, Ctrl+wheel, o ang keys + - 0).
+  - PDF: nasa loob ng pop-up (ang zoom ay galing sa PDF viewer ng browser). Sa iPhone, gamitin ang "New tab".
+  - Word (.docx): simplified na TEXT preview (walang formatting/larawan/table layout), may zoom ng laki ng letra.
+  - Excel (.xlsx) at iba pa: walang preview; may Download button.
+  - Prev / Next (o ang arrow keys ← →) ay naglalakad sa lahat ng file sa page, ayon sa ayos nila sa page.
+  - Esc o click sa madilim na gilid = isara. Ctrl/Cmd/Shift+click = bubukas pa rin sa bagong tab gaya ng dati.
+  Bawat file na ipinakita ay naka-log sa Audit log bilang "Opened" / "Previewed" (gaya ng dati).
+
+Remove:
+  Lumalabas ang "Remove" (sa listahan at sa pop-up) LANG sa taong pinapayagan ng RequestAttachmentPolicy:
+    - Maintenance Admin (may add_attachment) -> kahit anong file ng ticket na nakikita niya
+    - ang nag-upload ng file -> habang HINDI pa Closed/Disapproved ang ticket
+    - file sa loob ng internal note -> staff lang na nakakabasa ng internal notes
+  May confirm bago mag-delete. Binubura ang row at ang mismong file sa private storage.
+  Naka-log:
+    - Audit log: action "attachment_deleted" (sino, ticket, pangalan ng file, uri, laki, id ng nag-upload; HINDI ang storage path)
+    - History ng ticket: "Removed file (Request file): photo.png"
+  Hindi na mababawi ang file mismo (walang trash/undo); ang record lang sa log ang natitira.
+
+KAILANGANG I-CONFIRM (CONFIRM WITH CLIENT):
+  - Sino ang pwedeng mag-delete. Ngayon: Maintenance Admin + ang nag-upload (hangga't hindi pa tapos ang ticket).
+    Gusto mo bang bawal sa requester kapag nasimulan na ang trabaho? O may sariling capability (hal. delete_attachment)?
+    Palitan sa app/Policies/RequestAttachmentPolicy.php.
+  - Kung may nagse-set ng X-Frame-Options: DENY sa server mo (Apache/Nginx/Cloudflare), hindi lalabas ang PDF sa pop-up
+    (iframe). Gamitin ang SAMEORIGIN para sa site.
+
+Rollback: git checkout -- .   at burahin ang mga "Bago" na file.

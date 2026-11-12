@@ -106,6 +106,8 @@ Route::middleware('auth')->group(function () {
 
     // ---- Attachments: private files, opened only through here (ticket visibility decides; hidden = 404) ----
     Route::get('/attachments/{attachment}', [AttachmentController::class, 'show'])->name('attachments.show');
+    Route::get('/attachments/{attachment}/text', [AttachmentController::class, 'text'])->name('attachments.text');
+    Route::delete('/attachments/{attachment}', [AttachmentController::class, 'destroy'])->name('attachments.destroy');
 
     // ---- Maintenance card board ----
     Route::middleware(CheckRole::class.':'.Role::MAINTENANCE_ADMIN)->prefix('maintenance')->name('maintenance.')->group(function () {
