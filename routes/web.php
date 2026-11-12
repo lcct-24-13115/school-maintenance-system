@@ -72,6 +72,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
     // Phase 14: finished tickets (Closed / Cancelled / Disapproved). MUST stay above /tickets/{ticket}.
     Route::get('/tickets/history', [TicketController::class, 'history'])->name('tickets.history');
+    // Ticket list CSV (export_reports). Literal paths: they MUST stay above /tickets/{ticket}.
+    Route::get('/tickets/export', [TicketController::class, 'export'])->middleware('throttle:20,1')->name('tickets.export');
+    Route::get('/tickets/history/export', [TicketController::class, 'exportHistory'])->middleware('throttle:20,1')->name('tickets.history.export');
     // Alias of /repairs/create. MUST stay above /tickets/{ticket}, or "create" would be looked up as a ticket.
     Route::get('/tickets/create', [RepairRequestController::class, 'create'])->name('tickets.create');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
