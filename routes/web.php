@@ -174,6 +174,7 @@ Route::middleware('auth')->group(function () {
     // ---- User / team management (Phase 6). Capability manage_users is checked in the controller (others get 403) ----
     Route::prefix('admin/users')->name('admin.users.')->group(function () {
         Route::get('/', [UserController::class, 'index'])->name('index');
+        Route::get('/pending-count', [UserController::class, 'pendingCount'])->name('pending-count');
         Route::post('/', [UserController::class, 'store'])->name('store');
         Route::put('/{user}', [UserController::class, 'update'])->name('update');
         Route::patch('/{user}/status', [UserController::class, 'status'])->name('status');

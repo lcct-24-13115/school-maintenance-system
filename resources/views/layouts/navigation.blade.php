@@ -83,9 +83,9 @@
             <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-users"></i> <span class="nl">Users</span>
                 @php($pendingUsers = \App\Models\User::query()->pending()->count())
-                @if ($pendingUsers > 0)
-                    <span class="badge nocap ab-file" style="margin-left:auto" title="Accounts waiting for approval">{{ $pendingUsers }}</span>
-                @endif
+                <span id="pending-users-badge" class="badge nocap ab-file"
+                          data-pending-url="{{ route('admin.users.pending-count') }}" data-interval="{{ config('school.poll_seconds') }}"
+                          style="margin-left:auto;@if ($pendingUsers < 1) display:none @endif" title="Accounts waiting for approval">{{ $pendingUsers }}</span>
             </a>
         @endif
 

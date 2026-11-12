@@ -315,6 +315,16 @@ class UserController extends Controller
         }
     }
 
+    /** Live badge on the "Users" menu item: how many accounts wait for approval. JSON, polled by public/js/pending-badge.js. */
+    public function pendingCount(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeManage($request);
+
+        return response()
+            ->json(['count' => User::query()->pending()->count()])
+            ->header('Cache-Control', 'no-store');
+    }
+
     private function authorizeManage(Request $request): void
     {
         abort_unless($request->user()?->can_do('manage_users'), 403, 'You do not have access to this page.');

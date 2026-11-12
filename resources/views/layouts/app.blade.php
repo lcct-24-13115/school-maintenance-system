@@ -17,6 +17,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="{{ asset('css/style.css') }}?v={{ @filemtime(public_path('css/style.css')) }}">
     @include('partials.ui-assets')
+    <script src="{{ asset('js/pending-badge.js') }}?v={{ @filemtime(public_path('js/pending-badge.js')) }}" defer></script>
     <script>try{if(localStorage.getItem('lcct.sb')==='mini'){document.documentElement.classList.add('sb-mini')}}catch(e){}</script>
     <link rel="stylesheet" href="{{ asset('css/sidebar.css') }}?v={{ @filemtime(public_path('css/sidebar.css')) }}">
     <script src="{{ asset('js/sidebar.js') }}?v={{ @filemtime(public_path('js/sidebar.js')) }}" defer></script>
