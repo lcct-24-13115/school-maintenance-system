@@ -106,6 +106,11 @@
             @if ($hasFilters)
                 <a href="{{ route($listRoute) }}" class="btn btn-danger">Clear filters</a>
             @endif
+            @if ($canExport)
+                {{-- same search + filters as the list; every matching ticket, not just this page --}}
+                <a href="{{ route($isHistory ? 'tickets.history.export' : 'tickets.export', request()->except('page')) }}"
+                   class="btn" style="margin-left:auto"><i class="fa-solid fa-file-csv"></i> Export CSV</a>
+            @endif
         </div>
 
         @if ($errors->any())
