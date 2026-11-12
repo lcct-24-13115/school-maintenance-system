@@ -7,9 +7,16 @@ use App\Models\Category;
 use App\Models\Department;
 use App\Models\MaintenanceRequest;
 use App\Models\Role;
+use App\Models\Subcategory;
 use App\Models\User;
+use App\Http\Requests\Forms\StoreTicketRequest;
 use App\Services\AuditLogger;
+use App\Services\FormNotifier;
 use App\Services\TicketActions;
+use App\Services\TicketRouter;
+use App\Services\TicketRoutingException;
+use App\Services\TicketWorkflow;
+use DomainException;
 use App\Support\Csv;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -26,6 +33,78 @@ class TicketController extends Controller
     private const PER_PAGE = 15;
 
     private const EXPORT_CHUNK = 500;
+
+    /**
+     * Multi-department Phase 3: the generic ticket form. Pick the receiving department, then a category of THAT
+     * department (the list is filtered in the browser and checked again by TicketRouter on the server).
+     * The Maintenance repair form (FO-08) stays at /repairs/create.
+     */
+    public function create(Request $request): View
+    {
+        Gate::authorize('create', MaintenanceRequest::class);
+
+        $user = $request->user();
+        $departments = Department::active()->service()
+            ->when(! config('school.routing.allow_maintenance_on_generic_form', false) && Department::maintenanceId() !== null,
+                fn ($q) => $q->where('id', '!=', Department::maintenanceId()))
+            ->orderBy('name')->get(['id', 'name']);
+
+        return view('tickets.create', [
+            'canFlag' => $user->can_do('flag_emergency'),
+            'departments' => $departments,
+            'categories' => Category::visible()->whereIn('department_id', $departments->pluck('id'))
+                ->ordered()->get(['id', 'name', 'department_id']),
+            'subcategories' => Subcategory::visible()->ordered()->get(['id', 'category_id', 'name']),
+            'allDepartments' => $user->department_id === null ? Department::active()->orderBy('name')->get(['id', 'name']) : null,
+        ]);
+    }
+
+    /** File a ticket on the generic form. The receiving department comes from the CATEGORY (TicketRouter). */
+    public function store(StoreTicketRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+        $user = $request->user();
+
+        $asked = $data['priority'] === MaintenanceRequest::PRIORITY_EMERGENCY;
+        // Same rule as the repair form: only people who may flag an emergency set it; others ask for a review.
+        $emergency = $asked && $user->can_do('flag_emergency');
+        $reviewAsked = $asked && ! $emergency;
+
+        try {
+            $route = TicketRouter::route(
+                (int) $data['category_id'],
+                (int) $data['assigned_department_id'],
+                filled($data['subcategory_id'] ?? null) ? (int) $data['subcategory_id'] : null,
+            );
+
+            $ticket = TicketWorkflow::open($user, $route->attributes() + [
+                'department_id' => $user->department_id ?? $data['from_department_id'],
+                'maintenance_type' => 'request',
+                'title' => $data['title'],
+                'description' => $data['description'],
+                'contact_name' => $data['contact_name'] ?? null,
+                'contact_email' => $data['contact_email'] ?? null,
+                'contact_phone' => $data['contact_phone'] ?? null,
+                'is_emergency' => $emergency,
+                'emergency_reason' => $emergency ? $data['description'] : null,
+                'emergency_review_reason' => $reviewAsked ? $data['description'] : null,
+                'routing_note' => $route->note(),
+            ], $request->file('files', []));
+        } catch (TicketRoutingException $e) {
+            return back()->withInput()->withErrors([$e->field => $e->getMessage()]);
+        } catch (DomainException $e) {
+            return back()->withInput()->withErrors(['form' => $e->getMessage()]);
+        }
+
+        FormNotifier::submitted($ticket);   // in-app alert to the staff / head of the RECEIVING department
+
+        $message = "Sent! Your ticket {$ticket->ticket_no} was received by {$route->department->name}.";
+        if ($reviewAsked) {
+            $message .= ' It was filed as a routine ticket; your emergency request was passed on for review.';
+        }
+
+        return redirect()->route('dashboard')->with('status', $message);
+    }
 
     /** "My Tickets": the active tickets only. Closed / Cancelled / Disapproved are in history(). */
     public function index(Request $request): View|RedirectResponse

@@ -74,8 +74,10 @@ Route::middleware('auth')->group(function () {
     // Ticket list CSV (export_reports). Literal paths: they MUST stay above /tickets/{ticket}.
     Route::get('/tickets/export', [TicketController::class, 'export'])->middleware('throttle:20,1')->name('tickets.export');
     Route::get('/tickets/history/export', [TicketController::class, 'exportHistory'])->middleware('throttle:20,1')->name('tickets.history.export');
-    // Alias of /repairs/create. MUST stay above /tickets/{ticket}, or "create" would be looked up as a ticket.
-    Route::get('/tickets/create', [RepairRequestController::class, 'create'])->name('tickets.create');
+    // Multi-department Phase 3: the generic ticket form. /repairs/create (FO-08) stays the Maintenance form.
+    // MUST stay above /tickets/{ticket}, or "create" would be looked up as a ticket.
+    Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
+    Route::post('/tickets', [TicketController::class, 'store'])->middleware('throttle:30,1')->name('tickets.store');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
     Route::post('/tickets/{ticket}/attachments', [TicketAttachmentController::class, 'store'])->name('tickets.attachments.store');
     // Phase 10: the conversation on the ticket page (text + files)

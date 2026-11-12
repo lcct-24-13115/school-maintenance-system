@@ -43,6 +43,9 @@
             <a href="{{ route('repairs.create') }}" class="{{ request()->routeIs('repairs.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-circle-plus"></i> <span class="nl">New request</span>
             </a>
+            <a href="{{ route('tickets.create') }}" class="{{ request()->routeIs('tickets.create') ? 'active' : '' }}">
+                <i class="fa-solid fa-paper-plane"></i> <span class="nl">New ticket</span>
+            </a>
         @endcan
 
         @if ($u->canAuthorize())

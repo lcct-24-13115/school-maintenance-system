@@ -35,7 +35,8 @@ class MaintenanceRequest extends Model
 
     protected $fillable = [
         'ticket_no', 'requester_id', 'department_id', 'assigned_department_id', 'category_id', 'subcategory_id',
-        'request_type', 'maintenance_type', 'location', 'description', 'needed_by', 'reason',
+        'request_type', 'maintenance_type', 'title', 'location', 'description', 'needed_by', 'reason',
+        'contact_name', 'contact_email', 'contact_phone',
         'priority', 'is_emergency', 'emergency_reason', 'emergency_flagged_by', 'emergency_flagged_at',
         'is_confidential',
         'status', 'assigned_to', 'assigned_at',
@@ -66,7 +67,8 @@ class MaintenanceRequest extends Model
         static::creating(function (self $ticket) {
             $ticket->submitted_at ??= now();
             $ticket->status ??= TicketStatus::Submitted;
-            // Multi-department Phase 1: until routing exists (Phase 3) every ticket is received by the Maintenance Office.
+            // A ticket created without a receiving department (the FO-08 repair form) is received by the Maintenance Office.
+            // The generic form (Phase 3) always sets it, from the category, through App\Services\TicketRouter.
             $ticket->assigned_department_id ??= Department::maintenanceId();
             $ticket->ticket_no ??= self::generateTicketNo($ticket->submitted_at);
             $ticket->due_at ??= self::computeDueAt($ticket->submitted_at, (bool) $ticket->is_emergency);
@@ -202,6 +204,17 @@ class MaintenanceRequest extends Model
         return $query->where('is_emergency', false)->orderBy('submitted_at')->orderBy('id');
     }
 
+    /**
+     * Multi-department Phase 3, the "unassigned queue": still-open tickets that nobody owns yet.
+     * Pass a department id to limit it to the tickets that department RECEIVED (assigned_department_id).
+     */
+    public function scopeUnassignedQueue(Builder $query, ?int $departmentId = null): Builder
+    {
+        return $query->whereNull('assigned_to')
+            ->whereIn('status', TicketStatus::pendingValues())
+            ->when($departmentId !== null, fn (Builder $q) => $q->where('assigned_department_id', $departmentId));
+    }
+
     /** Not completed, not closed, not disapproved. */
     public function scopePending(Builder $query): Builder
     {
@@ -296,6 +309,12 @@ class MaintenanceRequest extends Model
     }
 
     // ---- helpers -------------------------------------------------------------------------------
+
+    /** The one-line name of the ticket: its title (generic form), else its location (repair form), else the start of the description. */
+    public function headline(): string
+    {
+        return (string) ($this->title ?: ($this->location ?: \Illuminate\Support\Str::limit((string) $this->description, 80)));
+    }
 
     public function isEmergency(): bool
     {

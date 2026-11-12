@@ -1,0 +1,26 @@
+MULTI-DEPARTMENT PHASE 3 - Generic ticket form (/tickets/create) + TicketRouter + department alerts
+
+PREREQUISITE: Multi-department Phase 1 and 2 are applied (departments, assigned_department_id, categories.department_id).
+
+TERMINAL (PowerShell) sa project folder:
+  git add -A ; git commit -m "Before MD Phase 3"
+  Expand-Archive -Path "$env:USERPROFILE\Downloads\md-phase3-update.zip" -DestinationPath . -Force
+  php artisan migrate
+  php artisan config:clear ; php artisan route:clear ; php artisan view:clear
+  php artisan test --filter=TicketRoutingTest
+  php artisan test                      (the whole suite: AttachmentTest was edited, see below)
+
+MAY BAGONG MIGRATION: 2026_11_27_000001 (title, contact_name/email/phone, location nullable, queue index). Walang binubura.
+
+Bago (7):  app/Services/TicketRouter.php, RoutingDecision.php, TicketRoutingException.php,
+           app/Http/Requests/Forms/StoreTicketRequest.php, resources/views/tickets/create.blade.php,
+           database/migrations/2026_11_27_000001_add_title_and_contact_to_requests.php, tests/Feature/TicketRoutingTest.php
+Binago:    TicketController (create/store), routes/web.php (/tickets/create no longer the repair form; POST /tickets),
+           MaintenanceRequest (fillable, scopeUnassignedQueue, headline()), TicketWorkflow::open (title/contact/assigned dept+to/routing note),
+           TicketMailer + FormNotifier (alerts go to the RECEIVING department), config/school.php ('routing' block),
+           navigation (New ticket link), views (headline in lists/ticket page), tests/Feature/AttachmentTest.php (1 test), docs
+Hindi ginalaw: RepairRequestController, StoreRepairRequestRequest, resources/views/repairs/*, roles, dashboards.
+
+.env (opsyonal): ROUTING_ALLOW_MAINTENANCE_ON_GENERIC_FORM=false  ROUTING_AUTO_ASSIGN_HEAD=false  ROUTING_FALLBACK_TO_MAINTENANCE=true
+
+Rollback: php artisan migrate:rollback --step=1, tapos ibalik ang backup o "git checkout -- ." at burahin ang bagong file.

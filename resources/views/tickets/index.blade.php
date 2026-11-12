@@ -202,7 +202,7 @@
                             <td data-label="Status">
                                 <div style="display:flex;flex-wrap:wrap;gap:6px">@include('tickets._badges', ['ticket' => $t])</div>
                             </td>
-                            <td data-label="Location">{{ $t->location }}</td>
+                            <td data-label="Location">{{ $t->headline() }}</td>
                             <td data-label="Category">{{ $t->category?->name }}@if ($t->subcategory)<div class="sub">{{ $t->subcategory->name }}</div>@endif</td>
                             <td data-label="Requester">{{ $t->requester->name }}<div class="sub">{{ $t->department?->name }}</div></td>
                             <td data-label="Assigned to">{{ $t->assignee?->name ?? '—' }}</td>

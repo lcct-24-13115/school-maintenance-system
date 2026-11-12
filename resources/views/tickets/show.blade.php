@@ -49,7 +49,7 @@
             <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">@include('tickets._badges', ['ticket' => $ticket])</div>
 
             <h3 style="font-family:var(--font-display);font-size:26px;font-weight:600;color:var(--navy);line-height:1.2;margin-top:12px;word-break:break-word">
-                <i class="fa-solid fa-location-dot" style="color:var(--blue);font-size:20px"></i> {{ $ticket->location }}
+                <i class="fa-solid fa-location-dot" style="color:var(--blue);font-size:20px"></i> {{ $ticket->headline() }}
             </h3>
             <div class="tk-sub" style="font-size:14px">{{ $ticket->category?->name }}@if ($ticket->department) · {{ $ticket->department->name }}@endif</div>
 
@@ -91,7 +91,14 @@
         <section class="card">
             <div class="card-h"><h3>Details</h3></div>
             <div class="kv">
-                <div><div class="k">Location</div><div style="word-break:break-word">{{ $ticket->location }}</div></div>
+                @if ($ticket->title)
+                    <div style="{{ $wide }}"><div class="k">Title</div><div style="word-break:break-word">{{ $ticket->title }}</div></div>
+                @endif
+                <div><div class="k">Location</div><div style="word-break:break-word">{{ $ticket->location ?: '—' }}</div></div>
+                <div><div class="k">Received by</div><div>{{ $ticket->assignedDepartment?->name ?? '—' }}</div></div>
+                @if ($ticket->contact_name || $ticket->contact_email || $ticket->contact_phone)
+                    <div style="{{ $wide }}"><div class="k">Contact</div><div style="word-break:break-word">{{ collect([$ticket->contact_name, $ticket->contact_phone, $ticket->contact_email])->filter()->implode(' · ') }}</div></div>
+                @endif
                 <div><div class="k">Category</div><div>{{ $ticket->category?->name ?? '—' }}@if ($ticket->subcategory) <span style="color:var(--text-3)">›</span> {{ $ticket->subcategory->name }}@endif</div></div>
                 <div><div class="k">Maintenance type</div><div>{{ ucfirst((string) $ticket->maintenance_type) }}</div></div>
                 <div><div class="k">Request type</div><div>{{ $ticket->request_type ? ucfirst($ticket->request_type) : '—' }}</div></div>

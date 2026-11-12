@@ -108,7 +108,7 @@
                                     <a href="{{ route('tickets.show', $t) }}" style="font-weight:800">{{ $t->ticket_no }}</a>
                                     <span class="pq-desc">{{ \Illuminate\Support\Str::limit($t->description, 60) }}</span>
                                 </td>
-                                <td data-label="Location">{{ $t->location }}<div class="sub">{{ $t->category?->name }}</div></td>
+                                <td data-label="Location">{{ $t->headline() }}<div class="sub">{{ $t->category?->name }}</div></td>
                                 <td data-label="Status"><x-status-badge :status="$t->status" /></td>
                                 <td data-label="Assigned to">{{ $t->assignee?->name ?? 'Unassigned' }}</td>
                                 <td data-label="Target date">

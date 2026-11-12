@@ -35,7 +35,7 @@
                 </div>
 
                 <h3 style="font-family:var(--font-display);font-size:21px;font-weight:600;color:var(--navy);margin-top:8px;word-break:break-word">
-                    <i class="fa-solid fa-location-dot" style="color:var(--blue);font-size:17px"></i> {{ $ticket->location }}
+                    <i class="fa-solid fa-location-dot" style="color:var(--blue);font-size:17px"></i> {{ $ticket->headline() }}
                 </h3>
                 <div style="white-space:pre-line;word-break:break-word;margin-top:4px">{{ $ticket->description }}</div>
                 @if ($ticket->is_emergency)

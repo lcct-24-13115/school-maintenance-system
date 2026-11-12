@@ -23,9 +23,12 @@ class FormNotifier
     /** A new form was filed: maintenance staff + the first approver are alerted. */
     public static function submitted(Model $form): void
     {
-        $recipients = self::usersWithRole(Role::maintenanceSlugs());
+        // A ticket alerts the staff / head of the department that RECEIVES it (TicketRouter); the old forms keep the maintenance team.
+        $recipients = $form instanceof MaintenanceRequest
+            ? TicketRouter::receivers($form)
+            : self::usersWithRole(Role::maintenanceSlugs());
 
-        // The 3 school forms have a signature chain; tickets do not (yet - Phase 3).
+        // The 3 school forms have a signature chain; tickets do not.
         if (method_exists($form, 'nextApproval')) {
             $recipients = $recipients->merge(self::approversFor($form->nextApproval(), $form));
         }
@@ -79,7 +82,7 @@ class FormNotifier
      */
     public static function escalated(MaintenanceRequest $ticket, ?User $actor = null): void
     {
-        $recipients = self::usersWithRole(Role::maintenanceSlugs());
+        $recipients = TicketRouter::receivers($ticket);
 
         foreach ((array) config('school.workflow.authorizers', []) as $slug) {
             $recipients = $recipients->merge(self::usersWithRole((string) $slug));
@@ -97,7 +100,7 @@ class FormNotifier
     {
         if ($internal) {   // Phase 11: staff only. The requester is never told, not even that a note exists.
             self::send(
-                self::usersWithRole(Role::maintenanceSlugs())->push($ticket->assignee)
+                TicketRouter::receivers($ticket)->push($ticket->assignee)
                     ->reject(fn (?User $u) => $u === null || (int) $u->id === (int) $ticket->requester_id)
                     ->filter(fn (User $u) => $u->can('viewInternalNotes', $ticket)),
                 $ticket, 'ticket_internal_note', $actor, 'added an internal note on a ticket'
@@ -107,7 +110,7 @@ class FormNotifier
         }
 
         $recipients = (int) $ticket->requester_id === (int) $actor->id
-            ? self::usersWithRole(Role::maintenanceSlugs())->push($ticket->assignee)
+            ? TicketRouter::receivers($ticket)->push($ticket->assignee)
             : collect([$ticket->requester, $ticket->assignee]);
 
         self::send($recipients, $ticket, 'ticket_reply', $actor, 'sent a message on a ticket');
@@ -126,7 +129,7 @@ class FormNotifier
             default => 'confirmed their ticket is resolved',
         };
 
-        self::send(self::usersWithRole(Role::maintenanceSlugs())->push($ticket->assignee), $ticket, $event, $actor, $text);
+        self::send(TicketRouter::receivers($ticket)->push($ticket->assignee), $ticket, $event, $actor, $text);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -172,7 +175,7 @@ class FormNotifier
     private static function summary(Model $form): string
     {
         return match (true) {
-            $form instanceof MaintenanceRequest => "{$form->location} — ".str($form->description)->limit(80),
+            $form instanceof MaintenanceRequest => $form->headline().' — '.str($form->description)->limit(80),
             $form instanceof RepairRequest => "{$form->location} — ".str($form->job_description)->limit(80),
             $form instanceof FacilityRequest => str($form->purpose)->limit(80),
             $form instanceof RequisitionSlip => 'Needed '.$form->date_needed->format('M j, Y'),

@@ -65,12 +65,20 @@ class TicketWorkflow
                     $ticket = MaintenanceRequest::create([
                         'requester_id' => $requester->id,
                         'department_id' => $data['department_id'] ?? $requester->department_id,
+                        // null = the model gives it to the Maintenance Office (FO-08); the generic form sends the routed department
+                        'assigned_department_id' => $data['assigned_department_id'] ?? null,
+                        'assigned_to' => $data['assigned_to'] ?? null,
+                        'assigned_at' => filled($data['assigned_to'] ?? null) ? now() : null,
                         'category_id' => $data['category_id'],
                         'subcategory_id' => $data['subcategory_id'] ?? null,
                         'request_type' => $data['request_type'] ?? null,
                         'maintenance_type' => $data['maintenance_type'] ?? 'repair',
-                        'location' => $data['location'],
+                        'title' => $data['title'] ?? null,
+                        'location' => $data['location'] ?? null,
                         'description' => $data['description'],
+                        'contact_name' => $data['contact_name'] ?? null,
+                        'contact_email' => $data['contact_email'] ?? null,
+                        'contact_phone' => $data['contact_phone'] ?? null,
                         'needed_by' => $data['needed_by'] ?? null,
                         'reason' => $data['reason'] ?? null,
                         'is_confidential' => (bool) ($data['is_confidential'] ?? false),
@@ -82,6 +90,11 @@ class TicketWorkflow
                     ]);
 
                     $ticket->logEvent(RequestStatusLog::ACTION_STATUS, $requester, 'Ticket submitted.', null, TicketStatus::Submitted);
+
+                    // Phase 3 routing: say where the ticket went (written by the system, so it is not a "first response").
+                    if (filled($data['routing_note'] ?? null)) {
+                        $ticket->logEvent(RequestStatusLog::ACTION_NOTE, null, $data['routing_note'], meta: ['routed' => true]);
+                    }
 
                     if ($emergency) {
                         $ticket->logEvent(RequestStatusLog::ACTION_EMERGENCY, $requester, $ticket->emergency_reason,

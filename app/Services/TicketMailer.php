@@ -41,7 +41,7 @@ class TicketMailer
     {
         self::guard(fn () => self::deliver(
             $ticket, 'submitted', 'New ticket submitted', self::name($by).' filed a new ticket.',
-            self::admins(), $by,
+            self::receivers($ticket), $by,
         ));
     }
 
@@ -102,11 +102,11 @@ class TicketMailer
                 ],
                 TicketStatus::Approved => [
                     'approved', 'Ticket approved', "{$who} approved the ticket.",
-                    self::people($ticket->requester)->merge(self::admins()),
+                    self::people($ticket->requester)->merge(self::receivers($ticket)),
                 ],
                 TicketStatus::Disapproved => [
                     'disapproved', 'Ticket disapproved', "{$who} disapproved the ticket.",
-                    self::people($ticket->requester)->merge(self::admins()),
+                    self::people($ticket->requester)->merge(self::receivers($ticket)),
                 ],
                 TicketStatus::WaitingForUser => [
                     'info_requested', 'Information needed',
@@ -134,7 +134,7 @@ class TicketMailer
                 TicketStatus::Escalated => [
                     'escalated', 'Ticket escalated',
                     $by === null ? 'The system escalated the ticket because it passed its target date.' : "{$who} escalated the ticket to the authorizer.",
-                    self::authorizers()->merge(self::admins()),
+                    self::authorizers()->merge(self::receivers($ticket)),
                 ],
                 default => [
                     'status_changed', 'Ticket status changed', "{$who} changed the status to {$to->label()}.", self::people($ticket->requester),
@@ -204,6 +204,7 @@ class TicketMailer
             'status' => $ticket->status->label(),
             // a confidential ticket's text never leaves the system by email
             'details' => $confidential ? [] : array_filter([
+                'Title' => $ticket->title,
                 'Location' => $ticket->location,
                 'Request' => Str::limit((string) $ticket->description, 160),
             ], fn ($v) => filled($v)),
@@ -239,15 +240,16 @@ class TicketMailer
         return collect($users)->filter()->values();
     }
 
-    /** The maintenance staff plus the person the ticket is assigned to. */
+    /** The staff of the RECEIVING department plus the person the ticket is assigned to. */
     private static function staff(MaintenanceRequest $ticket): Collection
     {
-        return self::admins()->push($ticket->assignee);
+        return self::receivers($ticket)->push($ticket->assignee);
     }
 
-    private static function admins(): Collection
+    /** Staff / head of the department that receives the ticket (the Maintenance team for the Maintenance Office). See TicketRouter::receivers(). */
+    private static function receivers(MaintenanceRequest $ticket): Collection
     {
-        return self::withRole(Role::maintenanceSlugs());
+        return TicketRouter::receivers($ticket);
     }
 
     private static function authorizers(): Collection

@@ -33,7 +33,7 @@
                             </a>
                         @endif
 
-                        <a href="{{ route('tickets.show', $r) }}" class="tk-title" style="font-size:20px"><i class="fa-solid fa-location-dot" style="color:var(--blue)"></i> {{ $r->location }}</a>
+                        <a href="{{ route('tickets.show', $r) }}" class="tk-title" style="font-size:20px"><i class="fa-solid fa-location-dot" style="color:var(--blue)"></i> {{ $r->headline() }}</a>
                         <div style="word-break:break-word">{{ $r->description }}</div>
                         <div style="font-weight:700;color:var(--navy);margin-top:4px"><i class="fa-regular fa-user"></i> {{ $r->requester->name }}</div>
                         <div class="tk-sub">{{ $r->department?->name }} · {{ $r->category?->name }}</div>

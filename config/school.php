@@ -66,6 +66,23 @@ return [
         'requester', 'department_head', 'treasurer', 'custodian', 'staff', 'head', 'maintenance_admin', 'finance', 'president',
     ],
 
+    /*
+    | Multi-department Phase 3: routing of tickets filed on the generic form (/tickets/create). CONFIRM WITH CLIENT
+    |
+    |  allow_maintenance_on_generic_form  false: the Maintenance Office is only reached through the FO-08 repair form
+    |                                     (/repairs/create), which keeps its 5-working-days rule, items and categories.
+    |  auto_assign_head                   true: a new ticket goes straight to the department's head (departments.head_user_id)
+    |                                     when that person is active staff / head of it. false (default): the ticket waits in the
+    |                                     department's unassigned queue until someone claims or is given it.
+    |  fallback_to_maintenance            true: when a department has no staff / head account yet, the maintenance team is
+    |                                     alerted so the ticket is not lost.
+    */
+    'routing' => [
+        'allow_maintenance_on_generic_form' => (bool) env('ROUTING_ALLOW_MAINTENANCE_ON_GENERIC_FORM', false),
+        'auto_assign_head' => (bool) env('ROUTING_AUTO_ASSIGN_HEAD', false),
+        'fallback_to_maintenance' => (bool) env('ROUTING_FALLBACK_TO_MAINTENANCE', true),
+    ],
+
     // Phase 16 (Reports): CONFIRM WITH CLIENT
     //   stale_days      a pending ticket with no activity for this many days is listed as "stale"
     //   attention_limit how many rows the "Needs attention" list shows (the total is always shown)

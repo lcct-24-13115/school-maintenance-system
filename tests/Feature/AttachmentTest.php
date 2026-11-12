@@ -373,18 +373,24 @@ class AttachmentTest extends TestCase
             ->assertSessionHasErrors(['category_id', 'location', 'job_description', 'reason', 'needed_by']);
     }
 
-    public function test_the_form_shows_the_new_fields_and_the_alias_url_works(): void
+    public function test_the_form_shows_the_new_fields_and_the_generic_form_has_the_file_picker(): void
     {
         $this->seedBase();
 
-        foreach ([route('repairs.create'), route('tickets.create')] as $url) {
-            $this->actingAs($this->user('requester'))->get($url)->assertOk()
-                ->assertSee('name="files[]"', false)
-                ->assertSee('name="request_type"', false)
-                ->assertSee('Mark as confidential')
-                ->assertSee('Take photo')
-                ->assertDontSee('name="photo"', false);
-        }
+        // FO-08 repair form
+        $this->actingAs($this->user('requester'))->get(route('repairs.create'))->assertOk()
+            ->assertSee('name="files[]"', false)
+            ->assertSee('name="request_type"', false)
+            ->assertSee('Mark as confidential')
+            ->assertSee('Take photo')
+            ->assertDontSee('name="photo"', false);
+
+        // Multi-department Phase 3: /tickets/create is the generic form (no longer an alias of the repair form)
+        $this->actingAs($this->user('requester'))->get(route('tickets.create'))->assertOk()
+            ->assertSee('name="files[]"', false)
+            ->assertSee('Take photo')
+            ->assertDontSee('name="request_type"', false)
+            ->assertDontSee('name="photo"', false);
 
         config(['school.filing_roles' => ['requester', 'department_head']]);
 

@@ -169,7 +169,7 @@
                                     @if ($t->is_confidential)
                                         <span class="badge st-closed" style="font-weight:800"><i class="fa-solid fa-lock"></i> Confidential</span>
                                     @endif
-                                    <div class="hint" style="margin:2px 0 0">{{ $t->category?->name ?? '—' }} · {{ $t->location }}</div>
+                                    <div class="hint" style="margin:2px 0 0">{{ $t->category?->name ?? '—' }} · {{ $t->headline() }}</div>
                                 </td>
                                 <td data-label="Why">
                                     <div class="p6-why">
