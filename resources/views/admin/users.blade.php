@@ -9,6 +9,7 @@
 
 <x-app-layout>
     <link rel="stylesheet" href="{{ asset('css/phase6.css') }}?v={{ @filemtime(public_path('css/phase6.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/register.css') }}?v={{ @filemtime(public_path('css/register.css')) }}">
 
     <x-slot name="header">
         <h2 class="page-title">Users &amp; team</h2>
@@ -76,6 +77,11 @@
                                     <td data-label="Person" style="word-break:break-word">
                                         <b>{{ $p->name }}</b>
                                         <div class="sub" style="font-size:12.5px;color:var(--text-3)">{{ $p->email }}</div>
+                                        @if ($p->requester_type)
+                                            <div class="rt-badge">{{ config("registration.types.{$p->requester_type}.label", $p->requester_type) }}</div>
+                                        @endif
+                                        @if ($p->affiliation)<div class="rt-note"><b>Details:</b> {{ $p->affiliation }}</div>@endif
+                                        @if ($p->reg_purpose)<div class="rt-note"><b>Why:</b> {{ $p->reg_purpose }}</div>@endif
                                     </td>
                                     <td data-label="Department">{{ $p->department?->name ?? '—' }}</td>
                                     <td data-label="Registered" style="white-space:nowrap">{{ $p->created_at?->format('M j, Y g:i A') }}</td>

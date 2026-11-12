@@ -1,14 +1,52 @@
+@php
+    $current = old('requester_type', $defaultType);
+    if (! isset($types[$current])) { $current = $defaultType; }
+    $cur = $types[$current];
+    $domain = trim((string) config('school.registration.email_domain'));
+
+    // What the page script needs to swap the fields when another tile is chosen (same table the server validates with).
+    $emailHelp = fn ($t) => ($t['school_email'] ?? true) && $domain !== ''
+        ? "Use your school email (name@{$domain})."
+        : 'Use an email address you can read. The office will review your request.';
+    $jsRules = collect($types)->map(fn ($t) => [
+        'aff_label' => $t['affiliation']['label'],
+        'aff_ph' => $t['affiliation']['placeholder'],
+        'aff_help' => $t['affiliation']['help'],
+        'aff' => (bool) $t['affiliation']['required'],
+        'purpose_ph' => $t['purpose']['placeholder'],
+        'purpose' => (bool) $t['purpose']['required'],
+        'dept' => (bool) ($t['department'] ?? false),
+        'email_help' => $emailHelp($t),
+    ]);
+@endphp
 <x-guest-layout wide>
+    <link rel="stylesheet" href="{{ asset('css/register.css') }}?v={{ @filemtime(public_path('css/register.css')) }}">
+    <script src="{{ asset('js/register.js') }}?v={{ @filemtime(public_path('js/register.js')) }}" defer></script>
+
     <h1 class="form-title">Create <span>account</span></h1>
     <p class="form-sub">
-        Register as a Requester to file maintenance tickets.
+        Register to file maintenance tickets.
         @if (config('school.registration.require_approval', true))
             A Maintenance Admin must approve your account before you can sign in.
         @endif
     </p>
 
-    <form method="POST" action="{{ route('register') }}">
+    <form method="POST" action="{{ route('register') }}" data-reg-rules="{{ json_encode($jsRules, JSON_UNESCAPED_UNICODE) }}">
         @csrf
+
+        <div class="field">
+            <span class="lbl" id="rt-lbl">I am a</span>
+            <div class="rt-grid" role="radiogroup" aria-labelledby="rt-lbl">
+                @foreach ($types as $key => $t)
+                    <label class="rt-opt">
+                        <input type="radio" name="requester_type" value="{{ $key }}" @checked($current === $key)>
+                        <i class="fa-solid {{ $t['icon'] }}" aria-hidden="true"></i>
+                        <span>{{ $t['label'] }}</span>
+                    </label>
+                @endforeach
+            </div>
+            @error('requester_type')<div class="field-err">{{ $message }}</div>@enderror
+        </div>
 
         <div class="field">
             <label for="name">Full Name</label>
@@ -25,11 +63,12 @@
                 <i class="fa-solid fa-envelope ic"></i>
                 <input id="email" type="email" name="email" value="{{ old('email') }}" required autocomplete="username">
             </div>
+            <div class="hint" data-reg-email-help>{{ $emailHelp($cur) }}</div>
             @error('email')<div class="field-err">{{ $message }}</div>@enderror
         </div>
 
-        <div class="field">
-            <label for="department_id">Department</label>
+        <div class="field" data-reg-field="department" @if (! ($cur['department'] ?? false)) hidden @endif>
+            <label for="department_id">Department <span class="hint" style="display:inline">(optional)</span></label>
             <select id="department_id" name="department_id">
                 <option value="">-- Select department --</option>
                 @foreach ($departments as $department)
@@ -37,6 +76,30 @@
                 @endforeach
             </select>
             @error('department_id')<div class="field-err">{{ $message }}</div>@enderror
+        </div>
+
+        <div class="field" data-reg-field="affiliation">
+            <label for="affiliation">
+                <span data-reg-label>{{ $cur['affiliation']['label'] }}</span>
+                <span class="hint" style="display:inline" data-reg-optional @if ($cur['affiliation']['required']) hidden @endif>(optional)</span>
+            </label>
+            <div class="input-wrap">
+                <i class="fa-solid fa-id-badge ic"></i>
+                <input id="affiliation" type="text" name="affiliation" maxlength="190" value="{{ old('affiliation') }}"
+                       placeholder="{{ $cur['affiliation']['placeholder'] }}" @required($cur['affiliation']['required'])>
+            </div>
+            <div class="hint" data-reg-help>{{ $cur['affiliation']['help'] }}</div>
+            @error('affiliation')<div class="field-err">{{ $message }}</div>@enderror
+        </div>
+
+        <div class="field" data-reg-field="purpose">
+            <label for="purpose">
+                Why do you need an account?
+                <span class="hint" style="display:inline" data-reg-optional @if ($cur['purpose']['required']) hidden @endif>(optional)</span>
+            </label>
+            <textarea id="purpose" name="purpose" rows="3" maxlength="500" style="min-height:84px"
+                      placeholder="{{ $cur['purpose']['placeholder'] }}" @required($cur['purpose']['required'])>{{ old('purpose') }}</textarea>
+            @error('purpose')<div class="field-err">{{ $message }}</div>@enderror
         </div>
 
         <div class="row2">

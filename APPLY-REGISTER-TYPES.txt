@@ -1,0 +1,53 @@
+REGISTRATION "I AM A..." (Student / Faculty / Alumni / ...)
+==========================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before register types"
+  tar -xf "$env:USERPROFILE\Downloads\register-types-patch.zip" -C .
+  php artisan migrate
+  php artisan optimize:clear
+  php artisan test --filter=RegistrationTypeTest
+  php artisan test --filter=RegistrationTest
+  php artisan test --filter=AccountApprovalTest
+
+(Kung ayaw gumana ang tar: Expand-Archive -Path "$env:USERPROFILE\Downloads\register-types-patch.zip" -DestinationPath . -Force)
+
+Para makita: .env -> ALLOW_PUBLIC_REGISTRATION=true, tapos  php artisan config:clear  at buksan ang /register.
+
+MAY MIGRATION: 2026_11_20_000001_add_registration_details_to_users_table.php
+  Dagdag na columns sa users (lahat nullable, kaya walang existing account na maaapektuhan): requester_type, affiliation, reg_purpose.
+
+Bago:
+  config/registration.php            <- LISTAHAN ng types at ng mga tanong ng bawat isa (dito ka mag-edit)
+  database/migrations/2026_11_20_000001_add_registration_details_to_users_table.php
+  public/css/register.css
+  public/js/register.js              <- plain file, walang build step (hindi kailangan ng npm run build)
+  tests/Feature/Auth/RegistrationTypeTest.php
+  APPLY-REGISTER-TYPES.txt
+
+Ino-overwrite (3 lang):
+  app/Http/Controllers/Auth/RegisteredUserController.php
+  resources/views/auth/register.blade.php
+  resources/views/admin/users.blade.php   <- sa "Waiting for approval" panel: lumalabas na ang type, details at dahilan
+
+Paano gumagana:
+  Pumili ng tile -> nagbabago ang label/placeholder/help ng "details" field, kung required ang details at ang dahilan,
+  kung lalabas ang Department, at ang paalala sa email. Pareho ang rules sa server (hindi lang sa browser).
+
+  Type                    School email?   Department   Details (required?)          Dahilan (required?)
+  Student                 oo              oo           Program & year level (hindi)  hindi
+  Faculty / Staff         oo              oo           Department / office (hindi)   hindi
+  Alumnus / Alumna        hindi           hindi        Program & year graduated (OO) OO
+  Parent / Guardian       hindi           hindi        Student's name & program (hindi) hindi
+  External organization   hindi           hindi        Organization / office (OO)    OO
+  Other                   hindi           hindi        Organization / office (hindi) OO
+
+PAALALA / DESISYON NA KAILANGANG I-CONFIRM:
+  - Ang mga type na "hindi school email" ay tumatanggap ng kahit anong email (gmail etc.) at LAGING Pending, kahit
+    REQUIRE_ACCOUNT_APPROVAL=false. Kung gusto mong school email lang ang lahat: palitan ang 'school_email' => false
+    ng true sa config/registration.php.
+  - Ang default na napipiling tile ay Student ('default' sa config).
+  - Para magtanggal ng tile, burahin ang block nito sa config/registration.php; para magdagdag, kopyahin ang isang block
+    at palitan ang key. Pagkatapos: php artisan config:clear
+
+Rollback: git checkout -- .   at   php artisan migrate:rollback --step=1   at burahin ang mga "Bago" na file.
