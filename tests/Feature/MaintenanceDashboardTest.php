@@ -36,6 +36,7 @@ class MaintenanceDashboardTest extends TestCase
             'name' => 'Test '.$slug,
             'password' => Hash::make('password'),
             'role_id' => Role::where('slug', $slug)->firstOrFail()->id,
+            'department_id' => \App\Models\Department::maintenanceId(),   // 4B: scoped roles see their own department's tickets
             'email_verified_at' => now(),
             'is_active' => true,
         ]);

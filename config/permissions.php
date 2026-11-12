@@ -7,7 +7,7 @@
 | Read through User::can_do('capability'). Change a role's powers HERE, not in code.
 |
 | Capabilities:
-|   view_all_tickets   see every non-confidential ticket
+|   view_all_tickets   see every non-confidential ticket (Phase 4B: NOT for department-scoped roles, see below)
 |   view_confidential  see confidential tickets too
 |   flag_emergency     create/set an emergency ticket
 |   clear_emergency    remove an emergency flag
@@ -37,6 +37,9 @@
 |
 | Requesters always see their own tickets, and staff always see tickets assigned to them;
 | that is not a capability. See also school.department_visibility_roles.
+| Phase 4B: staff, head and maintenance_admin (school.department_scoped_roles) see ONLY the tickets whose
+| assigned_department_id = their users.department_id, whatever this matrix says about view_all_tickets.
+| system_admin (school.global_roles) is not limited. See MaintenanceRequest::scopeVisibleTo().
 */
 
 return [
