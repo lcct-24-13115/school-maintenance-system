@@ -187,7 +187,6 @@ class FaqContentTest extends TestCase
         'Following your request',
         'Maintenance staff',
         'Approvers and management',
-        'Preventive maintenance',
         'Reports and records',
         'Troubleshooting',
     ];
@@ -348,7 +347,7 @@ class FaqContentTest extends TestCase
     public function test_the_staff_and_management_entries_are_not_for_everyone(): void
     {
         foreach ($this->rows() as $row) {
-            if (in_array($row[0], ['Maintenance staff', 'Preventive maintenance', 'Reports and records'], true)) {
+            if (in_array($row[0], ['Maintenance staff', 'Reports and records'], true)) {
                 $this->assertFalse($row[2], "must not be public: {$row[3]}");
                 $this->assertNotContains(Faq::ALL, $row[1], "a staff topic entry must name its roles: {$row[3]}");
             }
@@ -500,7 +499,7 @@ class FaqContentTest extends TestCase
             }
         }
 
-        $this->assertGreaterThanOrEqual(6, count($found));
+        $this->assertGreaterThanOrEqual(3, count($found));
 
         foreach ($found as $topic) {
             $this->assertContains($topic, self::TOPICS, "a help link uses a topic that does not exist: {$topic}");
@@ -514,9 +513,6 @@ class FaqContentTest extends TestCase
         $pages = [
             'repairs/create' => ['Sending a repair request', $everyone],
             'tickets/show' => ['Following your request', $everyone],
-            'admin/pm-schedules/index' => ['Preventive maintenance', ['maintenance_admin', 'president']],
-            'maintenance/calendar' => ['Preventive maintenance', ['maintenance_admin', 'president']],
-            'pm-reports/index' => ['Preventive maintenance', ['maintenance_admin', 'president', 'finance']],
             'reports/index' => ['Reports and records', ['maintenance_admin', 'finance', 'president']],
         ];
 

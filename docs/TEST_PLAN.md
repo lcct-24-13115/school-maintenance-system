@@ -31,7 +31,6 @@ Mail: leave `MAIL_MAILER=log` (e-mails are written to `storage/logs/laravel.log`
 
 ```powershell
 php artisan test                         # everything
-php artisan test --filter=Pm             # PM Scheduler only
 php artisan test --filter=Faq            # Help & FAQ only
 php artisan test --filter=PwaTest        # PWA files
 vendor\bin\pint --test                   # code style (omit --test to fix)
@@ -45,7 +44,6 @@ vendor\bin\pint --test                   # code style (omit --test to fix)
 | Accounts | `AccountApprovalTest`, `UserAdminTest`, `AvatarTest`, `ProfileTest`, `Auth/*` |
 | Admin pages | `CategoryAdminTest`, `QrCodeTest`, `AuditLogTest`, `AuditLoggerTest`, `EmailLogTest`, `TicketEmailTest`, `MailTestCommandTest` |
 | Reports, live | `ReportTest`, `ReportOverviewTest`, `LiveRefreshTest` |
-| PM Scheduler | `PmScheduleTest`, `PmScheduleBulkTest`, `PmTicketGeneratorTest`, `PmChecklistTest`, `PmCompletionTest`, `PmNotifyTest`, `MaintenanceCalendarTest`, `PmCalendarPageTest`, `PmReportTest`, `EquipmentHistoryTest`, `PmEndToEndTest` |
 | Help & FAQ | `FaqModelTest`, `FaqPageTest`, `FaqAdminTest`, `FaqContentTest`, `FaqCacheTest`, `FaqFeedbackTest`, `FaqInsightsTest`, `FaqSettingsTest`, `FaqAccessibilityTest`, `HelpLinkTest`, `FaqEndToEndTest` |
 | UI, PWA | `UiPolishTest`, `PwaTest`, `Unit/TicketStatusBadgeTest` |
 
@@ -110,9 +108,9 @@ Known items to check in this run (details in [LIMITATIONS.md](LIMITATIONS.md)):
 |---|---|---|---|
 | 6.1 | R2 opens `/tickets/<R1's id>` | 404 | |
 | 6.2 | R2 opens `/attachments/<R1's file id>` | 404 | |
-| 6.3 | R1 opens `/admin/users`, `/admin/settings`, `/admin/audit-logs`, `/reports`, `/pm-reports`, `/maintenance-calendar`, `/approvals` | 403 each | |
-| 6.4 | FIN opens `/admin/users`, `/admin/pm-schedules`, `/maintenance-calendar` | 403 | |
-| 6.5 | FIN opens `/reports` and `/pm-reports` | Opens | |
+| 6.3 | R1 opens `/admin/users`, `/admin/settings`, `/admin/audit-logs`, `/reports`, `/approvals` | 403 each | |
+| 6.4 | FIN opens `/admin/users`, `/admin/settings` | 403 | |
+| 6.5 | FIN opens `/reports` | Opens | |
 | 6.6 | FIN looks for R1's **confidential** ticket (list and URL) | Not in the list; URL gives 404 | |
 | 6.7 | CUST opens *Tickets* | Only their own (empty state if none) | |
 | 6.8 | Logged out, open `/attachments/<id>` and `/tickets/<id>` | Redirect to login | |
@@ -162,18 +160,9 @@ Known items to check in this run (details in [LIMITATIONS.md](LIMITATIONS.md)):
 | 9.5 | Download CSV with a ticket whose description starts with `=1+1` | The cell starts with `'`; export is in the audit log | |
 | 9.6 | Phone width (360 px) | Cards instead of tables, nothing scrolls sideways | |
 
-## 10. PM Scheduler (ADMIN unless noted)
+## 10. (removed)
 
-| # | Steps | Expected | Result |
-|---|---|---|---|
-| 10.1 | `/admin/pm-schedules` -> new schedule (e.g. every 1 month, lead 3 days, next due in 2 days) | Saved; shows in the list | |
-| 10.2 | *Ticket now* on it; run `php artisan pm:generate` again | One ticket for that due date, never two | |
-| 10.3 | Complete the PM ticket with the *Complete PM* form (date, technician, checklist; note for unchecked items) | Work Completed; `last_completed_date` and next due date updated (fixed vs floating) | |
-| 10.4 | `/maintenance-calendar` | Blue = coming, yellow = open, green = done, red = overdue, grey = cancelled; filters and month link work | |
-| 10.5 | `/pm-reports` + CSV + PDF | On-time rate = on time / (on time + late + overdue); exports audited | |
-| 10.6 | President (if the role exists): schedules and calendar | Visible without change buttons; direct POST gives 403 | |
-| 10.7 | Pause, duplicate, bulk-pause, delete a schedule | Each works and is audited (`pm_schedule_changed`) | |
-| 10.8 | `php artisan pm:notify` | Reminders / overdue / supervisor alerts per `school.pm` | |
+The PM Scheduler, Equipment, PM report and Maintenance Calendar are no longer part of the system.
 
 ## 11. Admin pages
 

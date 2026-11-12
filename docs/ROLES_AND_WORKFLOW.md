@@ -18,8 +18,8 @@ Roles live in the `roles` table (`App\Models\Role`). The slug is what the code u
 | Slug | Label shown | What they are for |
 |---|---|---|
 | `requester` | Student | Files and follows their own tickets. Students are loaded with `php artisan students:import`. |
-| `maintenance_admin` | Head of Maintenance | Runs the whole queue: approves, assigns, works, closes, manages users, categories, settings, PM, QR codes, FAQ, reports. |
-| `finance` | Finance | Read-only view of every non-confidential ticket, reports and CSV export, PM compliance report. |
+| `maintenance_admin` | Head of Maintenance | Runs the whole queue: approves, assigns, works, closes, manages users, categories, settings, QR codes, FAQ, reports. |
+| `finance` | Finance | Read-only view of every non-confidential ticket, reports and CSV export. |
 | `custodian` | Property Custodian | No global powers. Files requests and sees only their own. |
 
 ### Retired roles (seeded only under PHPUnit, still known to the code)
@@ -52,9 +52,6 @@ Change a role's powers **there**, not in the code. Read in code with `$user->can
 | `manage_categories` | yes | no | no | no |
 | `manage_qr_codes` | yes | no | no | no |
 | `manage_faq` | yes | no | no | no |
-| `manage_pm_schedules` (change PM schedules, equipment) | yes | no | no | no |
-| `view_pm_schedules` (look only, incl. calendar) | (included) | no | yes | no |
-| `view_pm_reports` | yes | yes | yes | no |
 | `cancel_own`, `reopen_own` | yes | yes | yes | yes |
 
 \* Only when the `president` role exists (see section 1).
@@ -143,8 +140,6 @@ Submitted -> Pending Authorization -> Approved -> Assigned -> In Progress -> Wor
 |---|---|---|
 | `tickets:autoclose` | hourly | closes unanswered Waiting for User tickets |
 | `tickets:escalate` | hourly | escalates overdue tickets |
-| `pm:generate --trigger=schedule` | 01:00 Asia/Manila | makes the PM tickets that are due |
-| `pm:notify` | 07:00 Asia/Manila | PM new-ticket alerts, reminders, overdue marking, escalation to the supervisor |
 
 The Laravel scheduler must be running: `php artisan schedule:work` while testing, or a 1-minute `schedule:run` (cron on Linux, Task Scheduler on Windows).
 E-mails are queued: keep `php artisan queue:work` running, or set `QUEUE_CONNECTION=sync`.
@@ -164,10 +159,9 @@ E-mails are queued: keep `php artisan queue:work` running, or set `QUEUE_CONNECT
 | Self-registration (`/register`) | **Closed by default** (`ALLOW_PUBLIC_REGISTRATION=false`). When open it always creates a Requester. With `REQUIRE_ACCOUNT_APPROVAL=true` the account waits for a Maintenance Admin (approve / reject with a reason) and cannot sign in before. |
 | E-mail verification | Off by default (`REQUIRE_EMAIL_VERIFICATION=false`). Turn on after `php artisan mail:test` works. |
 
-## 10. Preventive maintenance in one paragraph
+## 10. Preventive maintenance (removed)
 
-A PM schedule makes **one ticket per schedule per due date**, a few days before it is due (`lead_time_days`). The ticket is auto-approved, accepted by the technician, finished with the *Complete PM* form (date, technician, checklist, notes), and then feeds the maintenance calendar, the compliance report and the dashboard cards.
-Full walk-through: [PM_SCHEDULER.md](PM_SCHEDULER.md).
+The PM Scheduler, Equipment, the PM report and the Maintenance Calendar, with their `pm:generate` and `pm:notify` commands, were removed from the system. `database/migrations/2026_11_23_000001_remove_pm_scheduler.php` drops their tables and columns from an existing database.
 
 ## 11. Intentional scope decisions
 

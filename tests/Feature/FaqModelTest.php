@@ -168,7 +168,7 @@ class FaqModelTest extends TestCase
 
     public function test_only_links_to_this_site_become_links(): void
     {
-        $this->assertStringContainsString('<a href="/maintenance-calendar">PM calendar</a>', FaqText::toHtml('Open the [PM calendar](/maintenance-calendar).'));
+        $this->assertStringContainsString('<a href="/tickets">My tickets</a>', FaqText::toHtml('Open [My tickets](/tickets).'));
         $this->assertStringContainsString('<a href="/help?topic=pm&amp;x=1">Help</a>', FaqText::toHtml('[Help](/help?topic=pm&x=1)'));
 
         foreach (['[x](//evil.example.com)', '[x](https://evil.example.com)', '[x](javascript:alert(1))', '[x](/ok" onclick="alert(1))'] as $bad) {

@@ -84,13 +84,13 @@ class StaffHeadRolesTest extends TestCase
         }
 
         // what the Head adds on top of Staff
-        foreach (['view_confidential', 'clear_emergency', 'close', 'escalate', 'view_analytics', 'export_reports', 'view_audit_logs', 'manage_faq', 'manage_pm_schedules'] as $cap) {
+        foreach (['view_confidential', 'clear_emergency', 'close', 'escalate', 'view_analytics', 'export_reports', 'view_audit_logs', 'manage_faq'] as $cap) {
             $this->assertTrue($head->can_do($cap), "head {$cap}");
             $this->assertFalse($staff->can_do($cap), "staff {$cap}");
         }
 
         // what Staff can do
-        foreach (['view_all_tickets', 'work', 'assign', 'request_info', 'add_attachment', 'view_pm_schedules', 'cancel_own', 'reopen_own'] as $cap) {
+        foreach (['view_all_tickets', 'work', 'assign', 'request_info', 'add_attachment', 'cancel_own', 'reopen_own'] as $cap) {
             $this->assertTrue($staff->can_do($cap), "staff {$cap}");
         }
     }

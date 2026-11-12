@@ -1,7 +1,7 @@
 <?php
 
 /*
-| FAQ starter content, part 2 (Phase 4D): Maintenance staff, Approvers and management, Preventive maintenance,
+| FAQ starter content, part 2 (Phase 4D): Maintenance staff, Approvers and management,
 | Reports and records, Troubleshooting. This file replaces the temporary part2.php of 4C.
 | Row = [topic, audience, public?, question, answer, sort_order]. See database/data/faq_starter.php.
 | Audiences are real role slugs (config/permissions.php). Everything describes what the system really does today.
@@ -19,7 +19,7 @@ Your dashboard opens the **maintenance board**. It has three columns: new tasks,
 2. Press **ACCEPT TASK**. The ticket moves to **In Progress**.
 3. When the work is finished, press **MARK COMPLETED**. The ticket moves to **Work Completed**.
 
-You cannot accept a task that is assigned to someone else, or one that has not been authorized yet. A preventive maintenance (PM) task is completed on its own ticket page (see "How do I complete a preventive maintenance (PM) task?").
+You cannot accept a task that is assigned to someone else, or one that has not been authorized yet.
 TXT, 10],
 
     ['Maintenance staff', ['maintenance_admin', 'head', 'staff'], false, 'How do I assign a ticket to a staff member?', <<<'TXT'
@@ -46,18 +46,6 @@ Tickets that are past their target date are also escalated automatically, once a
 Right now the ticket page has no button that sends an **Escalated** ticket back to work. Escalated tickets are handled by the office outside the system.
 TXT, 40],
 
-    ['Maintenance staff', ['maintenance_admin', 'head', 'staff'], false, 'How do I complete a preventive maintenance (PM) task?', <<<'TXT'
-Open the PM ticket that is **In Progress**. In the Preventive Maintenance card:
-
-1. Choose the **Date completed**. It cannot be in the future.
-2. Choose the **Technician** (active maintenance staff).
-3. Tick each line of the **Checklist**. A line you did not tick needs a note that explains why.
-4. Add **Notes** if you want (optional).
-5. Press **Mark PM completed**.
-
-The ticket moves to **Work Completed**, and the result is kept on the ticket.
-TXT, 50],
-
     ['Maintenance staff', ['maintenance_admin', 'head', 'staff'], false, 'Who closes a ticket?', <<<'TXT'
 The person who made the request. When a ticket is **Work Completed**, the requester checks the work and presses **Confirm resolved**, and the ticket becomes **Closed**. If the requester finds the problem is not fixed, they can reopen it within 14 days.
 
@@ -82,59 +70,11 @@ TXT, 20],
 
     ['Approvers and management', ['department_head', 'finance', 'president'], false, 'What can I see and do with my role?', <<<'TXT'
 - **Department head**: you see your own tickets and the non-confidential tickets of your department. You can look, but you cannot add notes or send replies on other people's tickets.
-- **Finance**: you see all tickets that are not confidential. You can open **Reports**, download the PDF, and open the **PM report**. You do not see PM schedules or the PM calendar.
-- **President**: you see all tickets, including confidential ones. You can flag an emergency, open **Reports**, the **Audit log**, the **PM report**, and look at the **PM schedules** and the **PM calendar** (look only, no changes).
+- **Finance**: you see all tickets that are not confidential. You can open **Reports** and download the PDF.
+- **President**: you see all tickets, including confidential ones. You can flag an emergency, and open **Reports** and the **Audit log**.
 
 The office may change what a role can do. If you need something you cannot see, ask the maintenance office.
 TXT, 30],
-
-    // ------------------------------------------------------------------ Preventive maintenance
-
-    ['Preventive maintenance', ['maintenance_admin', 'head', 'staff', 'president'], false, 'How does preventive maintenance (PM) work?', <<<'TXT'
-A **PM schedule** repeats a job that must be done again and again, for example cleaning the aircon every quarter.
-
-- Every day at 1:00 AM (Manila time) the system looks at the schedules. A few days before a job is due, it makes a ticket by itself. How many days before is set in the schedule ("lead time").
-- The ticket looks like "[PM] Aircon Cleaning - Q4 2026". It is already **Approved**, and already **Assigned** when the schedule has a person.
-- If the system missed some days, it makes only one ticket, not many.
-- Press **Ticket now** on a schedule to make the ticket right away.
-- Reminders go out 3 days before the due date. A late job is marked overdue, and the President is alerted when it is 2 days late.
-
-The President can look at schedules but only the Maintenance Admin can change them.
-TXT, 10],
-
-    ['Preventive maintenance', ['maintenance_admin', 'head'], false, 'How do I make a PM schedule?', <<<'TXT'
-1. Choose **PM schedules** in the menu, then **New schedule**.
-2. Fill in the **Title** and the **Facility**. Add the **Equipment** if the job is about one machine (optional).
-3. In **Repeats**, say how often: daily, weekly, monthly, quarterly, yearly, or every N days.
-4. Set the **Start date** (the first due date) and, if it ends, the **End date**.
-5. Set **Make the ticket this many days before the due date**, the **Ticket priority**, and who it is **Assigned to**.
-6. Choose **Next due date is based on**: **Fixed** (the dates always follow the original calendar) or **Floating** (the next date is counted from the day the work was really completed).
-7. Write the **Checklist**, one task per line (optional). It is copied into every ticket.
-8. Save.
-TXT, 20],
-
-    ['Preventive maintenance', ['maintenance_admin', 'head', 'staff', 'president'], false, 'What do the colours of the PM calendar mean?', <<<'TXT'
-Open **PM calendar** in the menu.
-
-- **Blue**: upcoming.
-- **Yellow**: open or in progress.
-- **Green**: completed.
-- **Red**: overdue.
-- **Grey**: cancelled or disapproved.
-
-You can filter by month, facility, equipment, category, who it is assigned to, and status.
-TXT, 30],
-
-    ['Preventive maintenance', ['maintenance_admin', 'head', 'president', 'finance'], false, 'How do I read the PM report?', <<<'TXT'
-Open **PM report** in the menu.
-
-- **On time**: done on or before the due date.
-- **Late**: done after the due date.
-- **Overdue**: still open and past the due date.
-- **On-time rate** = on time divided by (on time + late + overdue). Jobs that are not due yet, and cancelled ones, are left out.
-
-Use **Download CSV** for all rows, or the PDF (the latest 300 rows). Every download is recorded in the audit log.
-TXT, 40],
 
     // ------------------------------------------------------------------ Reports and records
 

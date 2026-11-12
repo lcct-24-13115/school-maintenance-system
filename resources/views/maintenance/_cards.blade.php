@@ -49,8 +49,6 @@
                                     @csrf
                                     <button class="btn btn-primary" style="width:100%;height:58px;font-size:18px;letter-spacing:.04em">ACCEPT TASK</button>
                                 </form>
-                            @elseif ($r->status === TicketStatus::InProgress && $r->isPmGenerated())
-                                <a href="{{ route('tickets.show', $r) }}#pm-complete" class="btn btn-primary" style="width:100%;height:58px;font-size:18px;letter-spacing:.04em;background:var(--green);border-color:var(--green);display:flex;align-items:center;justify-content:center">COMPLETE PM CHECKLIST</a>
                             @elseif ($r->status === TicketStatus::InProgress)
                                 <form method="POST" action="{{ route('maintenance.complete', $r) }}" style="width:100%">
                                     @csrf

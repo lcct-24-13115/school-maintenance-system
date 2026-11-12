@@ -106,10 +106,6 @@ class HelpLinkTest extends TestCase
         // "Reports and records" is written for the maintenance admin, finance and the president only.
         $this->assertSame('', $this->rendered('<x-help-link topic="Reports and records" />', $this->user('requester')));
         $this->assertNotSame('', $this->rendered('<x-help-link topic="Reports and records" />', $this->user('finance')));
-
-        // The PM report is read by finance too, so finance gets the PM topic, a requester does not.
-        $this->assertNotSame('', $this->rendered('<x-help-link topic="Preventive maintenance" />', $this->user('finance')));
-        $this->assertSame('', $this->rendered('<x-help-link topic="Preventive maintenance" />', $this->user('requester')));
     }
 
     public function test_an_unknown_topic_gives_no_link(): void
@@ -148,28 +144,6 @@ class HelpLinkTest extends TestCase
         }
     }
 
-    public function test_the_pm_schedules_and_the_pm_calendar_have_the_link_for_the_roles_that_open_them(): void
-    {
-        foreach (['maintenance', 'president'] as $who) {
-            foreach (['admin.pm-schedules.index', 'maintenance-calendar.index'] as $route) {
-                $this->actingAs($this->user($who))
-                    ->get(route($route))
-                    ->assertOk()
-                    ->assertSee($this->link('Preventive maintenance'), false);
-            }
-        }
-    }
-
-    public function test_the_pm_report_has_the_link_for_every_role_that_opens_it(): void
-    {
-        foreach (['maintenance', 'president', 'finance'] as $who) {
-            $this->actingAs($this->user($who))
-                ->get(route('pm-reports.index'))
-                ->assertOk()
-                ->assertSee($this->link('Preventive maintenance'), false);
-        }
-    }
-
     public function test_the_reports_page_has_the_link_for_every_role_that_opens_it(): void
     {
         foreach (['maintenance', 'president', 'finance'] as $who) {
@@ -184,7 +158,7 @@ class HelpLinkTest extends TestCase
     {
         $requester = $this->user('requester');
 
-        foreach (['reports.index', 'pm-reports.index', 'admin.pm-schedules.index', 'maintenance-calendar.index'] as $route) {
+        foreach (['reports.index'] as $route) {
             $this->actingAs($requester)->get(route($route))->assertForbidden();
         }
     }

@@ -1,0 +1,59 @@
+ALISIN ANG PM SCHEDULER, EQUIPMENT, PM REPORTS, MAINTENANCE CALENDAR (at ang mga command nila)
+=============================================================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+
+  cd C:\laragon\www\school-maintenance-system
+  git status                                    (tingnan kung ano ang naka-pending; i-commit o i-restore muna ang hindi mo gustong isama)
+  git add -A ; git commit -m "Before removing PM modules"
+  git apply --check "$env:USERPROFILE\Downloads\remove-pm-modules.patch"
+  git apply "$env:USERPROFILE\Downloads\remove-pm-modules.patch"
+  php artisan migrate                           <- TINATANGGAL NITO ANG PM TABLES SA DATABASE (basahin ang BABALA sa ibaba)
+  php artisan faq:seed                          (ia-update ang FAQ na nagbabanggit pa ng PM report / calendar)
+  composer dump-autoload
+  php artisan optimize:clear
+  php artisan route:list --name=pm              (dapat WALANG lumabas)
+  php artisan list pm                           (dapat WALANG pm:generate at pm:notify)
+  php artisan test
+
+  Kung may error ang "git apply --check": HUWAG ituloy. Ipakita sa akin ang error.
+
+BABALA: ANG "php artisan migrate" AY NAGDE-DELETE NG DATA
+  Dina-drop ng bagong migration (2026_11_23_000001_remove_pm_scheduler.php) ang mga table na pm_schedules, pm_checklist_items,
+  pm_ticket_checklist_items, pm_job_runs at equipment, ang mga pm_* column sa requests, at ang facilities.location.
+  HINDI na ito maibabalik ng rollback. Kung may data kang gusto pang itago, mag-backup ng database MUNA
+  (hal. Export sa HeidiSQL o phpMyAdmin ng Laragon) bago mag-"migrate".
+  Ayaw mong i-drop ang data? Burahin ang file na database\migrations\2026_11_23_000001_remove_pm_scheduler.php bago mag-"migrate".
+  Mananatili lang sa database ang mga lumang table at hindi na gagamitin ng app.
+  Ang mga dating PM ticket ay mananatili bilang NORMAL na ticket (nawawala lang ang PM badge at checklist nila).
+
+ANG TINANGGAL
+  Mga page / route:   /admin/pm-schedules, /admin/equipment (at history), /pm-reports (CSV, PDF), /maintenance-calendar,
+                      ang PM complete form sa ticket page, ang "COMPLETE PM CHECKLIST" button sa board
+  Mga command:        pm:generate at pm:notify (at ang schedule nila sa routes/console.php)
+  Menu:               PM report, PM calendar, PM schedules, Equipment
+  Dashboard:          ang PM cards (PM due, on-time rate) ng Finance at President
+  Permissions:        manage_pm_schedules, view_pm_schedules, view_pm_reports
+  Iba:                PM badge sa ticket, school.pm config, ang PM audit actions (pm_schedule_changed, equipment_changed),
+                      ang PM seeder, ang Preventive maintenance na FAQ, ang PM docs (docs/PM_SCHEDULER.md)
+  Mga test:           lahat ng Pm*Test, EquipmentHistoryTest, MaintenanceCalendarTest; inayos ang FaqContentTest, FaqModelTest,
+                      HelpLinkTest at StaffHeadRolesTest
+
+HINDI GINALAW
+  - Ang "Equipment" na request type sa repair form at ang "Use of Facilities & Equipment" form (magkaibang bagay ito).
+  - Ang Facility (checkbox ng facilities form) at ang mga lumang APPLY-*.txt at docs/PHASE_4A_FACTSHEET.md at docs/OPEN_QUESTIONS.md
+    (kasaysayan lang ang mga ito).
+  - Ang lumang Audit log rows ng PM ay mananatili sa database.
+
+ANG MGA LUMANG PM MIGRATION
+  Binura ko ang anim na PM migration file. Ang bagong database ay hindi na gagawa ng PM tables, at ang existing database ay
+  dina-drop ng bagong migration. Ang bagong migration ay walang ginagawa kapag wala nang PM table (safe i-run ulit).
+
+ROLLBACK (code lang, hindi ang database)
+  git apply -R "$env:USERPROFILE\Downloads\remove-pm-modules.patch"
+  (Ang data na na-drop ng migrate ay mababalik lang sa backup.)
+
+I-PUSH SA GITHUB (kung okay na ang test)
+  git add -A
+  git commit -m "Remove PM Scheduler, Equipment, PM reports and Maintenance Calendar"
+  git push

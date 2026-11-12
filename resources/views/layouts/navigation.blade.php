@@ -45,19 +45,13 @@
             <i class="fa-solid fa-circle-question"></i> Help &amp; FAQ
         </a>
 
-        @if ($u->can_do('view_analytics') || $u->canViewPmReports() || $u->can_do('manage_settings') || $u->can_do('manage_categories') || $u->can_do('manage_users') || $u->can_do('manage_qr_codes') || $u->can_do('view_audit_logs') || $u->can_do('view_email_log') || $u->canManageFaq())
+        @if ($u->can_do('view_analytics') || $u->can_do('manage_settings') || $u->can_do('manage_categories') || $u->can_do('manage_users') || $u->can_do('manage_qr_codes') || $u->can_do('view_audit_logs') || $u->can_do('view_email_log') || $u->canManageFaq())
             <div class="nav-sec">Administration</div>
         @endif
 
         @if ($u->can_do('view_analytics'))
             <a href="{{ route('reports.index') }}" class="{{ request()->routeIs('reports.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-chart-column"></i> Reports
-            </a>
-        @endif
-
-        @if ($u->canViewPmReports())
-            <a href="{{ route('pm-reports.index') }}" class="{{ request()->routeIs('pm-reports.*') ? 'active' : '' }}">
-                <i class="fa-solid fa-clipboard-check"></i> PM report
             </a>
         @endif
 
@@ -86,18 +80,6 @@
         @if ($u->canManageFaq())
             <a href="{{ route('admin.faq.index') }}" class="{{ request()->routeIs('admin.faq.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-pen-to-square"></i> FAQ manager
-            </a>
-        @endif
-
-        @if ($u->canViewPm())
-            <a href="{{ route('maintenance-calendar.index') }}" class="{{ request()->routeIs('maintenance-calendar.*') ? 'active' : '' }}">
-                <i class="fa-solid fa-calendar-days"></i> PM calendar
-            </a>
-            <a href="{{ route('admin.pm-schedules.index') }}" class="{{ request()->routeIs('admin.pm-schedules.*') ? 'active' : '' }}">
-                <i class="fa-solid fa-calendar-check"></i> PM schedules
-            </a>
-            <a href="{{ route('admin.equipment.index') }}" class="{{ request()->routeIs('admin.equipment.*') ? 'active' : '' }}">
-                <i class="fa-solid fa-screwdriver-wrench"></i> Equipment
             </a>
         @endif
 

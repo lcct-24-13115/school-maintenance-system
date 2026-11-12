@@ -11,8 +11,6 @@
 
         return match (true) {
             str_contains($l, 'emergency'), str_contains($l, 'overdue') => ['fa-triangle-exclamation', 'var(--red)'],
-            str_contains($l, 'on-time') => ['fa-circle-check', 'var(--green)'],
-            str_contains($l, 'pm due') => ['fa-calendar-check', 'var(--deep)'],
             str_contains($l, 'pending'), str_contains($l, 'waiting'), str_contains($l, 'new'), str_contains($l, 'review') => ['fa-hourglass-half', 'var(--gold)'],
             str_contains($l, 'progress') => ['fa-screwdriver-wrench', 'var(--deep)'],
             str_contains($l, 'closed'), str_contains($l, 'complete'), str_contains($l, 'approved') => ['fa-circle-check', 'var(--green)'],

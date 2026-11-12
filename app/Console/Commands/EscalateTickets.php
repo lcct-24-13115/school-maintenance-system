@@ -32,7 +32,6 @@ class EscalateTickets extends Command
 
         MaintenanceRequest::query()
             ->whereNotNull('due_at')
-            ->whereNull('pm_due_date')   // PM tickets are handled by pm:notify: their status must stay workable
             ->where('due_at', '<', now())
             ->whereIn('status', TicketWorkflow::escalatableValues())
             ->chunkById(100, function ($tickets) use ($dry, &$count) {
