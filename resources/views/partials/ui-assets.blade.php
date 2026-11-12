@@ -6,3 +6,4 @@
 <link rel="stylesheet" href="{{ asset('css/phase6.css') }}?v={{ @filemtime(public_path('css/phase6.css')) }}">
 <script src="{{ asset('js/pwtoggle.js') }}?v={{ @filemtime(public_path('js/pwtoggle.js')) }}" defer></script>
 <script src="{{ asset('js/cselect.js') }}?v={{ @filemtime(public_path('js/cselect.js')) }}" defer></script>
+@include('partials.pwa')

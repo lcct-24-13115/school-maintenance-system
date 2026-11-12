@@ -1,0 +1,35 @@
+{
+  "name": "LCCT Maintenance Ticketing System",
+  "short_name": "LCCT Maintenance",
+  "description": "File and follow up maintenance tickets at La Consolacion College Tanauan.",
+  "lang": "en",
+  "dir": "ltr",
+  "id": "./",
+  "start_url": "./dashboard",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F5F9FD",
+  "theme_color": "#1B3355",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "images/pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "images/pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "images/pwa/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "images/pwa/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "New repair request",
+      "short_name": "New request",
+      "url": "./repairs/create",
+      "icons": [{ "src": "images/pwa/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Help & FAQ",
+      "short_name": "Help",
+      "url": "./help",
+      "icons": [{ "src": "images/pwa/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

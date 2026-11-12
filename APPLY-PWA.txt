@@ -1,0 +1,52 @@
+PWA SUPPORT (manifest, service worker, offline page, app icons, install button)
+================================================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+  git add -A ; git commit -m "Before PWA"
+  tar -xf "$env:USERPROFILE\Downloads\pwa-patch.zip" -C .
+  php artisan view:clear
+  php artisan test --filter=PwaTest
+  php artisan test --filter=UiPolishTest
+
+(Kung ayaw gumana ang tar: Expand-Archive -Path "$env:USERPROFILE\Downloads\pwa-patch.zip" -DestinationPath . -Force)
+
+WALANG migration, WALANG npm run build. Lahat ay plain file sa public/.
+
+Bago:
+  public/manifest.webmanifest      <- pangalan, kulay, icons, shortcuts ("New repair request", "Help & FAQ")
+  public/sw.js                     <- service worker (dapat nasa public/ para sakop ang buong app)
+  public/offline.html              <- lalabas kapag walang internet (nakalagay na sa loob ang logo)
+  public/js/pwa.js                 <- nagre-register ng sw.js + "Install app" button
+  public/images/pwa/               <- icon-192, icon-512, maskable-192, maskable-512
+  resources/views/partials/pwa.blade.php   <- manifest/theme/Apple tags
+  tests/Feature/PwaTest.php
+  APPLY-PWA.txt
+
+Ino-overwrite (1 lang):
+  resources/views/partials/ui-assets.blade.php   <- dagdag na isang linya sa dulo: @include('partials.pwa')
+                                                    (ang ui-assets ay nasa guest at app layout, kaya lahat ng page ay may PWA)
+
+Ano ang naka-cache at ano ang hindi:
+  Naka-cache: css/, js/, images/, build/ (stale-while-revalidate), Google Fonts at Font Awesome, offline page.
+  HINDI naka-cache: lahat ng page (login, dashboard, tickets), attachments, avatars, QR codes, live-refresh, POST.
+  Kaya laging sariwa ang data at walang private na nasasave sa phone. Kapag offline, offline page lang ang lalabas.
+
+KAILANGAN: HTTPS o localhost (patakaran ng browser).
+  - Local: gamitin ang  php artisan serve  (http://127.0.0.1:8000) o i-enable ang SSL sa Laragon.
+    Ang http://school-maintenance-system.test na walang SSL ay HINDI magpaparehistro ng service worker.
+  - Production: siguraduhing HTTPS ang site, at ang public/ ang web root.
+
+Paano i-install:
+  Android / Chrome / Edge: "Install app" button sa kanang-ibaba ng page (o browser menu > Install app).
+  iPhone / iPad (Safari): Share > Add to Home Screen. (Walang install button ang iOS, normal iyon.)
+
+Kada bagong release: palitan ang CACHE_VERSION sa public/sw.js (hal. 'v1-pwa2') para linisin ng mga device ang lumang cache.
+
+Subukan:
+  Chrome DevTools > Application > Manifest (dapat walang error, kita ang icons) at Service Workers (status: activated).
+  Para i-test ang offline: DevTools > Network > Offline, tapos mag-refresh -> lalabas ang "You're offline".
+  Lighthouse > Progressive Web App (kung wala sa listahan, gamitin ang Application tab).
+
+Rollback: git checkout -- .   at burahin ang mga "Bago" na file. Para tanggalin ang naka-install na worker sa mga device:
+  palitan ang laman ng public/sw.js ng:  self.addEventListener('install',()=>self.skipWaiting());
+  self.addEventListener('activate',e=>e.waitUntil(self.registration.unregister()));
