@@ -1,0 +1,1065 @@
+diff --git a/app/Http/Controllers/ReportController.php b/app/Http/Controllers/ReportController.php
+index d9f5b00..8674310 100644
+--- a/app/Http/Controllers/ReportController.php
++++ b/app/Http/Controllers/ReportController.php
+@@ -39,9 +39,9 @@ public function index(Request $request): View
+             'metrics' => $metrics,
+             'attention' => $attention,
+             'canAssign' => $canAssign,
+-            // only loaded when a quick-assign form can be shown
++            // only loaded when a quick-assign form can be shown (Phase 4C: scoped to the actor)
+             'staff' => $canAssign && collect($attention['items'])->contains('unassigned', true)
+-                ? TicketActions::assignableStaff()
++                ? TicketActions::assignableStaffFor(null, $request->user())
+                 : collect(),
+             'charts' => [
+                 'status' => $this->series($metrics['by_status']) + ['keys' => array_column($metrics['by_status'], 'key')],
+diff --git a/app/Http/Controllers/TicketActionController.php b/app/Http/Controllers/TicketActionController.php
+index 2d23e2c..a5ac583 100644
+--- a/app/Http/Controllers/TicketActionController.php
++++ b/app/Http/Controllers/TicketActionController.php
+@@ -59,12 +59,18 @@ public function assign(Request $request, MaintenanceRequest $ticket): RedirectRe
+     {
+         $isReassignment = $ticket->assigned_to !== null;
+ 
++        // Phase 4C: a cross-department assignment (assignee outside the ticket's department) also needs a reason,
++        // even when it is the first assignment. The workflow checks again, so a direct call cannot skip it.
++        $isCrossDepartment = $this->isCrossDepartment($ticket, $request->input('assignee_id'));
++
+         return $this->act($request, $ticket, 'assign', 'assign', [
+             'assignee_id' => ['required', 'integer', Rule::exists('users', 'id')],
+-            'assign_note' => [Rule::requiredIf($isReassignment), 'nullable', 'string', 'max:500'],
++            'assign_note' => [Rule::requiredIf($isReassignment || $isCrossDepartment), 'nullable', 'string', 'max:500'],
+         ], [
+             'assignee_id.required' => 'Choose a staff member.',
+-            'assign_note.required' => 'A reassignment needs a note explaining why.',
++            'assign_note.required' => $isCrossDepartment && ! $isReassignment
++                ? 'A cross-department transfer needs a reason explaining why.'
++                : 'A reassignment needs a note explaining why.',
+         ],
+             fn (array $data) => TicketWorkflow::assign(
+                 $ticket, User::findOrFail($data['assignee_id']), $request->user(), $data['assign_note'] ?? null
+@@ -72,6 +78,18 @@ public function assign(Request $request, MaintenanceRequest $ticket): RedirectRe
+             $isReassignment ? 'Reassigned.' : 'Assigned.');
+     }
+ 
++    /** Phase 4C: is the chosen assignee outside the ticket's assigned department? (No department is hardcoded.) */
++    private function isCrossDepartment(MaintenanceRequest $ticket, mixed $assigneeId): bool
++    {
++        if ($ticket->assigned_department_id === null || ! is_numeric($assigneeId)) {
++            return false;
++        }
++
++        $assignee = User::query()->find($assigneeId);
++
++        return $assignee !== null && TicketWorkflow::isCrossDepartmentAssignment($ticket, $assignee);
++    }
++
+     /** Staff rule: take an unassigned ticket (work starts later with [ACCEPT TASK]). */
+     public function claim(Request $request, MaintenanceRequest $ticket): RedirectResponse
+     {
+diff --git a/app/Http/Controllers/TicketController.php b/app/Http/Controllers/TicketController.php
+index 946fcce..b2439ae 100644
+--- a/app/Http/Controllers/TicketController.php
++++ b/app/Http/Controllers/TicketController.php
+@@ -274,9 +274,9 @@ public function show(MaintenanceRequest $ticket): View
+         return view('tickets.show', [
+             'ticket' => $ticket,
+             'actions' => $actions,
+-            // only loaded when the Assign / Reassign / Transfer form will be shown
++            // only loaded when the Assign / Reassign / Transfer form will be shown (Phase 4C: scoped to the actor)
+             'staff' => array_intersect([TicketActions::ASSIGN, TicketActions::REASSIGN, TicketActions::TRANSFER], $actions) !== []
+-                ? TicketActions::assignableStaff()
++                ? TicketActions::assignableStaffFor($ticket, request()->user())
+                 : collect(),
+         ]);
+     }
+diff --git a/app/Models/Role.php b/app/Models/Role.php
+index 7481c13..9f8ff06 100644
+--- a/app/Models/Role.php
++++ b/app/Models/Role.php
+@@ -74,6 +74,25 @@ public static function globalSlugs(): array
+         return array_values((array) config('school.global_roles', [self::SYSTEM_ADMIN]));
+     }
+ 
++    /**
++     * Roles that may assign a ticket to staff outside the ticket's department (Phase 4C).
++     * Derived from config/permissions.php (cross_department_transfer), never hardcoded here.
++     *
++     * @return list<string>
++     */
++    public static function crossDepartmentSlugs(): array
++    {
++        $slugs = [];
++
++        foreach ((array) config('permissions', []) as $slug => $capabilities) {
++            if (in_array('cross_department_transfer', (array) $capabilities, true)) {
++                $slugs[] = $slug;
++            }
++        }
++
++        return $slugs;
++    }
++
+     public function users(): HasMany
+     {
+         return $this->hasMany(User::class);
+diff --git a/app/Models/User.php b/app/Models/User.php
+index 7ba05a9..afa450e 100644
+--- a/app/Models/User.php
++++ b/app/Models/User.php
+@@ -165,6 +165,16 @@ public function scopedDepartmentId(): ?int
+         return $this->isDepartmentScoped() && $this->department_id !== null ? (int) $this->department_id : null;
+     }
+ 
++    /**
++     * Phase 4C: may this user assign a ticket to staff OUTSIDE the ticket's assigned_department_id?
++     * Only roles with the cross_department_transfer capability (Head, Maintenance Admin, System Administrator).
++     * A reason (assign_note) is still required for the cross-department assignment itself.
++     */
++    public function canTransferCrossDepartment(): bool
++    {
++        return $this->can_do('cross_department_transfer');
++    }
++
+     /** Department-level visibility (e.g. Department Head). Configurable: school.department_visibility_roles. */
+     public function seesOwnDepartment(): bool
+     {
+diff --git a/app/Policies/TicketPolicy.php b/app/Policies/TicketPolicy.php
+index 85ea212..931d145 100644
+--- a/app/Policies/TicketPolicy.php
++++ b/app/Policies/TicketPolicy.php
+@@ -70,6 +70,8 @@ public function sendForAuthorization(User $user, MaintenanceRequest $ticket): bo
+      * Add a note to the history: the requester, the assignee, and anyone with a working role on tickets
+      * (authorizers, maintenance admin, anyone who can assign/work/close/flag). Dept. heads, treasurer,
+      * custodian and finance stay view-only. CONFIRM WITH CLIENT.
++     * Phase 4C: department scoping comes from visibility (takesPart checks isVisibleTo first), so Finance
++     * staff cannot note a Registrar ticket (404 via the binder, false here).
+      */
+     public function addNote(User $user, MaintenanceRequest $ticket): bool
+     {
+@@ -81,6 +83,7 @@ public function addNote(User $user, MaintenanceRequest $ticket): bool
+      * assignee and the working roles. Everyone who may SEE the ticket may READ the conversation (it is part of
+      * the ticket page), so a view-only role reads it but gets no reply form. The status rule (a finished
+      * ticket takes no more replies) is in TicketWorkflow::addReply().
++     * Phase 4C: same department scoping as addNote (via visibility).
+      */
+     public function reply(User $user, MaintenanceRequest $ticket): bool
+     {
+@@ -141,14 +144,20 @@ public function respondToInfo(User $user, MaintenanceRequest $ticket): bool
+         return $this->ownTicket($user, $ticket);
+     }
+ 
++    /**
++     * Phase 4C: assign / reassign. The Head (and Maintenance Admin / System Administrator) may assign anyone
++     * in the department; a staff-only member may only act on a ticket that is assigned to them (they transfer
++     * it). Taking an unassigned ticket is the board's [ACCEPT TASK] / claim below.
++     * The TARGET's department and the cross-department reason are not known here (this ability only sees the
++     * ticket), so they are enforced in TicketWorkflow::assign() with a clear message. Visibility already
++     * limits a scoped actor to their own department's tickets (or their own / assigned ones).
++     */
+     public function assign(User $user, MaintenanceRequest $ticket): bool
+     {
+         if (! $this->can($user, $ticket, 'assign')) {
+             return false;
+         }
+ 
+-        // The Head may act on any ticket. A staff-only member may only act on a ticket that is assigned to them
+-        // (they transfer it). Taking an unassigned ticket is the board's [ACCEPT TASK].
+         return ! $user->isStaffOnly()
+             || ($ticket->assigned_to !== null && (int) $ticket->assigned_to === (int) $user->id);
+     }
+@@ -157,15 +166,23 @@ public function assign(User $user, MaintenanceRequest $ticket): bool
+      * Staff rule: a Maintenance Staff member may CLAIM an unassigned ticket (take it for themselves).
+      * The Head and the Maintenance Admin do not claim: they assign (assign above). "Is it really unassigned?"
+      * and "is it Approved?" are state rules, checked in TicketWorkflow::claim() with a clear message.
++     * Phase 4C: claim only inside the staff member's own department. Visibility already hides other
++     * departments' tickets, but a staff member who FILED a ticket in another department could still see it
++     * as requester, so the department check is repeated here (and again in the workflow).
+      */
+     public function claim(User $user, MaintenanceRequest $ticket): bool
+     {
+-        return $user->isStaffOnly() && $this->can($user, $ticket, 'work');
++        return $user->isStaffOnly()
++            && $this->can($user, $ticket, 'work')
++            && $this->inOwnDepartment($user, $ticket);
+     }
+ 
+     /**
+      * Staff rule: a Maintenance Staff member may TRANSFER their OWN ticket to a colleague, with a reason.
+      * "Is it really yours?", the reason and the target are checked in TicketWorkflow::transfer().
++     * Phase 4C: the target must be in the transferring staff member's own department (checked in the
++     * workflow, which knows the target). A cross-department assignee may still transfer to a colleague in
++     * their own department, so no ticket-department check is done here.
+      */
+     public function transfer(User $user, MaintenanceRequest $ticket): bool
+     {
+@@ -239,4 +256,19 @@ private function can(User $user, MaintenanceRequest $ticket, string $capability)
+     {
+         return $user->can_do($capability) && $ticket->isVisibleTo($user);
+     }
++
++    /**
++     * Phase 4C: is the ticket in the user's own (scoped) department? Global roles have no scope, so they
++     * pass. A ticket with no assigned department (legacy rows) is not blocked here; the workflow decides.
++     * No department name or id is hardcoded: both sides come from the user's row and the ticket.
++     */
++    private function inOwnDepartment(User $user, MaintenanceRequest $ticket): bool
++    {
++        if (! $user->isDepartmentScoped() || $ticket->assigned_department_id === null) {
++            return true;
++        }
++
++        return $user->scopedDepartmentId() !== null
++            && (int) $ticket->assigned_department_id === (int) $user->scopedDepartmentId();
++    }
+ }
+diff --git a/app/Services/TicketActions.php b/app/Services/TicketActions.php
+index 4cd7b63..0b29c77 100644
+--- a/app/Services/TicketActions.php
++++ b/app/Services/TicketActions.php
+@@ -156,4 +156,40 @@ public static function assignableStaff(): Collection
+             ->orderBy('name')
+             ->get();
+     }
++
++    /**
++     * Phase 4C: the Assign / Reassign / Transfer dropdown for THIS actor on THIS ticket.
++     *  - Department Staff (staff-only): only colleagues in their own department (they cannot transfer
++     *    cross-department, so other departments are not offered).
++     *  - Head / Maintenance Admin / System Administrator (cross_department_transfer): everyone, so a
++     *    cross-department transfer can be picked; the workflow still requires a reason for it.
++     *  - No actor (or a global actor): everyone (the old behaviour).
++     * No department is hardcoded: the filter uses the actor's users.department_id.
++     *
++     * @return Collection<int, User>
++     */
++    public static function assignableStaffFor(?MaintenanceRequest $ticket, ?User $actor = null): Collection
++    {
++        if ($actor === null || $actor->isGlobalRole() || $actor->canTransferCrossDepartment()) {
++            return self::assignableStaff();
++        }
++
++        if ($actor->isStaffOnly()) {
++            $departmentId = $actor->scopedDepartmentId();
++
++            if ($departmentId === null) {
++                return collect();
++            }
++
++            return User::query()
++                ->where('is_active', true)
++                ->where('department_id', $departmentId)
++                ->whereHas('role', fn ($q) => $q->whereIn('slug', Role::maintenanceSlugs()))
++                ->withCount(['assignedRequests as open_tickets_count' => fn ($q) => $q->pending()])
++                ->orderBy('name')
++                ->get();
++        }
++
++        return self::assignableStaff();
++    }
+ }
+diff --git a/app/Services/TicketWorkflow.php b/app/Services/TicketWorkflow.php
+index e5398a9..3f3408d 100644
+--- a/app/Services/TicketWorkflow.php
++++ b/app/Services/TicketWorkflow.php
+@@ -266,9 +266,33 @@ public static function assignableStatuses(): array
+         return [TicketStatus::Approved, TicketStatus::Assigned, TicketStatus::InProgress, TicketStatus::Reopened];
+     }
+ 
++    /**
++     * Is assigning $ticket to $assignee a cross-department transfer (Phase 4C)?
++     * Yes when the ticket has an assigned department and the assignee is not in it (including no department).
++     * A ticket with no assigned department (legacy rows) is never cross-department.
++     */
++    public static function isCrossDepartmentAssignment(MaintenanceRequest $ticket, User $assignee): bool
++    {
++        if ($ticket->assigned_department_id === null) {
++            return false;
++        }
++
++        return $assignee->department_id === null
++            || (int) $assignee->department_id !== (int) $ticket->assigned_department_id;
++    }
++
+     /**
+      * Assign (or reassign) to an active maintenance staff member.
+      * A reassignment needs a note. An Approved ticket becomes Assigned; other statuses keep theirs.
++     *
++     * Phase 4C department rules (no department is hardcoded; both sides come from the rows):
++     *  - a scoped actor (Staff / Head / Maintenance Admin) may only act on their own department's tickets,
++     *    unless they are the current assignee or the requester of the ticket (the visibility exceptions);
++     *  - Staff claim / transfer only inside their own department;
++     *  - Head assigns anyone in the department;
++     *  - assigning to staff outside the ticket's department is a cross-department transfer: only roles with
++     *    cross_department_transfer (Head / Maintenance Admin / System Administrator) and a reason is required.
++     * System callers (the PM scheduler) pass no $by and are not checked.
+      */
+     public static function assign(MaintenanceRequest $ticket, User $assignee, ?User $by = null, ?string $note = null): MaintenanceRequest
+     {
+@@ -297,6 +321,47 @@ public static function assign(MaintenanceRequest $ticket, User $assignee, ?User
+             }
+         }
+ 
++        // Phase 4C: a scoped actor acts only on their own department's tickets (assignee / requester excepted).
++        if ($by !== null && $by->isDepartmentScoped() && $ticket->assigned_department_id !== null) {
++            $isAssignee = $ticket->assigned_to !== null && (int) $ticket->assigned_to === (int) $by->id;
++            $isRequester = (int) $ticket->requester_id === (int) $by->id;
++
++            if (! $isAssignee && ! $isRequester
++                && ($by->scopedDepartmentId() === null || (int) $ticket->assigned_department_id !== (int) $by->scopedDepartmentId())) {
++                throw new DomainException("Ticket {$ticket->ticket_no} belongs to another department. Only that department's staff can work on it.");
++            }
++        }
++
++        // Phase 4C: Staff claim / transfer only inside their own department.
++        if ($by !== null && $by->isStaffOnly()) {
++            $claiming = $ticket->assigned_to === null && (int) $assignee->id === (int) $by->id;
++
++            if ($claiming && $ticket->assigned_department_id !== null
++                && ($by->scopedDepartmentId() === null || (int) $ticket->assigned_department_id !== (int) $by->scopedDepartmentId())) {
++                throw new DomainException("Ticket {$ticket->ticket_no} belongs to another department. You can only claim tickets of your own department.");
++            }
++
++            if (! $claiming && $by->scopedDepartmentId() !== null
++                && ($assignee->department_id === null || (int) $assignee->department_id !== (int) $by->scopedDepartmentId())) {
++                throw new DomainException('You can only transfer a ticket to a colleague in your own department. Cross-department transfers are for the Department Head or an administrator, with a reason.');
++            }
++        }
++
++        // Phase 4C: cross-department transfer (assignee outside the ticket's department).
++        // Staff are already limited to their own department above, so this check is for Head / Admin only:
++        // a cross-assigned staff member may still transfer to a colleague in their own department.
++        $crossDepartment = self::isCrossDepartmentAssignment($ticket, $assignee);
++
++        if ($crossDepartment && $by !== null && ! $by->isStaffOnly()) {
++            if (! $by->canTransferCrossDepartment()) {
++                throw new DomainException('Only the Department Head or an administrator can transfer a ticket to another department, with a reason.');
++            }
++
++            if (blank($note)) {
++                throw new DomainException('A cross-department transfer needs a reason explaining why.');
++            }
++        }
++
+         $previous = $ticket->assignee;
+         $isReassignment = $previous !== null;
+ 
+@@ -315,7 +380,7 @@ public static function assign(MaintenanceRequest $ticket, User $assignee, ?User
+             $isReassignment ? RequestStatusLog::ACTION_REASSIGNMENT : RequestStatusLog::ACTION_ASSIGNMENT,
+             $by,
+             trim($text),
+-            ['from_user_id' => $previous?->id, 'to_user_id' => $assignee->id, 'reason' => $isReassignment ? trim((string) $note) : null],
++            ['from_user_id' => $previous?->id, 'to_user_id' => $assignee->id, 'reason' => ($isReassignment || $crossDepartment) ? trim((string) $note) : null, 'cross_department' => $crossDepartment],
+         );
+     }
+ 
+@@ -323,6 +388,7 @@ public static function assign(MaintenanceRequest $ticket, User $assignee, ?User
+      * Staff rule: CLAIM an unassigned ticket. The ticket becomes yours (Approved -> Assigned) but work does not
+      * start yet: [ACCEPT TASK] on the board does that. Only an unassigned ticket can be claimed; if a colleague
+      * took it a moment ago you get a clear message instead of overwriting them.
++     * Phase 4C: claim only inside the staff member's own department.
+      */
+     public static function claim(MaintenanceRequest $ticket, User $staff): MaintenanceRequest
+     {
+@@ -342,6 +408,11 @@ public static function claim(MaintenanceRequest $ticket, User $staff): Maintenan
+             throw new DomainException("Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\". It must be Approved before it can be claimed.");
+         }
+ 
++        if ($staff->isDepartmentScoped() && $ticket->assigned_department_id !== null
++            && ($staff->scopedDepartmentId() === null || (int) $ticket->assigned_department_id !== (int) $staff->scopedDepartmentId())) {
++            throw new DomainException("Ticket {$ticket->ticket_no} belongs to another department. You can only claim tickets of your own department.");
++        }
++
+         return self::assign($ticket, $staff, $staff, 'Claimed by '.$staff->name.'.');
+     }
+ 
+@@ -349,6 +420,8 @@ public static function claim(MaintenanceRequest $ticket, User $staff): Maintenan
+      * Staff rule: TRANSFER your OWN ticket to a colleague. The reason is required (it is kept in the history and the
+      * audit trail, and shown to the staff side only). You cannot transfer someone else's ticket or an unassigned one,
+      * and you cannot transfer it to yourself. The new person must be active maintenance staff.
++     * Phase 4C: Staff transfer only to a colleague in their own department. A cross-department transfer
++     * (target outside the ticket's department) is for Head / administrator only, with the same reason.
+      */
+     public static function transfer(MaintenanceRequest $ticket, User $from, User $to, ?string $reason): MaintenanceRequest
+     {
+@@ -368,6 +441,11 @@ public static function transfer(MaintenanceRequest $ticket, User $from, User $to
+             throw new DomainException('Choose a colleague. The ticket is already yours.');
+         }
+ 
++        if ($from->isStaffOnly() && $from->scopedDepartmentId() !== null
++            && ($to->department_id === null || (int) $to->department_id !== (int) $from->scopedDepartmentId())) {
++            throw new DomainException('You can only transfer a ticket to a colleague in your own department. Cross-department transfers are for the Department Head or an administrator, with a reason.');
++        }
++
+         return self::assign($ticket, $to, $from, $reason);
+     }
+ 
+diff --git a/config/permissions.php b/config/permissions.php
+index 34c018d..c631211 100644
+--- a/config/permissions.php
++++ b/config/permissions.php
+@@ -34,20 +34,29 @@
+ |   manage_faq          add, edit, order, hide and delete the Help & FAQ entries (Help & FAQ Phase 1). Everyone can READ the entries meant for their role.
+ |   escalate           escalate to the President / authorizer (M2). Handing it back is the authorizer's
+ |                      (school.workflow.authorizers), like approve/disapprove.
++|   cross_department_transfer  assign a ticket to staff OUTSIDE the ticket's assigned_department_id
++|                      (Phase 4C). Head / Maintenance Admin / System Administrator only, and a reason
++|                      (assign_note) is required. Department Staff never have it: they claim / transfer
++|                      only inside their own department.
+ |
+ | Requesters always see their own tickets, and staff always see tickets assigned to them;
+ | that is not a capability. See also school.department_visibility_roles.
+-| Phase 4B: staff, head and maintenance_admin (school.department_scoped_roles) see ONLY the tickets whose
++| Phase 4B/4C: staff, head and maintenance_admin (school.department_scoped_roles) see ONLY the tickets whose
+ | assigned_department_id = their users.department_id, whatever this matrix says about view_all_tickets.
+ | system_admin (school.global_roles) is not limited. See MaintenanceRequest::scopeVisibleTo().
++| Phase 4C assignment: Staff claim / transfer only inside their own department; Head assigns anyone in the
++| department; assigning to staff outside the ticket's department is a cross-department transfer
++| (cross_department_transfer + reason). See TicketWorkflow::assign() / claim() / transfer().
+ */
+ 
+ return [
+-    // Role model (Phase 4A): Requester < Department Staff < Department Head < System Administrator.
+-    //   requester         Student, Faculty and non-teaching Staff (told apart by users.requester_type). Files and follows own tickets.
++    // Role model (Phase 4A/4C): Requester < Department Staff < Department Head < System Administrator.
++    //   requester         Student, Faculty and non-teaching Staff (told apart by users.requester_type:
++    //                     STUDENT / FACULTY/STAFF in config/registration.php). Files and follows own tickets.
++    //                     They are NOT separate roles: same powers, same slug. See OPEN_QUESTIONS #100.
+     //   staff             Department Staff: does the work, takes / transfers its OWN tickets, completes tasks, asks the requester for info.
+     //   head              Department Head: Staff + assigns anyone in the department, sends for authorization, authorizes, closes, escalates, reports, audit log, FAQ.
+-    //   maintenance_admin Admin of the Maintenance department: Head + users, settings, categories, QR codes, e-mail log (kept as is; see OPEN_QUESTIONS).
++    //   maintenance_admin Admin of the Maintenance department: Head + users, settings, categories, QR codes, e-mail log (kept as is; see OPEN_QUESTIONS #98).
+     //   system_admin      System Administrator: GLOBAL, all of the above across every department.
+     // Scope is NOT here: staff, head and maintenance_admin are limited to users.department_id
+     // (school.department_scoped_roles); system_admin is global (school.global_roles). Phase 4B/4C enforce it.
+@@ -60,6 +69,7 @@
+         'cancel_own', 'reopen_own', 'request_info', 'escalate', 'view_audit_logs',
+         'view_email_log',
+         'manage_faq',
++        'cross_department_transfer',
+     ],
+ 
+     'maintenance_admin' => [
+@@ -70,18 +80,21 @@
+         'view_email_log',
+         // CONFIRM WITH CLIENT (Help & FAQ): who writes the FAQ.
+         'manage_faq',
++        'cross_department_transfer',
+     ],
+ 
+-    // Head of Maintenance: everything the Admin can do EXCEPT managing users / settings / categories / QR codes / the e-mail log.
++    // Department Head: everything the Admin can do EXCEPT managing users / settings / categories / QR codes / the e-mail log.
+     'head' => [
+         'view_all_tickets', 'view_confidential', 'flag_emergency', 'clear_emergency',
+         'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports',
+         'cancel_own', 'reopen_own', 'request_info', 'escalate', 'view_audit_logs',
+         'manage_faq',
++        'cross_department_transfer',
+     ],
+ 
+-    // Maintenance Staff: sees all (non-confidential) tickets and does the work. 'assign' is limited by the policy to
+-    // taking an unassigned ticket / transferring their OWN ticket (User::isStaffOnly).
++    // Department Staff: sees their own department's (non-confidential) tickets and does the work. 'assign' is limited by the policy to
++    // taking an unassigned ticket / transferring their OWN ticket (User::isStaffOnly). No cross_department_transfer:
++    // claim / transfer only inside their own department (Phase 4C).
+     'staff' => [
+         'view_all_tickets', 'flag_emergency', 'send_for_authorization', 'assign', 'work', 'add_attachment',
+         'request_info',
+diff --git a/docs/OPEN_QUESTIONS.md b/docs/OPEN_QUESTIONS.md
+index 677fc9e..aece796 100644
+--- a/docs/OPEN_QUESTIONS.md
++++ b/docs/OPEN_QUESTIONS.md
+@@ -107,3 +107,7 @@ # Open questions for the client
+ | 100 | 4A | Are Student, Faculty and non-teaching Staff separate roles? | No: all three are the `requester` role, told apart by `users.requester_type` (registration type). Same powers: file and follow their own tickets. Separate roles only if their powers should differ. CONFIRM WITH CLIENT. | `config/registration.php`, `config/permissions.php` |
+ | 101 | 4A | May the System Administrator approve and close tickets? | Yes, added to `school.workflow.authorizers` and `closers`. Limiting `head` / `maintenance_admin` to their own department when approving or closing is Phase 4C. | `config/school.php` (`workflow`) |
+ | 102 | 4A | Who gets ticket e-mails and the "assign to" list? | Unchanged in 4A: all `staff`, `head`, `maintenance_admin` (`Role::maintenanceSlugs()`), in every department. The System Administrator is not a ticket worker and gets neither. Department-aware recipients and assignee lists come in 4B / 4C. CONFIRM WITH CLIENT. | `Role::maintenanceSlugs()`, `FormNotifier`, `TicketActions::assignableStaff()` |
++| 103 | 4C | What does "cross-department transfer" mean? | DECISION: assigning a ticket to staff whose `users.department_id` is NOT the ticket's `assigned_department_id` (including no department). It does NOT change `assigned_department_id` (no routing / department-change UI in Phase 4). Only Head / Maintenance Admin / System Administrator (`cross_department_transfer`), with a reason (`assign_note`) even for a first assignment. The ticket stays in its department; the new assignee sees it as assignee. CONFIRM WITH CLIENT: should a cross-department assignment also move the ticket to the new department? | `TicketWorkflow::isCrossDepartmentAssignment()`, `config/permissions.php` (`cross_department_transfer`) |
++| 104 | 4C | Does "Finance staff cannot see a Registrar ticket" mean the `finance` role or Department Staff in Finance? | DECISION: Department Staff / Head in Finance (`staff`/`head` + `department_id` = Finance) cannot see Registrar tickets (404). The `finance` role itself stays global read-only (all non-confidential tickets) per the existing decision, so a Finance *account* still sees them. If the school wants the `finance` role scoped too, add it to `school.department_scoped_roles`. CONFIRM WITH CLIENT. | `config/school.php` (`department_scoped_roles`), `docs/ROLE_PERMISSION_MATRIX.md` §1/§4 |
++| 105 | 4C | What happens to a scoped account with no department, or staff with no department? | Sees nothing, cannot claim / assign / transfer (except as assignee / requester of a ticket). Assigning to staff with no department counts as cross-department (reason required). The 4A migration back-filled existing scoped accounts to Maintenance; new accounts must be given a department by an admin. CONFIRM WITH CLIENT. | `User::scopedDepartmentId()`, `TicketWorkflow::assign()` |
++| 106 | 4C | Which staff appear in the Assign / Transfer dropdown? | Department Staff: only colleagues in their own department. Head / Maintenance Admin / System Administrator: everyone (so cross-department can be picked; reason still required). `TicketActions::assignableStaff()` (all) is kept for other callers. E-mail recipients are unchanged (all maintenance staff, every department). CONFIRM WITH CLIENT: should e-mails also become department-aware? | `TicketActions::assignableStaffFor()`, `Role::maintenanceSlugs()` |
+diff --git a/docs/ROLES_AND_WORKFLOW.md b/docs/ROLES_AND_WORKFLOW.md
+index 1d4642b..4db66ee 100644
+--- a/docs/ROLES_AND_WORKFLOW.md
++++ b/docs/ROLES_AND_WORKFLOW.md
+@@ -26,9 +26,9 @@ ### Roles created by `php artisan db:seed` (production)
+ | `custodian` | Property Custodian | Own tickets | No global powers. Files requests and sees only their own. |
+ 
+ Which roles are scoped and which are global is configuration, not code: `school.department_scoped_roles` and `school.global_roles`
+-(`Role::departmentScopedSlugs()`, `Role::globalSlugs()`, `User::scopedDepartmentId()`). **Phase 4A only defines this.**
+-Ticket visibility and claim / assign / transfer are enforced per department in Phases 4B and 4C; until then the visibility
+-table in section 3 is unchanged.
++(`Role::departmentScopedSlugs()`, `Role::globalSlugs()`, `User::scopedDepartmentId()`).
++Ticket visibility is enforced per department in Phase 4B (section 3) and claim / assign / transfer in Phase 4C
++(section 5). The full role × capability table is in [ROLE_PERMISSION_MATRIX.md](ROLE_PERMISSION_MATRIX.md).
+ 
+ ### Retired roles (seeded only under PHPUnit, still known to the code)
+ 
+@@ -74,8 +74,10 @@ ## 3. Who sees which ticket
+ | Person | Sees |
+ |---|---|
+ | Requester | Their own tickets (any role, any status). |
+-| Assignee | Tickets assigned to them. |
+-| Roles with `view_all_tickets` | Every non-confidential ticket. |
++| Assignee | Tickets assigned to them (any department). |
++| Department Staff / Head / Maintenance Admin | **Only** tickets whose `assigned_department_id` is their own `users.department_id` (Phase 4B). `view_all_tickets` does not widen this. Confidential ones still need `view_confidential`. |
++| System Administrator | Every ticket, including confidential (global). |
++| Roles with `view_all_tickets` (finance, president) | Every non-confidential ticket (global, not scoped). |
+ | Roles with `view_confidential` | Also confidential tickets. Finance does **not**. |
+ | Department Head (if the role is used) | Non-confidential tickets of their own department (`school.department_visibility_roles`). |
+ 
+@@ -120,7 +122,7 @@ ## 5. Who does each step
+ | 5-working-day advance notice | Everyone, except people who may flag an emergency | `school.advance_notice`, `emergency_bypasses_advance_notice` |
+ | Send for authorization | `send_for_authorization` | `TicketPolicy@sendForAuthorization` |
+ | Approve / Disapprove | Roles in `school.workflow.authorizers`. May approve straight from Submitted (`authorize_from_submitted`). Inbox: `/approvals`. | `TicketPolicy@authorize`, `User::canAuthorize()` |
+-| Assign / reassign | `assign`. Reassigning needs a note. | `TicketActionController@assign` |
++| Assign / reassign | `assign`. Reassigning needs a note. Phase 4C: Head assigns anyone in the department; Staff only claim / transfer inside their own department; cross-department (target outside the ticket's department) is Head / Admin only (`cross_department_transfer`) with a reason. | `TicketActionController@assign`, `TicketWorkflow::assign()` / `claim()` / `transfer()` |
+ | Accept task, Mark completed (board) | `work` on the Maintenance board (`/maintenance/board`) | `MaintenanceBoardController` |
+ | Close | Today a ticket reaches **Closed** only when the requester presses *Confirm resolved* on a Work Completed ticket. No staff "Close" button or route exists yet (the `close` capability and `TicketWorkflow::close()` are ready for one). The model refuses Closed unless an authorization is on record (`president_id` + `president_approved_at`, filled when the ticket is approved). The *signed evidence* part of the rule is **not enforced yet**, and `workflow.closers` / `workflow.closure_requires` are declared in config but not read by any code. | `MaintenanceRequest::booted()`, `TicketWorkflow::confirmResolved()` |
+ | Cancel | The requester of that ticket, **before Assigned**, with a reason | `TicketWorkflow::cancelBlocker()` |
+diff --git a/docs/ROLE_PERMISSION_MATRIX.md b/docs/ROLE_PERMISSION_MATRIX.md
+new file mode 100644
+index 0000000..2205e7c
+--- /dev/null
++++ b/docs/ROLE_PERMISSION_MATRIX.md
+@@ -0,0 +1,139 @@
++# Role × capability matrix (Phase 4C)
++
++Source of truth: `config/permissions.php` (capabilities), `config/school.php`
++(`department_scoped_roles`, `global_roles`, `workflow.authorizers` / `closers`),
++`app/Models/MaintenanceRequest.php` (`scopeVisibleTo()` / `isVisibleTo()`),
++`app/Policies/TicketPolicy.php`, `app/Services/TicketWorkflow.php`.
++Change a role's powers in `config/permissions.php`, not in code. No department is hardcoded:
++scoping always compares `users.department_id` with the ticket's `assigned_department_id`.
++
++## 1. Roles
++
++| Slug | Label | Scope | Who they are |
++|---|---|---|---|
++| `requester` | Student | Own tickets only | Student, Faculty and non-teaching Staff. Told apart by `users.requester_type` (`STUDENT` / `FACULTY/STAFF` in `config/registration.php`). Same powers, same slug — not separate roles (OPEN_QUESTIONS #100). |
++| `staff` | Department Staff | Own department (`users.department_id`) | Does the work: claims an unassigned ticket, transfers their own, accepts / completes tasks, asks the requester for info. |
++| `head` | Department Head | Own department | Staff + assigns anyone in the department, sends for authorization, authorizes, closes, escalates, reports, audit log, FAQ. |
++| `maintenance_admin` | Maintenance Admin | Own department (the Maintenance department) | Head + users, settings, categories, QR codes, e-mail log. Kept as the admin of Maintenance (OPEN_QUESTIONS #98). |
++| `system_admin` | System Administrator | **Global** (all departments) | Same capabilities as `maintenance_admin`, not tied to a department. Not a ticket worker: cannot be assigned a ticket and gets no maintenance e-mails. |
++| `finance` | Finance | (legacy, global read-only) | Read-only view of every non-confidential ticket, reports and CSV export. **Not** department-scoped: a Finance *account* (role `finance`) still sees Registrar tickets; a Department Staff *in* Finance (`staff` + `department_id` = Finance) does not. See §4. |
++| `custodian` | Property Custodian | Own tickets | No global powers. Files requests and sees only their own. |
++| `president`, `department_head`, `treasurer` | (retired) | — | Seeded only under PHPUnit; still handled by the matrix/policies so they can be brought back. |
++
++Which roles are scoped and which are global is configuration:
++`school.department_scoped_roles = ['staff', 'head', 'maintenance_admin']`,
++`school.global_roles = ['system_admin']`
++(`Role::departmentScopedSlugs()`, `Role::globalSlugs()`, `User::scopedDepartmentId()`).
++A scoped account with no department has no scope: it sees nothing and cannot claim / assign / transfer.
++
++## 2. Capability matrix
++
++`✓` = has the capability. `—` = does not. Visibility (§3) still applies on top of every row.
++
++| Capability | requester | staff | head | maintenance_admin | system_admin | finance | custodian |
++|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
++| `view_all_tickets` (non-confidential) | — | ✓* | ✓* | ✓* | ✓ | ✓ | — |
++| `view_confidential` | — | — | ✓* | ✓* | ✓ | — | — |
++| `flag_emergency` | — | ✓* | ✓* | ✓* | ✓ | — | — |
++| `clear_emergency` | — | — | ✓* | ✓* | ✓ | — | — |
++| `send_for_authorization` | — | ✓* | ✓* | ✓* | ✓ | — | — |
++| `assign` | — | ✓† | ✓* | ✓* | ✓ | — | — |
++| `work` (accept / complete) | — | ✓* | ✓* | ✓* | ✓ | — | — |
++| `close` | — | — | ✓* | ✓* | ✓ | — | — |
++| `add_attachment` (any visible ticket) | — | ✓* | ✓* | ✓* | ✓ | — | — |
++| `request_info` | — | ✓* | ✓* | ✓* | ✓ | — | — |
++| `escalate` | — | — | ✓* | ✓* | ✓ | — | — |
++| `view_analytics` (`/reports`) | — | — | ✓* | ✓* | ✓ | ✓ | — |
++| `export_reports` (CSV / PDF) | — | — | ✓* | ✓* | ✓ | ✓ | — |
++| `view_audit_logs` | — | — | ✓* | ✓* | ✓ | — | — |
++| `view_email_log` | — | — | — | ✓* | ✓ | — | — |
++| `manage_users` | — | — | — | ✓* | ✓ | — | — |
++| `manage_settings` | — | — | — | ✓* | ✓ | — | — |
++| `manage_categories` | — | — | — | ✓* | ✓ | — | — |
++| `manage_qr_codes` | — | — | — | ✓* | ✓ | — | — |
++| `manage_faq` | — | — | ✓* | ✓* | ✓ | — | — |
++| `cross_department_transfer` (Phase 4C) | — | — | ✓* | ✓* | ✓ | — | — |
++| `cancel_own`, `reopen_own` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
++
++\* Scoped to the user's own department: the capability only works on tickets whose
++`assigned_department_id` is the user's `users.department_id` (plus their own / assigned tickets).
++`system_admin` and `finance` are not scoped. See §3.
++
++† Staff `assign` is limited by `TicketPolicy@assign`: only their own ticket (transfer).
++Claiming an unassigned ticket is `claim`, not `assign`.
++
++Approve / disapprove is **not** in this matrix. It is decided by
++`school.workflow.authorizers = ['head', 'maintenance_admin', 'system_admin']`
++(`User::canAuthorize()`, `TicketPolicy@authorize`). Formal closure is
++`school.workflow.closers` (same three roles).
++
++## 3. Who sees which ticket
++
++One rule, written twice so lists and single pages always agree:
++`MaintenanceRequest::scopeVisibleTo($user)` (queries) and `isVisibleTo($user)` (one ticket).
++
++| Person | Sees |
++|---|---|
++| Requester (Student / Faculty / non-teaching Staff) | Their own tickets (any department, any status). |
++| Assignee | Tickets assigned to them (any department — this is how a cross-department assignment stays visible to the new assignee). |
++| Department Staff / Head / Maintenance Admin | **Only** tickets whose `assigned_department_id` is their own `users.department_id`. `view_all_tickets` does not widen this. Confidential ones still need `view_confidential` (Head / Admin have it, Staff does not). No department = nothing. |
++| System Administrator | Every ticket, including confidential. |
++| Finance (role) | Every non-confidential ticket (global, not scoped). |
++| Department Head (retired `department_head` role) | Non-confidential tickets of their own department (`school.department_visibility_roles`). |
++
++**A ticket someone may not see answers `404`, not `403`**, so its existence is not revealed.
++This covers `{ticket}` and `{attachment}` in URLs (route binding in `AppServiceProvider`).
++The same 404 applies to every action route (`claim`, `assign`, `transfer`, `notes`, `replies`, …):
++the binder runs before the policy.
++
++## 4. Assignment rules (Phase 4C)
++
++| Action | Who | Department rule | Reason required? |
++|---|---|---|---|
++| **Claim** an unassigned ticket (`POST /tickets/{ticket}/claim`) | Department Staff only (`staff`) | Ticket's `assigned_department_id` must be the staff member's own department. Other departments: 404 (hidden) via HTTP, refused in the workflow for direct calls. | No |
++| **Transfer** your own ticket (`POST /tickets/{ticket}/transfer`) | Department Staff only, own ticket only | Target must be a colleague in the transferring staff member's own department. Cross-department target: refused. | Yes (`transfer_reason`, min 5 chars) |
++| **Assign / reassign** (`POST /tickets/{ticket}/assign`) | Head / Maintenance Admin / System Administrator (`assign`) | Normally to staff **in the ticket's department**. A scoped actor can only act on their own department's tickets (assignee / requester excepted). | Reassignment: yes (`assign_note`). First assignment: no, unless cross-department (next row). |
++| **Cross-department transfer** (assign to staff outside the ticket's department) | Head / Maintenance Admin / System Administrator only (`cross_department_transfer`) | Target's `users.department_id` ≠ ticket's `assigned_department_id` (including no department). Staff can never do this. | **Yes**, even for a first assignment (`assign_note`). Recorded in the history line (`meta.cross_department`). |
++| **Accept task / mark completed** (board) | `work` roles | Same visibility as above (own department, or assigned to them). | No |
++
++Enforcement is in three layers (all must agree):
++
++1. **Visibility** — `scopeVisibleTo()` / `isVisibleTo()` + the `{ticket}` binder (hidden = 404).
++2. **Policy** — `TicketPolicy@claim` / `@assign` / `@transfer` / `@addNote` / `@reply` (403 when visible but not allowed).
++3. **Workflow** — `TicketWorkflow::claim()` / `transfer()` / `assign()` (flash error; a direct call cannot skip the rule). `TicketWorkflow::isCrossDepartmentAssignment()` is the single definition of "cross-department".
++
++The Assign / Transfer dropdown (`TicketActions::assignableStaffFor()`):
++
++- Department Staff: only colleagues in their own department.
++- Head / Maintenance Admin / System Administrator: everyone (so a cross-department transfer can be picked; the reason is still required).
++- `TicketActions::assignableStaff()` (all staff) is kept for callers that need the full list.
++
++## 5. Notes and conversation
++
++| Action | Who | Department rule |
++|---|---|---|
++| Add a history note (`POST /tickets/{ticket}/notes`) | Requester (own), assignee, authorizers, working roles (`assign` / `work` / `close` / flag / send) | Same visibility: Finance staff cannot note a Registrar ticket (404). Finance (role) is view-only: no notes. |
++| Write in the conversation (`POST /tickets/{ticket}/replies`) | Same people as notes. Everyone who may *see* the ticket may *read* it. | Same as notes. |
++| Internal notes | Staff side only (assignee, authorizers, working roles). Never the requester of the ticket. | Same as notes. |
++
++## 6. Work screens (CheckRole route groups)
++
++| Route group | Roles (`Role::workQueueSlugs()`) |
++|---|---|
++| `/maintenance/dashboard`, `/maintenance/board` (+ cards, accept, complete) | `staff`, `head`, `maintenance_admin`, `system_admin` |
++| `/requester/dashboard` | `requester`, `department_head`, `treasurer` (retired) |
++| `/finance/dashboard` | `finance` |
++| `/custodian/dashboard` | `custodian` |
++| `/president/dashboard` | `president` (retired) |
++
++Opening the group is only the first gate: every number and every ticket inside still goes through
++`visibleTo()`, so a Department Staff in Finance never counts or sees a Registrar ticket there either.
++
++## 7. Tests
++
++- `tests/Feature/TicketViewVisibilityTest.php` — view matrix (role × department), 404 vs 403,
++  Finance staff vs Registrar ticket, confidential inside the department.
++- `tests/Feature/DepartmentAssignmentRulesTest.php` — claim / assign / transfer / notes matrix
++  (role × department), cross-department reason, dropdown scoping.
++- `tests/Feature/DepartmentScopedRolesTest.php` — scoped vs global roles from config.
++- `tests/Feature/StaffTicketRulesTest.php`, `tests/Feature/StaffHeadRolesTest.php` — staff / head split.
+diff --git a/routes/web.php b/routes/web.php
+index 45ceaee..6e7e54c 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -42,6 +42,8 @@
+         // Dept. Heads and the Treasurer land here too (User::dashboardRoute). Before Phase 2 they got a 403.
+         ->middleware(CheckRole::class.':'.Role::REQUESTER.','.Role::DEPARTMENT_HEAD.','.Role::TREASURER)->name('requester.dashboard');
+ 
++    // Phase 4C: work screens are for the work roles (staff, head, maintenance_admin, system_admin).
++    // Department scoping inside them comes from visibleTo() / the policies, never from a hardcoded department.
+     Route::get('/maintenance/dashboard', [DashboardController::class, 'maintenance'])
+         ->middleware(CheckRole::class.':'.implode(',', Role::workQueueSlugs()))->name('maintenance.dashboard');
+ 
+@@ -112,7 +114,7 @@
+     Route::get('/attachments/{attachment}/text', [AttachmentController::class, 'text'])->name('attachments.text');
+     Route::delete('/attachments/{attachment}', [AttachmentController::class, 'destroy'])->name('attachments.destroy');
+ 
+-    // ---- Maintenance card board ----
++    // ---- Maintenance card board (Phase 4C: same work roles as the dashboard; tickets are scoped by visibleTo) ----
+     Route::middleware(CheckRole::class.':'.implode(',', Role::workQueueSlugs()))->prefix('maintenance')->name('maintenance.')->group(function () {
+         Route::get('/board', [MaintenanceBoardController::class, 'index'])->name('board');
+         Route::get('/board/cards', [MaintenanceBoardController::class, 'cards'])->name('board.cards');
+diff --git a/tests/Feature/DepartmentAssignmentRulesTest.php b/tests/Feature/DepartmentAssignmentRulesTest.php
+new file mode 100644
+index 0000000..4be043e
+--- /dev/null
++++ b/tests/Feature/DepartmentAssignmentRulesTest.php
+@@ -0,0 +1,373 @@
++<?php
++
++namespace Tests\Feature;
++
++use App\Models\Category;
++use App\Models\Department;
++use App\Models\MaintenanceRequest;
++use App\Models\Role;
++use App\Models\User;
++use App\Services\TicketActions;
++use App\Services\TicketWorkflow;
++use Database\Seeders\CategorySeeder;
++use Database\Seeders\DepartmentSeeder;
++use Database\Seeders\RoleSeeder;
++use DomainException;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Illuminate\Support\Facades\Gate;
++use Illuminate\Support\Facades\Hash;
++use Tests\TestCase;
++
++/**
++ * Phase 4C: who may CLAIM / ASSIGN / TRANSFER / NOTE a ticket, by role x department.
++ *
++ *  - Department Staff claim / transfer only inside their own department
++ *  - Department Head assigns anyone in the department
++ *  - cross-department transfer (assignee outside the ticket's department) is Head / Admin only, with a reason
++ *  - a hidden ticket is a 404 (never 403), even for claim / assign / transfer / notes
++ *  - Finance staff (staff in Finance) cannot see / touch a Registrar ticket
++ */
++class DepartmentAssignmentRulesTest extends TestCase
++{
++    use RefreshDatabase;
++
++    private User $requester;
++
++    private User $systemAdmin;
++
++    protected function setUp(): void
++    {
++        parent::setUp();
++        $this->withoutVite();
++        $this->seed(RoleSeeder::class);
++        $this->seed(DepartmentSeeder::class);
++        $this->seed(CategorySeeder::class);
++
++        $this->requester = $this->make('requester', 'FIN');
++        $this->systemAdmin = $this->make('system_admin', null);
++    }
++
++    // ---- helpers --------------------------------------------------------------------------------
++
++    private function dept(string $code): int
++    {
++        return (int) Department::where('code', $code)->value('id');
++    }
++
++    private function make(string $slug, ?string $deptCode = null): User
++    {
++        return User::create([
++            'name' => 'Test '.$slug.' '.$deptCode,
++            'email' => $slug.'-'.($deptCode ?? 'none').'-'.uniqid().'@lcctanauan.edu.ph',
++            'password' => Hash::make('password'),
++            'role_id' => Role::where('slug', $slug)->firstOrFail()->id,
++            'department_id' => $deptCode === null ? null : $this->dept($deptCode),
++            'email_verified_at' => now(),
++            'is_active' => true,
++        ]);
++    }
++
++    /** An Approved ticket that the given office RECEIVES (assigned_department_id). Filed by the FIN requester. */
++    private function approved(string $assignedDeptCode): MaintenanceRequest
++    {
++        $ticket = MaintenanceRequest::create([
++            'requester_id' => $this->requester->id,
++            'department_id' => $this->dept('FIN'),
++            'assigned_department_id' => $this->dept($assignedDeptCode),
++            'category_id' => Category::query()->orderBy('id')->firstOrFail()->id,
++            'maintenance_type' => 'repair',
++            'location' => 'Room '.$assignedDeptCode,
++            'description' => 'Ticket for '.$assignedDeptCode,
++        ]);
++
++        TicketWorkflow::authorize($ticket, $this->systemAdmin);
++
++        return $ticket->refresh();
++    }
++
++    // ---- capability --------------------------------------------------------------------------------
++
++    public function test_cross_department_transfer_is_head_admin_and_system_admin_only(): void
++    {
++        $this->assertEqualsCanonicalizing(['head', 'maintenance_admin', 'system_admin'], Role::crossDepartmentSlugs());
++
++        foreach (['head', 'maintenance_admin', 'system_admin'] as $slug) {
++            $this->assertTrue($this->make($slug, 'FIN')->canTransferCrossDepartment(), $slug);
++        }
++
++        foreach (['staff', 'requester', 'finance', 'custodian'] as $slug) {
++            $this->assertFalse($this->make($slug, 'FIN')->canTransferCrossDepartment(), $slug);
++        }
++    }
++
++    // ---- claim -------------------------------------------------------------------------------------
++
++    public function test_matrix_claim_role_x_department(): void
++    {
++        $staffFin = $this->make('staff', 'FIN');
++        $staffReg = $this->make('staff', 'REG');
++        $headFin = $this->make('head', 'FIN');
++
++        // Staff in Finance claims a Finance ticket.
++        $finTicket = $this->approved('FIN');
++        $this->assertTrue(Gate::forUser($staffFin)->allows('claim', $finTicket));
++        $this->assertContains(TicketActions::CLAIM, TicketActions::for($finTicket, $staffFin));
++        $this->actingAs($staffFin)->post(route('tickets.claim', $finTicket))->assertSessionHas('status');
++        $this->assertEquals($staffFin->id, $finTicket->fresh()->assigned_to);
++
++        // Staff in Finance cannot claim a Registrar ticket: hidden = 404, and the workflow refuses a direct call.
++        $regTicket = $this->approved('REG');
++        $this->assertFalse(Gate::forUser($staffFin)->allows('claim', $regTicket));
++        $this->actingAs($staffFin)->post(route('tickets.claim', $regTicket))->assertNotFound();
++        $this->assertNull($regTicket->fresh()->assigned_to);
++
++        $this->expectException(DomainException::class);
++        TicketWorkflow::claim($regTicket->fresh(), $staffFin);
++    }
++
++    public function test_claim_is_staff_only_and_stays_in_the_own_department(): void
++    {
++        $staffReg = $this->make('staff', 'REG');
++        $headFin = $this->make('head', 'FIN');
++        $regTicket = $this->approved('REG');
++
++        // Registrar staff claims the Registrar ticket.
++        $this->actingAs($staffReg)->post(route('tickets.claim', $regTicket))->assertSessionHas('status');
++        $this->assertEquals($staffReg->id, $regTicket->fresh()->assigned_to);
++
++        // Head and requester never claim (they assign / file instead).
++        $finTicket = $this->approved('FIN');
++        $this->assertFalse(Gate::forUser($headFin)->allows('claim', $finTicket));
++        $this->actingAs($headFin)->post(route('tickets.claim', $finTicket))->assertForbidden();
++        $this->actingAs($this->requester)->post(route('tickets.claim', $finTicket))->assertForbidden();
++        $this->actingAs($this->systemAdmin)->post(route('tickets.claim', $finTicket))->assertForbidden();
++        $this->assertNull($finTicket->fresh()->assigned_to);
++    }
++
++    // ---- assign ------------------------------------------------------------------------------------
++
++    public function test_matrix_assign_role_x_department(): void
++    {
++        $headFin = $this->make('head', 'FIN');
++        $staffFin = $this->make('staff', 'FIN');
++        $staffReg = $this->make('staff', 'REG');
++
++        // Head in Finance assigns a Finance ticket to Finance staff.
++        $finTicket = $this->approved('FIN');
++        $this->assertTrue(Gate::forUser($headFin)->allows('assign', $finTicket));
++        $this->actingAs($headFin)->post(route('tickets.assign', $finTicket), ['assignee_id' => $staffFin->id])
++            ->assertSessionHas('status');
++        $this->assertEquals($staffFin->id, $finTicket->fresh()->assigned_to);
++
++        // Head in Finance cannot assign a Registrar ticket: hidden = 404.
++        $regTicket = $this->approved('REG');
++        $this->assertFalse(Gate::forUser($headFin)->allows('assign', $regTicket));
++        $this->actingAs($headFin)->post(route('tickets.assign', $regTicket), ['assignee_id' => $staffReg->id])
++            ->assertNotFound();
++        $this->assertNull($regTicket->fresh()->assigned_to);
++    }
++
++    public function test_cross_department_assign_needs_a_reason_and_head_admin_only(): void
++    {
++        $headFin = $this->make('head', 'FIN');
++        $staffFin = $this->make('staff', 'FIN');
++        $staffReg = $this->make('staff', 'REG');
++
++        // Head in Finance assigns a Finance ticket to Registrar staff: cross-department, reason required.
++        $finTicket = $this->approved('FIN');
++        $this->assertTrue(TicketWorkflow::isCrossDepartmentAssignment($finTicket, $staffReg));
++        $this->assertFalse(TicketWorkflow::isCrossDepartmentAssignment($finTicket, $staffFin));
++
++        $this->actingAs($headFin)->post(route('tickets.assign', $finTicket), ['assignee_id' => $staffReg->id])
++            ->assertSessionHasErrors('assign_note', null, 'assign');
++        $this->assertNull($finTicket->fresh()->assigned_to);
++
++        $this->actingAs($headFin)->post(route('tickets.assign', $finTicket), [
++            'assignee_id' => $staffReg->id,
++            'assign_note' => 'Registrar staff have the spare part.',
++        ])->assertSessionHas('status');
++        $this->assertEquals($staffReg->id, $finTicket->fresh()->assigned_to);
++
++        // The cross-assigned Registrar staff member sees the Finance ticket as assignee.
++        $this->assertTrue($finTicket->fresh()->isVisibleTo($staffReg));
++        $this->actingAs($staffReg)->get(route('tickets.show', $finTicket))->assertOk();
++
++        // Staff can never do a cross-department assignment, even with a reason.
++        $otherFinTicket = $this->approved('FIN');
++        $this->actingAs($staffFin)->post(route('tickets.assign', $otherFinTicket), [
++            'assignee_id' => $staffReg->id,
++            'assign_note' => 'Trying cross-department.',
++        ])->assertForbidden();
++        $this->assertNull($otherFinTicket->fresh()->assigned_to);
++    }
++
++    public function test_system_admin_assigns_across_departments_with_a_reason(): void
++    {
++        $staffFin = $this->make('staff', 'FIN');
++        $staffReg = $this->make('staff', 'REG');
++
++        // Same-department: no reason needed.
++        $regTicket = $this->approved('REG');
++        $this->actingAs($this->systemAdmin)->post(route('tickets.assign', $regTicket), ['assignee_id' => $staffReg->id])
++            ->assertSessionHas('status');
++        $this->assertEquals($staffReg->id, $regTicket->fresh()->assigned_to);
++
++        // Cross-department: reason required.
++        $otherRegTicket = $this->approved('REG');
++        $this->actingAs($this->systemAdmin)->post(route('tickets.assign', $otherRegTicket), ['assignee_id' => $staffFin->id])
++            ->assertSessionHasErrors('assign_note', null, 'assign');
++        $this->actingAs($this->systemAdmin)->post(route('tickets.assign', $otherRegTicket), [
++            'assignee_id' => $staffFin->id,
++            'assign_note' => 'Finance staff will handle this.',
++        ])->assertSessionHas('status');
++        $this->assertEquals($staffFin->id, $otherRegTicket->fresh()->assigned_to);
++    }
++
++    public function test_requester_and_finance_cannot_assign(): void
++    {
++        $staffFin = $this->make('staff', 'FIN');
++        $finance = $this->make('finance', 'FIN');
++        $finTicket = $this->approved('FIN');
++
++        $this->assertFalse(Gate::forUser($this->requester)->allows('assign', $finTicket));
++        $this->actingAs($this->requester)->post(route('tickets.assign', $finTicket), ['assignee_id' => $staffFin->id])
++            ->assertForbidden();
++
++        // Finance sees the ticket (global read-only) but cannot assign it.
++        $this->assertTrue($finTicket->isVisibleTo($finance));
++        $this->assertFalse(Gate::forUser($finance)->allows('assign', $finTicket));
++        $this->actingAs($finance)->post(route('tickets.assign', $finTicket), ['assignee_id' => $staffFin->id])
++            ->assertForbidden();
++
++        $this->assertNull($finTicket->fresh()->assigned_to);
++    }
++
++    // ---- transfer ----------------------------------------------------------------------------------
++
++    public function test_matrix_transfer_role_x_department(): void
++    {
++        $staffFin = $this->make('staff', 'FIN');
++        $colleagueFin = $this->make('staff', 'FIN');
++        $staffReg = $this->make('staff', 'REG');
++        $headFin = $this->make('head', 'FIN');
++
++        $finTicket = $this->approved('FIN');
++        TicketWorkflow::claim($finTicket, $staffFin);
++
++        // Staff transfers to a colleague in the same department, with a reason.
++        $this->actingAs($staffFin)->post(route('tickets.transfer', $finTicket), [
++            'transfer_to' => $colleagueFin->id,
++            'transfer_reason' => 'I am on leave tomorrow.',
++        ])->assertSessionHas('status');
++        $this->assertEquals($colleagueFin->id, $finTicket->fresh()->assigned_to);
++
++        // Staff cannot transfer to another department, even with a reason.
++        $otherFinTicket = $this->approved('FIN');
++        TicketWorkflow::claim($otherFinTicket, $staffFin);
++        $this->actingAs($staffFin)->post(route('tickets.transfer', $otherFinTicket), [
++            'transfer_to' => $staffReg->id,
++            'transfer_reason' => 'Registrar should do this.',
++        ])->assertSessionHas('error');
++        $this->assertEquals($staffFin->id, $otherFinTicket->fresh()->assigned_to);
++
++        // Head never uses the transfer endpoint (they reassign instead).
++        $this->actingAs($headFin)->post(route('tickets.transfer', $otherFinTicket), [
++            'transfer_to' => $colleagueFin->id,
++            'transfer_reason' => 'Head reassigns instead.',
++        ])->assertForbidden();
++    }
++
++    public function test_finance_staff_cannot_transfer_or_touch_a_registrar_ticket(): void
++    {
++        $staffFin = $this->make('staff', 'FIN');
++        $staffReg = $this->make('staff', 'REG');
++        $regTicket = $this->approved('REG');
++        TicketWorkflow::claim($regTicket, $staffReg);
++
++        // Hidden = 404 for every action, not 403.
++        $this->actingAs($staffFin)->get(route('tickets.show', $regTicket))->assertNotFound();
++        $this->actingAs($staffFin)->post(route('tickets.claim', $regTicket))->assertNotFound();
++        $this->actingAs($staffFin)->post(route('tickets.assign', $regTicket), ['assignee_id' => $staffFin->id])->assertNotFound();
++        $this->actingAs($staffFin)->post(route('tickets.transfer', $regTicket), [
++            'transfer_to' => $staffFin->id,
++            'transfer_reason' => 'Taking this away.',
++        ])->assertNotFound();
++        $this->actingAs($staffFin)->post(route('tickets.notes.store', $regTicket), ['note' => 'Hello'])->assertNotFound();
++        $this->actingAs($staffFin)->post(route('tickets.replies.store', $regTicket), ['body' => 'Hello'])->assertNotFound();
++
++        $this->assertEquals($staffReg->id, $regTicket->fresh()->assigned_to);
++    }
++
++    // ---- notes -------------------------------------------------------------------------------------
++
++    public function test_matrix_notes_role_x_department(): void
++    {
++        $staffFin = $this->make('staff', 'FIN');
++        $headFin = $this->make('head', 'FIN');
++        $staffReg = $this->make('staff', 'REG');
++        $finance = $this->make('finance', 'FIN');
++
++        $finTicket = $this->approved('FIN');
++        $regTicket = $this->approved('REG');
++
++        // Staff / Head in Finance can note and reply on the Finance ticket.
++        foreach ([$staffFin, $headFin] as $user) {
++            $this->assertTrue(Gate::forUser($user)->allows('addNote', $finTicket));
++            $this->assertTrue(Gate::forUser($user)->allows('reply', $finTicket));
++            $this->actingAs($user)->post(route('tickets.notes.store', $finTicket), ['note' => 'Noted by '.$user->name])
++                ->assertSessionHas('status');
++            $this->actingAs($user)->post(route('tickets.replies.store', $finTicket), ['body' => 'Reply from '.$user->name])
++                ->assertSessionHas('status');
++        }
++
++        // The requester can note / reply on their own tickets in any department.
++        $this->actingAs($this->requester)->post(route('tickets.notes.store', $regTicket), ['note' => 'My ticket'])
++            ->assertSessionHas('status');
++        $this->actingAs($this->requester)->post(route('tickets.replies.store', $regTicket), ['body' => 'My reply'])
++            ->assertSessionHas('status');
++
++        // System Administrator can note / reply on every ticket.
++        $this->actingAs($this->systemAdmin)->post(route('tickets.notes.store', $regTicket), ['note' => 'Admin note'])
++            ->assertSessionHas('status');
++        $this->actingAs($this->systemAdmin)->post(route('tickets.replies.store', $regTicket), ['body' => 'Admin reply'])
++            ->assertSessionHas('status');
++
++        // Finance staff cannot note / reply on the Registrar ticket (404), and the finance role is view-only (403).
++        $this->assertFalse(Gate::forUser($staffFin)->allows('addNote', $regTicket));
++        $this->assertFalse(Gate::forUser($staffFin)->allows('reply', $regTicket));
++        $this->actingAs($staffFin)->post(route('tickets.notes.store', $regTicket), ['note' => 'Nope'])->assertNotFound();
++        $this->actingAs($staffFin)->post(route('tickets.replies.store', $regTicket), ['body' => 'Nope'])->assertNotFound();
++
++        $this->assertFalse(Gate::forUser($finance)->allows('addNote', $finTicket));
++        $this->actingAs($finance)->post(route('tickets.notes.store', $finTicket), ['note' => 'View only'])->assertForbidden();
++
++        // Registrar staff can note the Registrar ticket.
++        $this->actingAs($staffReg)->post(route('tickets.notes.store', $regTicket), ['note' => 'Registrar note'])
++            ->assertSessionHas('status');
++    }
++
++    // ---- dropdown ----------------------------------------------------------------------------------
++
++    public function test_the_transfer_dropdown_is_scoped_to_the_own_department(): void
++    {
++        $staffFin = $this->make('staff', 'FIN');
++        $colleagueFin = $this->make('staff', 'FIN');
++        $staffReg = $this->make('staff', 'REG');
++        $headFin = $this->make('head', 'FIN');
++
++        $finTicket = $this->approved('FIN');
++        TicketWorkflow::claim($finTicket, $staffFin);
++
++        $forStaff = TicketActions::assignableStaffFor($finTicket->fresh(), $staffFin)->pluck('id')->all();
++        $this->assertContains($colleagueFin->id, $forStaff);
++        $this->assertNotContains($staffReg->id, $forStaff);
++
++        // Head / System Administrator see everyone (cross-department can be picked, reason still required).
++        $forHead = TicketActions::assignableStaffFor($finTicket->fresh(), $headFin)->pluck('id')->all();
++        $this->assertContains($colleagueFin->id, $forHead);
++        $this->assertContains($staffReg->id, $forHead);
++
++        $forAdmin = TicketActions::assignableStaffFor($finTicket->fresh(), $this->systemAdmin)->pluck('id')->all();
++        $this->assertContains($staffReg->id, $forAdmin);
++    }
++}
