@@ -72,6 +72,8 @@
             <div class="p6-bar">
                 <button type="submit" class="btn btn-primary"><i class="fa-solid fa-filter"></i> Filter</button>
                 <a href="{{ route('admin.audit-logs.index') }}" class="btn">Clear</a>
+                {{-- same filters as above; every matching entry, not just this page. Logged as an export. --}}
+                <a href="{{ route('admin.audit-logs.export', request()->except('page')) }}" class="btn" style="margin-left:auto"><i class="fa-solid fa-file-csv"></i> Export CSV</a>
             </div>
         </form>
 
