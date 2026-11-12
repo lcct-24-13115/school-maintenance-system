@@ -48,6 +48,20 @@ class AttachmentViewerTest extends TestCase
         return User::where('email', $name.'@lcctanauan.edu.ph')->firstOrFail();
     }
 
+    /** Another requester from a different department (does not rely on the seeder having one). */
+    private function stranger(): User
+    {
+        $base = $this->user('requester');
+        $other = \App\Models\Department::where('id', '!=', $base->department_id)->first();
+
+        $copy = $base->replicate();
+        $copy->email = 'stranger@lcctanauan.edu.ph';
+        $copy->department_id = $other?->id ?? $base->department_id;
+        $copy->save();
+
+        return $copy;
+    }
+
     private function png(): UploadedFile
     {
         return UploadedFile::fake()->createWithContent('photo.png', base64_decode(self::PNG));
@@ -134,7 +148,7 @@ class AttachmentViewerTest extends TestCase
         $docx = $ticket->attachments()->where('mime_type', '!=', 'image/png')->firstOrFail();
 
         $this->actingAs($requester)->get(route('attachments.text', $png))->assertNotFound();
-        $this->actingAs($this->user('requester2'))->get(route('attachments.text', $docx))->assertNotFound();
+        $this->actingAs($this->stranger())->get(route('attachments.text', $docx))->assertNotFound();
     }
 
     public function test_text_preview_needs_a_signed_in_user(): void
@@ -195,7 +209,7 @@ class AttachmentViewerTest extends TestCase
         $file = $this->fileOf($ticket);
 
         $this->actingAs($this->user('finance'))->delete(route('attachments.destroy', $file))->assertForbidden();
-        $this->actingAs($this->user('requester2'))->delete(route('attachments.destroy', $file))->assertNotFound();
+        $this->actingAs($this->stranger())->delete(route('attachments.destroy', $file))->assertNotFound();
 
         $this->assertDatabaseHas('request_attachments', ['id' => $file->id]);
         $this->assertSame(0, AuditLog::where('action', AuditLogger::ATTACHMENT_DELETED)->count());
@@ -216,7 +230,7 @@ class AttachmentViewerTest extends TestCase
         $file = $this->fileOf($ticket);
 
         $terminal = collect(TicketStatus::cases())->first(fn ($s) => $s->isTerminal());
-        $ticket->forceFill(['status' => $terminal])->save();
+        \App\Models\MaintenanceRequest::withoutEvents(fn () => $ticket->forceFill(['status' => $terminal])->save());
 
         $this->actingAs($requester)->delete(route('attachments.destroy', $file))->assertForbidden();
         $this->assertDatabaseHas('request_attachments', ['id' => $file->id]);
