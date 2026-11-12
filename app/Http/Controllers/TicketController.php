@@ -50,6 +50,9 @@ class TicketController extends Controller
             'category_id' => ['nullable', 'integer'],
             'department_id' => ['nullable', 'integer'],
             'assigned_to' => ['nullable', 'string', 'max:20'],
+            'priority' => ['nullable', 'in:emergency,routine'],
+            'sort' => ['nullable', 'string', 'max:20'],
+            'dir' => ['nullable', 'string'],
             'emergency' => ['nullable', 'boolean'],
             'overdue' => ['nullable', 'boolean'],
             'mine' => ['nullable', 'boolean'],
@@ -80,6 +83,7 @@ class TicketController extends Controller
             'department_id' => $request->query('department_id'),
             'assigned_to' => $request->query('assigned_to'),
             'emergency' => $request->boolean('emergency'),
+            'priority' => in_array($request->query('priority'), ['emergency', 'routine'], true) ? $request->query('priority') : null,
             'overdue' => $request->boolean('overdue'),
             'mine' => $request->boolean('mine'),
         ];
@@ -88,6 +92,7 @@ class TicketController extends Controller
             // History only has search, status, date and "mine". The rest cannot apply to a finished ticket.
             $filters['category_id'] = $filters['department_id'] = $filters['assigned_to'] = null;
             $filters['emergency'] = $filters['overdue'] = false;
+            $filters['priority'] = null;
         }
 
         $user = $request->user();
@@ -100,10 +105,25 @@ class TicketController extends Controller
 
         $this->applyFilters($query, $filters, $user);
 
-        $tickets = ($history
-            ? $query->orderByDesc('updated_at')->orderByDesc('id')   // most recently finished first
-            : $query->queueOrder()
-        )->paginate(self::PER_PAGE)->withQueryString();
+        // Sorting: ?sort=<column>&dir=asc|desc. Unknown values are ignored (the default order is used).
+        $sortOptions = [
+            'ticket' => 'Ticket no', 'status' => 'Status', 'location' => 'Location', 'category' => 'Category',
+            'requester' => 'Requester', 'assigned' => 'Assigned to', 'submitted' => 'Submitted',
+            'completed' => $history ? 'Closed / completed' : 'Completed',
+        ] + ($history ? [] : ['priority' => 'Priority (emergency first)', 'due' => 'Target date']);
+        $sort = (string) $request->query('sort');
+        $sort = array_key_exists($sort, $sortOptions) ? $sort : null;
+        $dir = strtolower((string) $request->query('dir')) === 'desc' ? 'desc' : 'asc';
+
+        if ($sort !== null) {
+            $this->applySort($query, $sort, $dir, $history);
+        } elseif ($history) {
+            $query->orderByDesc('updated_at')->orderByDesc('id');   // most recently finished first
+        } else {
+            $query->queueOrder();
+        }
+
+        $tickets = $query->paginate(self::PER_PAGE)->withQueryString();
 
         return view('tickets.index', [
             'tickets' => $tickets,
@@ -111,6 +131,9 @@ class TicketController extends Controller
             'listRoute' => $history ? 'tickets.history' : 'tickets.index',
             'canExport' => (bool) $user->can_do('export_reports'),
             'filters' => $filters,
+            'sort' => $sort,
+            'dir' => $dir,
+            'sortOptions' => $sortOptions,
             'hasFilters' => $this->hasFilters($filters),
             'statusOptions' => $statusOptions,
             'categories' => $history ? collect() : Category::orderBy('name')->get(['id', 'name']),
@@ -150,6 +173,9 @@ class TicketController extends Controller
             'category_id' => ['nullable', 'integer'],
             'department_id' => ['nullable', 'integer'],
             'assigned_to' => ['nullable', 'string', 'max:20'],
+            'priority' => ['nullable', 'in:emergency,routine'],
+            'sort' => ['nullable', 'string', 'max:20'],
+            'dir' => ['nullable', 'string'],
             'emergency' => ['nullable', 'boolean'],
             'overdue' => ['nullable', 'boolean'],
             'mine' => ['nullable', 'boolean'],
@@ -172,6 +198,7 @@ class TicketController extends Controller
             'department_id' => $request->query('department_id'),
             'assigned_to' => $request->query('assigned_to'),
             'emergency' => $request->boolean('emergency'),
+            'priority' => in_array($request->query('priority'), ['emergency', 'routine'], true) ? $request->query('priority') : null,
             'overdue' => $request->boolean('overdue'),
             'mine' => $request->boolean('mine'),
         ];
@@ -179,6 +206,7 @@ class TicketController extends Controller
         if ($history) {
             $filters['category_id'] = $filters['department_id'] = $filters['assigned_to'] = null;
             $filters['emergency'] = $filters['overdue'] = false;
+            $filters['priority'] = null;
         }
 
         $query = MaintenanceRequest::query()->visibleTo($user);
@@ -253,6 +281,35 @@ class TicketController extends Controller
         ]);
     }
 
+    /**
+     * One column of the list. Names of related records (category, requester, assignee) are sorted with a sub-select,
+     * never a join, because visibleTo() uses unqualified column names. The id is the tie-breaker, so pages are stable.
+     */
+    private function applySort(Builder $query, string $sort, string $dir, bool $history): void
+    {
+        $own = (new MaintenanceRequest)->getTable();
+        $name = fn (string $model, string $fk) => $model::query()->select('name')
+            ->whereColumn((new $model)->getTable().'.id', $own.'.'.$fk);
+
+        match ($sort) {
+            'ticket' => $query->orderBy('ticket_no', $dir),
+            'status' => $query->orderBy('status', $dir),
+            'location' => $query->orderBy('location', $dir),
+            'category' => $query->orderBy($name(Category::class, 'category_id'), $dir),
+            'requester' => $query->orderBy($name(User::class, 'requester_id'), $dir),
+            'assigned' => $query->orderBy($name(User::class, 'assigned_to'), $dir),
+            'submitted' => $query->orderBy('submitted_at', $dir),
+            'completed' => $history
+                ? $query->orderByRaw('COALESCE(closed_at, completed_at) '.($dir === 'desc' ? 'desc' : 'asc'))
+                : $query->orderBy('completed_at', $dir),
+            'priority' => $query->orderBy('is_emergency', $dir === 'asc' ? 'desc' : 'asc'),   // ascending = emergency first
+            'due' => $query->orderByRaw('due_at IS NULL')->orderBy('due_at', $dir),
+            default => null,
+        };
+
+        $query->orderBy('id', $dir);
+    }
+
     private function applyFilters(Builder $query, array $f, User $user): void
     {
         if ($f['q'] !== '') {
@@ -281,13 +338,18 @@ class TicketController extends Controller
         if ($f['department_id']) {
             $query->where('department_id', $f['department_id']);
         }
-        if ($f['assigned_to'] === 'unassigned') {
+        if ($f['assigned_to'] === 'me') {
+            $query->where('assigned_to', $user->id);
+        } elseif ($f['assigned_to'] === 'unassigned') {
             $query->whereNull('assigned_to');
         } elseif (ctype_digit((string) $f['assigned_to'])) {
             $query->where('assigned_to', (int) $f['assigned_to']);
         }
-        if ($f['emergency']) {
+        $priority = $f['priority'] ?? null;
+        if ($f['emergency'] || $priority === 'emergency') {
             $query->where('is_emergency', true);
+        } elseif ($priority === 'routine') {
+            $query->where('is_emergency', false);
         }
         if ($f['overdue']) {
             $query->overdue();
