@@ -40,11 +40,25 @@
 */
 
 return [
-    // Role model (same four-level idea as the reference system): Requester (Student) < Staff < Head < Admin.
-    //   staff             does the work: takes / transfers its OWN tickets, completes tasks, asks the requester for info.
-    //   head              Staff + assigns anyone, sends for authorization, authorizes, closes, escalates, reports, audit log, FAQ.
-    //   maintenance_admin Head + users, settings, categories, QR codes, e-mail log (the system Admin).
+    // Role model (Phase 4A): Requester < Department Staff < Department Head < System Administrator.
+    //   requester         Student, Faculty and non-teaching Staff (told apart by users.requester_type). Files and follows own tickets.
+    //   staff             Department Staff: does the work, takes / transfers its OWN tickets, completes tasks, asks the requester for info.
+    //   head              Department Head: Staff + assigns anyone in the department, sends for authorization, authorizes, closes, escalates, reports, audit log, FAQ.
+    //   maintenance_admin Admin of the Maintenance department: Head + users, settings, categories, QR codes, e-mail log (kept as is; see OPEN_QUESTIONS).
+    //   system_admin      System Administrator: GLOBAL, all of the above across every department.
+    // Scope is NOT here: staff, head and maintenance_admin are limited to users.department_id
+    // (school.department_scoped_roles); system_admin is global (school.global_roles). Phase 4B/4C enforce it.
     // CONFIRM WITH CLIENT / TEACHER: the exact split of powers between Staff, Head and Admin.
+
+    // System Administrator: global. Same capabilities as maintenance_admin, not limited to a department.
+    'system_admin' => [
+        'view_all_tickets', 'view_confidential', 'flag_emergency', 'clear_emergency',
+        'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users', 'manage_settings', 'manage_categories', 'manage_qr_codes',
+        'cancel_own', 'reopen_own', 'request_info', 'escalate', 'view_audit_logs',
+        'view_email_log',
+        'manage_faq',
+    ],
+
     'maintenance_admin' => [
         'view_all_tickets', 'view_confidential', 'flag_emergency', 'clear_emergency',
         'send_for_authorization', 'assign', 'work', 'close', 'add_attachment', 'view_analytics', 'export_reports', 'manage_users', 'manage_settings', 'manage_categories', 'manage_qr_codes',

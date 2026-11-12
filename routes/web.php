@@ -43,7 +43,7 @@ Route::middleware('auth')->group(function () {
         ->middleware(CheckRole::class.':'.Role::REQUESTER.','.Role::DEPARTMENT_HEAD.','.Role::TREASURER)->name('requester.dashboard');
 
     Route::get('/maintenance/dashboard', [DashboardController::class, 'maintenance'])
-        ->middleware(CheckRole::class.':'.implode(',', Role::maintenanceSlugs()))->name('maintenance.dashboard');
+        ->middleware(CheckRole::class.':'.implode(',', Role::workQueueSlugs()))->name('maintenance.dashboard');
 
     Route::get('/finance/dashboard', [DashboardController::class, 'finance'])
         ->middleware(CheckRole::class.':'.Role::FINANCE)->name('finance.dashboard');
@@ -113,7 +113,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/attachments/{attachment}', [AttachmentController::class, 'destroy'])->name('attachments.destroy');
 
     // ---- Maintenance card board ----
-    Route::middleware(CheckRole::class.':'.implode(',', Role::maintenanceSlugs()))->prefix('maintenance')->name('maintenance.')->group(function () {
+    Route::middleware(CheckRole::class.':'.implode(',', Role::workQueueSlugs()))->prefix('maintenance')->name('maintenance.')->group(function () {
         Route::get('/board', [MaintenanceBoardController::class, 'index'])->name('board');
         Route::get('/board/cards', [MaintenanceBoardController::class, 'cards'])->name('board.cards');
         Route::post('/tickets/{ticket}/accept', [MaintenanceBoardController::class, 'accept'])->name('accept');

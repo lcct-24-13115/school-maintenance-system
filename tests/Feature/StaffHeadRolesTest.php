@@ -42,8 +42,8 @@ class StaffHeadRolesTest extends TestCase
 
     public function test_the_two_new_roles_exist_and_the_maintenance_team_is_three_roles(): void
     {
-        $this->assertSame('Maintenance Staff', Role::where('slug', Role::STAFF)->value('name'));
-        $this->assertSame('Head of Maintenance', Role::where('slug', Role::HEAD)->value('name'));
+        $this->assertSame('Department Staff', Role::where('slug', Role::STAFF)->value('name'));
+        $this->assertSame('Department Head', Role::where('slug', Role::HEAD)->value('name'));
         $this->assertSame('Maintenance Admin', Role::where('slug', Role::MAINTENANCE_ADMIN)->value('name'));
         $this->assertEqualsCanonicalizing(['staff', 'head', 'maintenance_admin'], Role::maintenanceSlugs());
     }
@@ -133,7 +133,7 @@ class StaffHeadRolesTest extends TestCase
 
         $admin = $this->make('maintenance_admin');
         $this->actingAs($admin)->get(route('admin.users.index'))
-            ->assertOk()->assertSee('Maintenance Staff')->assertSee('Head of Maintenance')->assertSee('Maintenance Admin');
+            ->assertOk()->assertSee('Department Staff')->assertSee('Department Head')->assertSee('Maintenance Admin');
     }
 
     public function test_the_staff_only_tick_box_is_gone(): void

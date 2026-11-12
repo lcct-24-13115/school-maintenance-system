@@ -60,10 +60,18 @@ return [
     // CONFIRM WITH CLIENT
     'department_visibility_roles' => ['department_head'],
 
+    // Phase 4A: department-scoped roles. Their powers apply ONLY to the department in users.department_id.
+    //   staff = Department Staff, head = Department Head, maintenance_admin = admin of the Maintenance department.
+    // The department is never written in code: it comes from the user's row. CONFIRM WITH CLIENT
+    'department_scoped_roles' => ['staff', 'head', 'maintenance_admin'],
+
+    // Phase 4A: global roles. Not tied to a department; they act across all departments. CONFIRM WITH CLIENT
+    'global_roles' => ['system_admin'],
+
     // Roles that may use the repair request form (/repairs/create).
     // Default keeps Phase 1 behaviour (every role). CONFIRM WITH CLIENT
     'filing_roles' => [
-        'requester', 'department_head', 'treasurer', 'custodian', 'staff', 'head', 'maintenance_admin', 'finance', 'president',
+        'requester', 'department_head', 'treasurer', 'custodian', 'staff', 'head', 'maintenance_admin', 'system_admin', 'finance', 'president',
     ],
 
     // Phase 16 (Reports): CONFIRM WITH CLIENT
@@ -109,9 +117,10 @@ return [
     */
     'workflow' => [
         // CONFIRM WITH CLIENT: who the final signatory/authorizer is.
-        'authorizers' => ['head', 'maintenance_admin'],
+        // (Phase 4A: system_admin added. Department scoping of approve / close comes in Phase 4C.)
+        'authorizers' => ['head', 'maintenance_admin', 'system_admin'],
         // CONFIRM WITH CLIENT: who may formally close a ticket.
-        'closers' => ['head', 'maintenance_admin'],
+        'closers' => ['head', 'maintenance_admin', 'system_admin'],
         // CONFIRM WITH CLIENT: what must be on file before closing.
         'closure_requires' => ['authorization', 'signed_evidence'],
         // CONFIRM WITH CLIENT: may the authorizer approve directly from Submitted?
