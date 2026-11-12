@@ -36,6 +36,7 @@ class StaffHeadRolesTest extends TestCase
             'role_id' => Role::where('slug', $slug)->firstOrFail()->id,
             'email_verified_at' => now(),
             'is_active' => true,
+            'is_active' => true,
         ]);
     }
 
@@ -140,4 +141,5 @@ class StaffHeadRolesTest extends TestCase
         $this->assertFalse(\Illuminate\Support\Facades\Schema::hasColumn('users', 'staff_only'));
     }
 }
+
 
