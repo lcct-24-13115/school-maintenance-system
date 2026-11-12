@@ -34,7 +34,7 @@ class MaintenanceRequest extends Model
     public const PRIORITY_EMERGENCY = 'emergency';
 
     protected $fillable = [
-        'ticket_no', 'requester_id', 'department_id', 'category_id', 'subcategory_id',
+        'ticket_no', 'requester_id', 'department_id', 'assigned_department_id', 'category_id', 'subcategory_id',
         'request_type', 'maintenance_type', 'location', 'description', 'needed_by', 'reason',
         'priority', 'is_emergency', 'emergency_reason', 'emergency_flagged_by', 'emergency_flagged_at',
         'is_confidential',
@@ -66,6 +66,8 @@ class MaintenanceRequest extends Model
         static::creating(function (self $ticket) {
             $ticket->submitted_at ??= now();
             $ticket->status ??= TicketStatus::Submitted;
+            // Multi-department Phase 1: until routing exists (Phase 3) every ticket is received by the Maintenance Office.
+            $ticket->assigned_department_id ??= Department::maintenanceId();
             $ticket->ticket_no ??= self::generateTicketNo($ticket->submitted_at);
             $ticket->due_at ??= self::computeDueAt($ticket->submitted_at, (bool) $ticket->is_emergency);
         });
@@ -357,6 +359,12 @@ class MaintenanceRequest extends Model
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    /** The department that RECEIVES this ticket (department() above = the requester's department). */
+    public function assignedDepartment(): BelongsTo
+    {
+        return $this->belongsTo(Department::class, 'assigned_department_id');
     }
 
     public function category(): BelongsTo
