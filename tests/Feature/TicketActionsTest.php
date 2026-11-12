@@ -37,6 +37,23 @@ class TicketActionsTest extends TestCase
         $this->seed(DepartmentSeeder::class);
         $this->seed(CategorySeeder::class);
         $this->seed(UserSeeder::class);
+        config(['school.workflow.authorizers' => ['president']]);   // these tests were written for the President as authorizer
+        config(['school.workflow.closers' => ['maintenance_admin', 'president']]);
+
+        // Accounts the older tests expect but UserSeeder no longer creates
+        $maint = \App\Models\Role::where('slug', 'maintenance_admin')->value('id');
+        $req = \App\Models\Role::where('slug', 'requester')->value('id');
+        $dept = \App\Models\Department::query()->orderBy('id')->value('id');
+        foreach ([['maintenance2', 'Test Maintenance Staff 2', $maint, null], ['maintenance3', 'Test Maintenance Staff 3', $maint, null], ['requester2', 'Test Requester 2', $req, $dept]] as [$key, $name, $role, $d]) {
+            \App\Models\User::updateOrCreate(['email' => $key.'@lcctanauan.edu.ph'], [
+                'name' => $name,
+                'password' => \Illuminate\Support\Facades\Hash::make('password'),
+                'role_id' => $role,
+                'department_id' => $d,
+                'email_verified_at' => now(),
+            ]);
+        }
+        \App\Models\User::where('email', 'maintenance@lcctanauan.edu.ph')->update(['name' => 'Test Maintenance Admin']);
     }
 
     // ---- helpers --------------------------------------------------------------------------------
@@ -423,6 +440,67 @@ class TicketActionsTest extends TestCase
 
         $this->assertEquals($second->id, $ticket->fresh()->assigned_to);
         $this->assertDatabaseHas('request_status_logs', ['request_id' => $ticket->id, 'action' => 'reassignment']);
+    }
+
+    public function test_a_staff_only_member_can_transfer_their_own_ticket_but_needs_a_reason(): void
+    {
+        $staff = $this->user('maintenance2');
+        $staff->update(['staff_only' => true]);
+        $ticket = $this->assigned('maintenance2');     // the Head assigned it to maintenance2
+        $target = $this->user('maintenance3');
+        $url = route('tickets.assign', $ticket);
+
+        $this->actingAs($staff)->post($url, ['assignee_id' => $target->id, 'assign_note' => ''])
+            ->assertSessionHasErrors('assign_note', null, 'assign');
+        $this->assertEquals($staff->id, $ticket->fresh()->assigned_to);
+
+        $this->actingAs($staff)->post($url, ['assignee_id' => $target->id, 'assign_note' => 'I am on leave tomorrow.'])
+            ->assertSessionHas('status');
+        $this->assertEquals($target->id, $ticket->fresh()->assigned_to);
+        $this->assertDatabaseHas('request_status_logs', ['request_id' => $ticket->id, 'action' => 'reassignment']);
+    }
+
+    public function test_a_staff_only_member_cannot_assign_or_reassign_other_peoples_tickets(): void
+    {
+        $staff = $this->user('maintenance2');
+        $staff->update(['staff_only' => true]);
+        $other = $this->user('maintenance3');
+
+        $theirs = $this->assigned('maintenance3');
+        $this->actingAs($staff)->post(route('tickets.assign', $theirs), ['assignee_id' => $staff->id, 'assign_note' => 'Mine now.'])
+            ->assertForbidden();
+        $this->assertEquals($other->id, $theirs->fresh()->assigned_to);
+
+        $open = $this->approved();
+        $this->actingAs($staff)->post(route('tickets.assign', $open), ['assignee_id' => $other->id])
+            ->assertForbidden();
+        $this->assertNull($open->fresh()->assigned_to);
+    }
+
+    public function test_the_workflow_itself_refuses_a_staff_only_member_who_assigns_to_someone_else(): void
+    {
+        $staff = $this->user('maintenance2');
+        $staff->update(['staff_only' => true]);
+        $ticket = $this->approved();
+
+        $this->expectException(DomainException::class);
+        TicketWorkflow::assign($ticket, $this->user('maintenance3'), $staff);
+    }
+
+    public function test_the_requester_sees_that_a_ticket_was_reassigned_but_not_the_reason(): void
+    {
+        $ticket = $this->assigned('maintenance');
+
+        $this->actingAs($this->user('maintenance'))->post(route('tickets.assign', $ticket), [
+            'assignee_id' => $this->user('maintenance2')->id,
+            'assign_note' => 'Private leave reason.',
+        ])->assertSessionHas('status');
+
+        $this->actingAs($this->user('maintenance'))->get(route('tickets.show', $ticket))
+            ->assertOk()->assertSee('Private leave reason.');
+
+        $this->actingAs($this->user('requester'))->get(route('tickets.show', $ticket))
+            ->assertOk()->assertSee('Reassigned from')->assertDontSee('Private leave reason.');
     }
 
     public function test_the_assign_dropdown_lists_active_staff_with_their_open_ticket_count(): void

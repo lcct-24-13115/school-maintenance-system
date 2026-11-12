@@ -93,6 +93,7 @@ class UserController extends Controller
             'employee_no' => ['nullable', 'string', 'max:50', Rule::unique('users', 'employee_no')],
             'role_id' => ['required', 'integer', Rule::exists('roles', 'id')],
             'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')],
+            'staff_only' => ['nullable', 'boolean'],
         ], [
             'email.unique' => 'An account with this email already exists.',
             'employee_no.unique' => 'This employee number is already used by another account.',
@@ -106,6 +107,7 @@ class UserController extends Controller
             'employee_no' => $data['employee_no'] ?? null,
             'role_id' => $data['role_id'],
             'department_id' => $data['department_id'] ?? null,
+            'staff_only' => $request->boolean('staff_only'),
             'password' => $temporary,            // the "hashed" cast hashes it
             'is_active' => true,
         ]);
@@ -127,6 +129,7 @@ class UserController extends Controller
         $data = $request->validate([
             'role_id' => ['required', 'integer', Rule::exists('roles', 'id')],
             'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')],
+            'staff_only' => ['nullable', 'boolean'],
         ]);
 
         if ($user->is($request->user()) && (int) $data['role_id'] !== (int) $user->role_id) {
@@ -135,6 +138,10 @@ class UserController extends Controller
 
         $user->role_id = (int) $data['role_id'];
         $user->department_id = isset($data['department_id']) ? (int) $data['department_id'] : null;
+
+        if ($request->has('staff_only')) {
+            $user->staff_only = $request->boolean('staff_only');
+        }
 
         if (! $user->isDirty()) {
             return back()->with('status', "No changes for {$user->name}.");

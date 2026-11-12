@@ -284,6 +284,18 @@ class TicketWorkflow
             return $ticket;   // already theirs, nothing to do
         }
 
+        // WHO may do it (the status and the note rules are checked here too, so a direct call cannot skip them):
+        // the Head assigns anyone; a staff-only member takes an unassigned ticket for themselves or transfers their
+        // own. System callers (the PM scheduler) pass no $by and are not checked.
+        if ($by !== null && $by->isStaffOnly()) {
+            $claiming = $ticket->assigned_to === null && (int) $assignee->id === (int) $by->id;
+            $transferring = $ticket->assigned_to !== null && (int) $ticket->assigned_to === (int) $by->id;
+
+            if (! $claiming && ! $transferring) {
+                throw new DomainException('Maintenance staff can take an unassigned ticket or transfer their own ticket. Only the Head of Maintenance can assign a ticket to someone else.');
+            }
+        }
+
         $previous = $ticket->assignee;
         $isReassignment = $previous !== null;
 
@@ -302,7 +314,7 @@ class TicketWorkflow
             $isReassignment ? RequestStatusLog::ACTION_REASSIGNMENT : RequestStatusLog::ACTION_ASSIGNMENT,
             $by,
             trim($text),
-            ['from_user_id' => $previous?->id, 'to_user_id' => $assignee->id],
+            ['from_user_id' => $previous?->id, 'to_user_id' => $assignee->id, 'reason' => $isReassignment ? trim((string) $note) : null],
         );
     }
 

@@ -24,7 +24,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected $fillable = [
         'role_id', 'department_id', 'employee_no',
-        'name', 'email', 'password', 'is_active',
+        'name', 'email', 'password', 'is_active', 'staff_only',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -35,6 +35,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'staff_only' => 'boolean',
             'decided_at' => 'datetime',
         ];
     }
@@ -105,6 +106,16 @@ class User extends Authenticatable implements MustVerifyEmail
     public function hasRole(string ...$slugs): bool
     {
         return in_array($this->role?->slug, $slugs, true);
+    }
+
+    /**
+     * A maintenance account marked "staff only" (Users page): it may take an unassigned ticket and transfer its OWN
+     * ticket (a reason is required), but may not assign tickets to other people. A maintenance admin without the
+     * mark is the Head: assigns and reassigns anyone.
+     */
+    public function isStaffOnly(): bool
+    {
+        return $this->hasRole(Role::MAINTENANCE_ADMIN) && (bool) $this->staff_only;
     }
 
     /**

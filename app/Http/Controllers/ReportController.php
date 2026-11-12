@@ -32,7 +32,7 @@ class ReportController extends Controller
         $report = new ReportMetrics($request->user(), $filters['from'], $filters['to']);
         $metrics = $report->all();
         $attention = $report->attention();   // about NOW: the dates above do not apply to it
-        $canAssign = (bool) $request->user()->can_do('assign');
+        $canAssign = (bool) $request->user()->can_do('assign') && ! $request->user()->isStaffOnly();
 
         return view('reports.index', [
             'filters' => $filters,
