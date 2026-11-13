@@ -31,7 +31,8 @@ class RepairRequestController extends Controller
         return view('repairs.create', [
             'canFlag' => $canFlag,
             'emergencyBypass' => $canFlag && config('school.emergency_bypasses_advance_notice'),
-            'departments' => Department::orderBy('name')->get(),
+            // Phase 5: a deactivated department is not offered on a NEW ticket (old tickets keep it).
+            'departments' => Department::active()->orderBy('name')->get(),
             'categories' => Category::visible()->ofDepartment(Department::maintenanceId())->ordered()->get(['id', 'name', 'type', 'is_locked']),
             'subcategories' => Subcategory::visible()->ordered()->get(['id', 'category_id', 'name']),
             'requestTypes' => [

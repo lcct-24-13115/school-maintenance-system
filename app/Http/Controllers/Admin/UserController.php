@@ -77,7 +77,8 @@ class UserController extends Controller
             'pendingTotal' => User::query()->pending()->count(),
             'filters' => $filters,
             'roles' => Role::query()->orderBy('name')->get(['id', 'name', 'slug']),
-            'departments' => Department::query()->orderBy('name')->get(['id', 'name', 'code']),
+            // Phase 5: the dropdown carries is_active so inactive departments can be shown but not newly chosen.
+            'departments' => Department::query()->orderBy('name')->get(['id', 'name', 'code', 'is_active']),
         ]);
     }
 
@@ -92,7 +93,8 @@ class UserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', new SchoolEmail, Rule::unique('users', 'email')],
             'employee_no' => ['nullable', 'string', 'max:50', Rule::unique('users', 'employee_no')],
             'role_id' => ['required', 'integer', Rule::exists('roles', 'id')],
-            'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')],
+            // Phase 5: new assignments may only use an ACTIVE department.
+            'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')->where('is_active', true)],
         ], [
             'email.unique' => 'An account with this email already exists.',
             'employee_no.unique' => 'This employee number is already used by another account.',
@@ -126,7 +128,15 @@ class UserController extends Controller
 
         $data = $request->validate([
             'role_id' => ['required', 'integer', Rule::exists('roles', 'id')],
-            'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')],
+            // Phase 5: only ACTIVE departments may be ASSIGNED. The person's CURRENT department is
+            // still accepted (otherwise saving an unrelated role change would fail on old data).
+            'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')->where(function ($query) use ($user) {
+                $query->where('is_active', true);
+
+                if ($user->department_id !== null) {
+                    $query->orWhere('id', $user->department_id);
+                }
+            })],
         ]);
 
         if ($user->is($request->user()) && (int) $data['role_id'] !== (int) $user->role_id) {

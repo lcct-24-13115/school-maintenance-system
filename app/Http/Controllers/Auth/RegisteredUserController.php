@@ -24,7 +24,8 @@ class RegisteredUserController extends Controller
         abort_unless(config('school.allow_public_registration'), 404);
 
         return view('auth.register', [
-            'departments' => Department::orderBy('name')->get(),
+            // Phase 5: inactive departments are not offered on the registration form either.
+            'departments' => Department::active()->orderBy('name')->get(),
             'types' => (array) config('registration.types'),
             'defaultType' => (string) config('registration.default'),
         ]);
@@ -55,7 +56,8 @@ class RegisteredUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => $emailRules,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'department_id' => ['nullable', 'exists:departments,id'],
+            // Phase 5: an inactive department cannot be picked by a hand-made POST.
+            'department_id' => ['nullable', Rule::exists('departments', 'id')->where('is_active', true)],
             'affiliation' => [($rule['affiliation']['required'] ?? false) ? 'required' : 'nullable', 'string', 'min:2', 'max:190'],
             'purpose' => [($rule['purpose']['required'] ?? false) ? 'required' : 'nullable', 'string', 'min:10', 'max:500'],
         ], [

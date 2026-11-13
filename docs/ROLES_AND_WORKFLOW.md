@@ -178,3 +178,16 @@ The PM Scheduler, Equipment, the PM report and the Maintenance Calendar, with th
 * One department-wide queue; no routing between departments.
 * Closing needs a recorded authorization (enforced). The planned "signed evidence" requirement and the `closers` list are declared in `config/school.php` but not enforced yet (see [LIMITATIONS.md](LIMITATIONS.md)).
 * The retired roles are kept in config so they can return without code changes.
+
+## 12. Department management (Phase 5)
+
+Admin › **Departments** (`manage_departments`, System Administrator only) adds / edits departments,
+assigns the `head_user_id` pointer, and activates or deactivates them. Head and Staff assignment
+still happens in Admin › Users (role + department). An inactive department is not offered on new
+ticket / registration forms and cannot be newly assigned to a person.
+
+Deactivating is blocked while the department has open tickets unless another ACTIVE department is
+chosen; open tickets are moved there in one transaction, finished tickets stay for history. A
+department with any ticket can never be hard-deleted. Every change is written to the audit log
+(`department_created` / `updated` / `activated` / `deactivated` / `deleted`). Full rules:
+[DEPARTMENT_MANAGEMENT.md](DEPARTMENT_MANAGEMENT.md). Reports and SLA are explicitly out of scope.

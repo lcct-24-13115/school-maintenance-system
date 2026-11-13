@@ -50,6 +50,7 @@ A scoped account with no department has no scope: it sees nothing and cannot cla
 | `manage_users` | — | — | — | ✓* | ✓ | — | — |
 | `manage_settings` | — | — | — | ✓* | ✓ | — | — |
 | `manage_categories` | — | — | — | ✓* | ✓ | — | — |
+| `manage_departments` (Phase 5) | — | — | — | — | ✓ | — | — |
 | `manage_qr_codes` | — | — | — | ✓* | ✓ | — | — |
 | `manage_faq` | — | — | ✓* | ✓* | ✓ | — | — |
 | `cross_department_transfer` (Phase 4C) | — | — | ✓* | ✓* | ✓ | — | — |
@@ -137,3 +138,11 @@ Opening the group is only the first gate: every number and every ticket inside s
   (role × department), cross-department reason, dropdown scoping.
 - `tests/Feature/DepartmentScopedRolesTest.php` — scoped vs global roles from config.
 - `tests/Feature/StaffTicketRulesTest.php`, `tests/Feature/StaffHeadRolesTest.php` — staff / head split.
+
+## 8. Phase 5: department management capability
+
+`manage_departments` is added **only** to `system_admin`, because changing the department table
+changes the scope of every department-scoped account. `maintenance_admin` keeps its existing admin
+pages but gets 403 on `admin/departments.*`. The list / add / edit / activate / deactivate / delete
+screens, the open-ticket transfer rule and the audit actions are documented in
+[DEPARTMENT_MANAGEMENT.md](DEPARTMENT_MANAGEMENT.md).

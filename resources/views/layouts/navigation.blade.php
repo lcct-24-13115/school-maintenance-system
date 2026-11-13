@@ -75,7 +75,7 @@
             </a>
         @endif
 
-        @if ($u->can_do('manage_settings') || $u->can_do('manage_categories') || $u->can_do('manage_users') || $u->can_do('view_audit_logs') || $u->can_do('view_email_log') || $u->canManageFaq())
+        @if ($u->can_do('manage_settings') || $u->can_do('manage_categories') || $u->can_do('manage_departments') || $u->can_do('manage_users') || $u->can_do('view_audit_logs') || $u->can_do('view_email_log') || $u->canManageFaq())
             <div class="nav-sec">Administration</div>
         @endif
 
@@ -92,6 +92,13 @@
         @if ($u->can_do('manage_settings'))
             <a href="{{ route('admin.settings.edit') }}" class="{{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-gear"></i> <span class="nl">Settings</span>
+            </a>
+        @endif
+
+        @if ($u->can_do('manage_departments'))
+            {{-- Phase 5: only the System Administrator has manage_departments (see config/permissions.php). --}}
+            <a href="{{ route('admin.departments.index') }}" class="{{ request()->routeIs('admin.departments.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-building"></i> <span class="nl">Departments</span>
             </a>
         @endif
 

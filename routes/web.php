@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\SubcategoryController;
 use App\Http\Controllers\Admin\EmailLogController;
 use App\Http\Controllers\Admin\QrCodeController;
@@ -153,6 +154,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/{faq}/move', [FaqAdminController::class, 'move'])->name('move');
         Route::post('/{faq}/duplicate', [FaqAdminController::class, 'duplicate'])->name('duplicate');
         Route::delete('/{faq}', [FaqAdminController::class, 'destroy'])->name('destroy');
+    });
+
+    // ---- Department management (admin, Phase 5). Capability manage_departments is checked in the controller (others get 403) ----
+    Route::prefix('admin/departments')->name('admin.departments.')->group(function () {
+        Route::get('/', [DepartmentController::class, 'index'])->name('index');
+        Route::get('/create', [DepartmentController::class, 'create'])->name('create');
+        Route::post('/', [DepartmentController::class, 'store'])->name('store');
+        Route::get('/{department}/edit', [DepartmentController::class, 'edit'])->name('edit');
+        Route::put('/{department}', [DepartmentController::class, 'update'])->name('update');
+        Route::patch('/{department}/activate', [DepartmentController::class, 'activate'])->name('activate');
+        Route::patch('/{department}/deactivate', [DepartmentController::class, 'deactivate'])->name('deactivate');
+        Route::delete('/{department}', [DepartmentController::class, 'destroy'])->name('destroy');
     });
 
     // ---- Categories admin (Phase 5). Capability manage_categories is checked in the controller (others get 403) ----
