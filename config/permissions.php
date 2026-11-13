@@ -25,6 +25,10 @@
 |   manage_users       open /admin/users: add, activate / deactivate, reset password, change role and department (Phase 6)
 |   manage_settings    edit /admin/settings: SLA hours, reopen window (Merge Phase M1)
 |   manage_categories  open /admin/categories: add, edit, hide, reorder and delete categories (Phase 5)
+|   manage_departments  open /admin/departments: add, edit, assign a head, activate / deactivate and delete
+|                      (department management Phase 5). System Administrator ONLY. A department with open
+|                      tickets needs a transfer target before it can be deactivated; one with ANY tickets
+|                      can never be hard-deleted. Inactive departments are not offered on new ticket forms.
 |   cancel_own         cancel YOUR OWN ticket, before it is Assigned (Merge Phase M2). Every role has it.
 |   reopen_own         reopen YOUR OWN Work Completed / Closed ticket inside reopen_window_days (M2). Every role has it.
 |   request_info       ask the requester for information: ticket goes to Waiting for User (M2)
@@ -47,6 +51,9 @@
 | Phase 4C assignment: Staff claim / transfer only inside their own department; Head assigns anyone in the
 | department; assigning to staff outside the ticket's department is a cross-department transfer
 | (cross_department_transfer + reason). See TicketWorkflow::assign() / claim() / transfer().
+| Phase 5 (department management): manage_departments is deliberately given to system_admin ONLY. The
+| Maintenance Admin keeps its department-scoped admin pages (users, settings, categories, QR codes),
+| but department structure is school-wide, so only the global administrator may change it.
 */
 
 return [
@@ -70,6 +77,8 @@ return [
         'view_email_log',
         'manage_faq',
         'cross_department_transfer',
+        // Phase 5: department structure is school-wide; the global administrator alone manages it.
+        'manage_departments',
     ],
 
     'maintenance_admin' => [

@@ -68,6 +68,32 @@ class Department extends Model
         return $this->hasMany(MaintenanceRequest::class);
     }
 
+    /**
+     * Phase 5: EVERY ticket that points at this department — either as the office that FILED it
+     * (`department_id`) or as the office that RECEIVES it (`assigned_department_id`). Used by the
+     * deactivate / delete guards: a department with tickets keeps its history.
+     */
+    public function relatedTickets(): Builder
+    {
+        return MaintenanceRequest::withTrashed()->where(function (Builder $q) {
+            $q->where('department_id', $this->id)
+                ->orWhere('assigned_department_id', $this->id);
+        });
+    }
+
+    /** Phase 5: "open" = one of TicketStatus::pendingValues() (not Closed / Disapproved / Cancelled). */
+    public function openTickets(): Builder
+    {
+        // A soft-deleted ticket still blocks hard-delete (history), but it is not active work that
+        // must be routed before deactivation.
+        return $this->relatedTickets()->withoutTrashed()->pending();
+    }
+
+    public function hasAnyTickets(): bool
+    {
+        return $this->relatedTickets()->exists();
+    }
+
     public function budgets(): HasMany
     {
         return $this->hasMany(DepartmentBudget::class);

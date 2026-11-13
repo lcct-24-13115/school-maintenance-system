@@ -40,3 +40,27 @@
 - The ticket list filter (`TicketController`) still lists ALL categories in one dropdown. Phase 6 (filters per department) will fix that.
 - No subcategories were seeded for the new departments; the admin can add them (Admin > Categories > Subcategories).
 - Rolling back the migration fails if two departments already share a category name + type. Rename or delete those first.
+
+## Phase 5: department management (admin)
+
+**What changed**
+- New `Admin/DepartmentController` + views for list / add / edit / activate / deactivate / delete.
+  Capability `manage_departments` (System Administrator only), checked in the controller like the
+  other Admin controllers; sidebar link appears only for that capability.
+- `head_user_id` is no longer "only a pointer": the department Edit screen assigns an active Head /
+  administrator of that department. Staff and Head assignment still uses Admin > Users (role +
+  department), which now rejects inactive departments for new assignments.
+- Deactivating is refused while the department has OPEN tickets unless a different ACTIVE department
+  is chosen; the open tickets are re-routed in one transaction, finished tickets stay for history.
+  Hard delete is refused whenever ANY ticket references the department.
+- Inactive departments no longer appear on the repair request form or registration form, and are
+  rejected server-side on submit.
+- `AuditLogger` gained `department_created` / `updated` / `activated` / `deactivated` / `deleted`.
+- `Department::relatedTickets()` and `openTickets()` are the single definition of "tickets of this
+  department" (filed OR received) and "open tickets" (TicketStatus::pendingValues()).
+
+**Decisions** (see OPEN_QUESTIONS #107-110)
+- "Open" includes Waiting for User, Escalated and Reopened; Closed / Disapproved / Cancelled are finished.
+- Both `requests.department_id` and `requests.assigned_department_id` are moved on a transfer so no
+  open ticket is left pointing at a deactivated department.
+- Only the global System Administrator manages the department structure; CONFIRM WITH CLIENT.

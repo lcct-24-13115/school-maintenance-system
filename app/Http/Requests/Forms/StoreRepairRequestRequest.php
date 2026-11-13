@@ -57,7 +57,8 @@ class StoreRepairRequestRequest extends FormRequest
         $type = $this->input('request_type');
 
         return [
-            'department_id' => ['required', 'exists:departments,id'],
+            // Phase 5: server-side guard — a deactivated department cannot be chosen even by a hand-made POST.
+            'department_id' => ['required', Rule::exists('departments', 'id')->where('is_active', true)],
             'request_type' => ['nullable', Rule::in([Category::TYPE_MATERIALS, Category::TYPE_EQUIPMENT, Category::TYPE_SUPPLIES])],
             // When a request type is chosen the category must be of that type (the model enforces it too).
             'category_id' => ['required', Rule::exists('categories', 'id')->where(function ($query) use ($type) {

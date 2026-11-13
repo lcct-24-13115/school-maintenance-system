@@ -156,7 +156,7 @@
                         <select id="u-dept" name="department_id">
                             <option value="">No department</option>
                             @foreach ($departments as $d)
-                                <option value="{{ $d->id }}" @selected($adding && (string) old('department_id') === (string) $d->id)>{{ $d->name }}</option>
+                                <option value="{{ $d->id }}" @selected($adding && (string) old('department_id') === (string) $d->id) @disabled(! $d->is_active)>{{ $d->name }}@unless($d->is_active) (inactive) @endunless</option>
                             @endforeach
                         </select>
                         @if ($adding) @error('department_id')<div class="field-err">{{ $message }}</div>@enderror @endif
@@ -332,7 +332,7 @@
                                                 <select id="d-{{ $u->id }}" name="department_id">
                                                     <option value="">No department</option>
                                                     @foreach ($departments as $d)
-                                                        <option value="{{ $d->id }}" @selected((string) $deptNow === (string) $d->id)>{{ $d->name }}</option>
+                                                        <option value="{{ $d->id }}" @selected((string) $deptNow === (string) $d->id) @disabled(! $d->is_active && (string) $deptNow !== (string) $d->id)>{{ $d->name }}@unless($d->is_active) (inactive) @endunless</option>
                                                     @endforeach
                                                 </select>
                                                 @if ($isEdit) @error('department_id')<div class="field-err">{{ $message }}</div>@enderror @endif
