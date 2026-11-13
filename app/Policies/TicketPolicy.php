@@ -70,6 +70,8 @@ class TicketPolicy
      * Add a note to the history: the requester, the assignee, and anyone with a working role on tickets
      * (authorizers, maintenance admin, anyone who can assign/work/close/flag). Dept. heads, treasurer,
      * custodian and finance stay view-only. CONFIRM WITH CLIENT.
+     * Phase 4C: department scoping comes from visibility (takesPart checks isVisibleTo first), so Finance
+     * staff cannot note a Registrar ticket (404 via the binder, false here).
      */
     public function addNote(User $user, MaintenanceRequest $ticket): bool
     {
@@ -81,6 +83,7 @@ class TicketPolicy
      * assignee and the working roles. Everyone who may SEE the ticket may READ the conversation (it is part of
      * the ticket page), so a view-only role reads it but gets no reply form. The status rule (a finished
      * ticket takes no more replies) is in TicketWorkflow::addReply().
+     * Phase 4C: same department scoping as addNote (via visibility).
      */
     public function reply(User $user, MaintenanceRequest $ticket): bool
     {
@@ -141,14 +144,20 @@ class TicketPolicy
         return $this->ownTicket($user, $ticket);
     }
 
+    /**
+     * Phase 4C: assign / reassign. The Head (and Maintenance Admin / System Administrator) may assign anyone
+     * in the department; a staff-only member may only act on a ticket that is assigned to them (they transfer
+     * it). Taking an unassigned ticket is the board's [ACCEPT TASK] / claim below.
+     * The TARGET's department and the cross-department reason are not known here (this ability only sees the
+     * ticket), so they are enforced in TicketWorkflow::assign() with a clear message. Visibility already
+     * limits a scoped actor to their own department's tickets (or their own / assigned ones).
+     */
     public function assign(User $user, MaintenanceRequest $ticket): bool
     {
         if (! $this->can($user, $ticket, 'assign')) {
             return false;
         }
 
-        // The Head may act on any ticket. A staff-only member may only act on a ticket that is assigned to them
-        // (they transfer it). Taking an unassigned ticket is the board's [ACCEPT TASK].
         return ! $user->isStaffOnly()
             || ($ticket->assigned_to !== null && (int) $ticket->assigned_to === (int) $user->id);
     }
@@ -157,15 +166,23 @@ class TicketPolicy
      * Staff rule: a Maintenance Staff member may CLAIM an unassigned ticket (take it for themselves).
      * The Head and the Maintenance Admin do not claim: they assign (assign above). "Is it really unassigned?"
      * and "is it Approved?" are state rules, checked in TicketWorkflow::claim() with a clear message.
+     * Phase 4C: claim only inside the staff member's own department. Visibility already hides other
+     * departments' tickets, but a staff member who FILED a ticket in another department could still see it
+     * as requester, so the department check is repeated here (and again in the workflow).
      */
     public function claim(User $user, MaintenanceRequest $ticket): bool
     {
-        return $user->isStaffOnly() && $this->can($user, $ticket, 'work');
+        return $user->isStaffOnly()
+            && $this->can($user, $ticket, 'work')
+            && $this->inOwnDepartment($user, $ticket);
     }
 
     /**
      * Staff rule: a Maintenance Staff member may TRANSFER their OWN ticket to a colleague, with a reason.
      * "Is it really yours?", the reason and the target are checked in TicketWorkflow::transfer().
+     * Phase 4C: the target must be in the transferring staff member's own department (checked in the
+     * workflow, which knows the target). A cross-department assignee may still transfer to a colleague in
+     * their own department, so no ticket-department check is done here.
      */
     public function transfer(User $user, MaintenanceRequest $ticket): bool
     {
@@ -238,5 +255,20 @@ class TicketPolicy
     private function can(User $user, MaintenanceRequest $ticket, string $capability): bool
     {
         return $user->can_do($capability) && $ticket->isVisibleTo($user);
+    }
+
+    /**
+     * Phase 4C: is the ticket in the user's own (scoped) department? Global roles have no scope, so they
+     * pass. A ticket with no assigned department (legacy rows) is not blocked here; the workflow decides.
+     * No department name or id is hardcoded: both sides come from the user's row and the ticket.
+     */
+    private function inOwnDepartment(User $user, MaintenanceRequest $ticket): bool
+    {
+        if (! $user->isDepartmentScoped() || $ticket->assigned_department_id === null) {
+            return true;
+        }
+
+        return $user->scopedDepartmentId() !== null
+            && (int) $ticket->assigned_department_id === (int) $user->scopedDepartmentId();
     }
 }

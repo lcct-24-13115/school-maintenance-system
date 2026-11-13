@@ -74,6 +74,25 @@ class Role extends Model
         return array_values((array) config('school.global_roles', [self::SYSTEM_ADMIN]));
     }
 
+    /**
+     * Roles that may assign a ticket to staff outside the ticket's department (Phase 4C).
+     * Derived from config/permissions.php (cross_department_transfer), never hardcoded here.
+     *
+     * @return list<string>
+     */
+    public static function crossDepartmentSlugs(): array
+    {
+        $slugs = [];
+
+        foreach ((array) config('permissions', []) as $slug => $capabilities) {
+            if (in_array('cross_department_transfer', (array) $capabilities, true)) {
+                $slugs[] = $slug;
+            }
+        }
+
+        return $slugs;
+    }
+
     public function users(): HasMany
     {
         return $this->hasMany(User::class);

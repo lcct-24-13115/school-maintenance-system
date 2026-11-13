@@ -156,4 +156,40 @@ class TicketActions
             ->orderBy('name')
             ->get();
     }
+
+    /**
+     * Phase 4C: the Assign / Reassign / Transfer dropdown for THIS actor on THIS ticket.
+     *  - Department Staff (staff-only): only colleagues in their own department (they cannot transfer
+     *    cross-department, so other departments are not offered).
+     *  - Head / Maintenance Admin / System Administrator (cross_department_transfer): everyone, so a
+     *    cross-department transfer can be picked; the workflow still requires a reason for it.
+     *  - No actor (or a global actor): everyone (the old behaviour).
+     * No department is hardcoded: the filter uses the actor's users.department_id.
+     *
+     * @return Collection<int, User>
+     */
+    public static function assignableStaffFor(?MaintenanceRequest $ticket, ?User $actor = null): Collection
+    {
+        if ($actor === null || $actor->isGlobalRole() || $actor->canTransferCrossDepartment()) {
+            return self::assignableStaff();
+        }
+
+        if ($actor->isStaffOnly()) {
+            $departmentId = $actor->scopedDepartmentId();
+
+            if ($departmentId === null) {
+                return collect();
+            }
+
+            return User::query()
+                ->where('is_active', true)
+                ->where('department_id', $departmentId)
+                ->whereHas('role', fn ($q) => $q->whereIn('slug', Role::maintenanceSlugs()))
+                ->withCount(['assignedRequests as open_tickets_count' => fn ($q) => $q->pending()])
+                ->orderBy('name')
+                ->get();
+        }
+
+        return self::assignableStaff();
+    }
 }

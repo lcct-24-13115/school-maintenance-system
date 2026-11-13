@@ -42,6 +42,8 @@ Route::middleware('auth')->group(function () {
         // Dept. Heads and the Treasurer land here too (User::dashboardRoute). Before Phase 2 they got a 403.
         ->middleware(CheckRole::class.':'.Role::REQUESTER.','.Role::DEPARTMENT_HEAD.','.Role::TREASURER)->name('requester.dashboard');
 
+    // Phase 4C: work screens are for the work roles (staff, head, maintenance_admin, system_admin).
+    // Department scoping inside them comes from visibleTo() / the policies, never from a hardcoded department.
     Route::get('/maintenance/dashboard', [DashboardController::class, 'maintenance'])
         ->middleware(CheckRole::class.':'.implode(',', Role::workQueueSlugs()))->name('maintenance.dashboard');
 
@@ -112,7 +114,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/attachments/{attachment}/text', [AttachmentController::class, 'text'])->name('attachments.text');
     Route::delete('/attachments/{attachment}', [AttachmentController::class, 'destroy'])->name('attachments.destroy');
 
-    // ---- Maintenance card board ----
+    // ---- Maintenance card board (Phase 4C: same work roles as the dashboard; tickets are scoped by visibleTo) ----
     Route::middleware(CheckRole::class.':'.implode(',', Role::workQueueSlugs()))->prefix('maintenance')->name('maintenance.')->group(function () {
         Route::get('/board', [MaintenanceBoardController::class, 'index'])->name('board');
         Route::get('/board/cards', [MaintenanceBoardController::class, 'cards'])->name('board.cards');
