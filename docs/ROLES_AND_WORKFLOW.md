@@ -191,3 +191,16 @@ chosen; open tickets are moved there in one transaction, finished tickets stay f
 department with any ticket can never be hard-deleted. Every change is written to the audit log
 (`department_created` / `updated` / `activated` / `deactivated` / `deleted`). Full rules:
 [DEPARTMENT_MANAGEMENT.md](DEPARTMENT_MANAGEMENT.md). Reports and SLA are explicitly out of scope.
+
+## 13. Department dashboards and queues (Phase 6)
+
+Department Staff see their own pending assignments, their department's unassigned assignable queue,
+and department overdue count. Department Heads see department-wide ticket totals, open/unassigned/
+overdue/escalated counts, escalated tickets, and open workload by active Staff (zero-work staff included).
+System Administrators see totals by receiving department (`assigned_department_id`). Maintenance Admin
+keeps the existing scoped maintenance dashboard. Every count and list begins with `visibleTo()`.
+
+The ticket list's department filter now means receiving department, not requester's department.
+Status, priority, assigned staff, submission date range and text search can be combined; numeric query
+also matches the internal ticket ID. `%` and `_` search characters are escaped as literals. Details
+are in [PHASE_6_DEPARTMENT_DASHBOARDS.md](PHASE_6_DEPARTMENT_DASHBOARDS.md).
