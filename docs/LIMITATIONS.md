@@ -33,7 +33,7 @@ Read this before a demo or before real use. Items are grouped, but the numbers s
 17. **A browser cannot keep chosen files after a validation error**, so the person must pick them again (the form says so).
 18. **HEIC photos are refused** (iPhone Safari normally converts to JPEG; some browsers do not). Allowed: jpg, jpeg, png, webp, pdf, docx, xlsx; 5 MB each; 5 files per upload. No virus scan.
 19. **PHP upload limits** may be smaller than the app limits. Set `upload_max_filesize = 6M` and `post_max_size = 32M` in `php.ini`, or a phone photo fails with "too large" / HTTP 413.
-20. **Search uses SQL `LIKE`**: `%` and `_` typed by the user act as wildcards.
+20. **Resolved in Phase 6:** ticket-list search treats `%` and `_` as literal user input (explicit SQL `LIKE ... ESCAPE '!'`); numeric searches also match the internal ticket id. The older wildcard behaviour is no longer present.
 21. **Reports:** the PDF lists the latest 300 rows (the CSV has all), the web list shows 50, the "Needs attention" list 25 (the real total is shown). *Tickets per day* covers 30 days. The attention list ignores the From / To dates on purpose.
 22. **Help & FAQ:** an admin's change shows at once in the app; a change made directly in the database can take up to 10 minutes (or run `php artisan cache:clear`). Answers are plain text with bullets, steps, bold and links to this site only.
 23. **Dashboard "Last update"** and many counters follow what the signed-in person may see, so two roles can legitimately see different numbers for the same day.

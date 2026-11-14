@@ -35,7 +35,7 @@
           x-data="{ open: {{ $otherFilters || $sort ? 'true' : 'false' }} }">
         <div class="filters" style="margin-bottom:0">
             <input type="search" name="q" value="{{ $filters['q'] }}" aria-label="Search tickets"
-                   placeholder="Search ticket no, description, location, reason, requester">
+                   placeholder="Search ticket ID / no, description, location, reason, requester">
             <button class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
             <button type="button" class="btn" @click="open = ! open">
                 <i class="fa-solid fa-sliders"></i> <span x-text="open ? 'Hide filters ▲' : 'Show filters ▼'"></span>
@@ -107,7 +107,7 @@
                     </select>
                 </div>
                 <div class="field" style="margin:0">
-                    <label class="lbl" for="f-department">Department</label>
+                    <label class="lbl" for="f-department">Assigned department</label>
                     <select id="f-department" name="department_id">
                         <option value="">All departments</option>
                         @foreach ($departments as $d)

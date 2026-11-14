@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Enums\TicketStatus;
 use App\Models\Category;
+use App\Models\Department;
 use App\Models\MaintenanceRequest;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\TicketWorkflow;
 use Database\Seeders\CategorySeeder;
@@ -85,6 +87,28 @@ class LiveRefreshTest extends TestCase
 
         $this->make($requester);
         $this->assertNotSame($before, $this->sig($requester));
+    }
+
+    public function test_a_department_staff_live_signature_changes_only_for_tickets_in_their_department(): void
+    {
+        $finance = Department::where('code', 'FIN')->firstOrFail();
+        $registrar = Department::where('code', 'REG')->firstOrFail();
+        $staff = User::create([
+            'name' => 'Finance Staff',
+            'email' => 'finance-live-staff@lcctanauan.edu.ph',
+            'password' => 'password',
+            'role_id' => Role::where('slug', Role::STAFF)->value('id'),
+            'department_id' => $finance->id,
+            'email_verified_at' => now(),
+            'is_active' => true,
+        ]);
+        $before = $this->sig($staff);
+
+        $this->make($this->user('requester'), ['assigned_department_id' => $registrar->id]);
+        $this->assertSame($before, $this->sig($staff));
+
+        $this->make($this->user('requester'), ['assigned_department_id' => $finance->id]);
+        $this->assertNotSame($before, $this->sig($staff));
     }
 
     public function test_the_ticket_signature_follows_the_conversation_but_not_internal_notes_for_the_requester(): void

@@ -61,20 +61,21 @@ class MaintenanceDashboardTest extends TestCase
         ]);
     }
 
-    public function test_staff_head_and_admin_all_get_the_full_dashboard(): void
+    public function test_maintenance_admin_keeps_the_full_maintenance_dashboard(): void
     {
-        foreach ([Role::STAFF, Role::HEAD, Role::MAINTENANCE_ADMIN] as $slug) {
-            $this->actingAs($this->make($slug))->get(route('maintenance.dashboard'))->assertOk()
-                ->assertSee('Needs attention')->assertSee('Priority queue')->assertSee('Ticket trend')
-                ->assertSee('Service levels')->assertSee('Recent activity');
-        }
+        $this->actingAs($this->admin())->get(route('maintenance.dashboard'))->assertOk()
+            ->assertSee('Needs attention')->assertSee('Priority queue')->assertSee('Ticket trend')
+            ->assertSee('Service levels')->assertSee('Recent activity')->assertSee('Staff workload');
     }
 
-    public function test_staff_workload_is_for_head_and_admin_only(): void
+    public function test_staff_and_head_get_their_department_dashboard(): void
     {
-        $this->actingAs($this->make(Role::STAFF))->get(route('maintenance.dashboard'))->assertOk()->assertDontSee('Staff workload');
-        $this->actingAs($this->make(Role::HEAD))->get(route('maintenance.dashboard'))->assertOk()->assertSee('Staff workload');
-        $this->actingAs($this->admin())->get(route('maintenance.dashboard'))->assertOk()->assertSee('Staff workload');
+        $this->actingAs($this->make(Role::STAFF))->get(route('maintenance.dashboard'))->assertOk()
+            ->assertSee('Department Staff Dashboard')->assertSee('Unassigned department queue')
+            ->assertDontSee('Staff workload');
+        $this->actingAs($this->make(Role::HEAD))->get(route('maintenance.dashboard'))->assertOk()
+            ->assertSee('Department Head Dashboard')->assertSee('Staff workload')
+            ->assertSee('Escalated tickets');
     }
 
     public function test_requesters_cannot_open_it(): void

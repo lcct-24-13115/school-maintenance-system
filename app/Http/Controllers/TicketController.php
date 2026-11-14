@@ -313,13 +313,21 @@ class TicketController extends Controller
     private function applyFilters(Builder $query, array $f, User $user): void
     {
         if ($f['q'] !== '') {
-            $like = '%'.$f['q'].'%';
-            $query->where(function (Builder $q) use ($like) {
-                $q->where('ticket_no', 'like', $like)
-                    ->orWhere('description', 'like', $like)
-                    ->orWhere('location', 'like', $like)
-                    ->orWhere('reason', 'like', $like)
-                    ->orWhereHas('requester', fn (Builder $r) => $r->where('name', 'like', $like));
+            // Treat user-supplied % and _ as literal characters, not LIKE wildcards (LIMITATIONS #20).
+            // `!` is the explicit SQL LIKE escape character on SQLite, MySQL and PostgreSQL.
+            $term = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $f['q']);
+            $like = '%'.$term.'%';
+            $query->where(function (Builder $q) use ($like, $f) {
+                $q->whereRaw("ticket_no LIKE ? ESCAPE '!'", [$like])
+                    ->orWhereRaw("description LIKE ? ESCAPE '!'", [$like])
+                    ->orWhereRaw("location LIKE ? ESCAPE '!'", [$like])
+                    ->orWhereRaw("reason LIKE ? ESCAPE '!'", [$like])
+                    ->orWhereHas('requester', fn (Builder $r) => $r->whereRaw("name LIKE ? ESCAPE '!'", [$like]));
+
+                // A numeric query also matches the internal ticket id exactly, in addition to ticket_no.
+                if (ctype_digit($f['q'])) {
+                    $q->orWhere('id', (int) $f['q']);
+                }
             });
         }
 
@@ -336,7 +344,9 @@ class TicketController extends Controller
             $query->where('category_id', $f['category_id']);
         }
         if ($f['department_id']) {
-            $query->where('department_id', $f['department_id']);
+            // Phase 6: this is the department responsible for the queue (the receiving department),
+            // not the requester's office in `department_id`.
+            $query->where('assigned_department_id', $f['department_id']);
         }
         if ($f['assigned_to'] === 'me') {
             $query->where('assigned_to', $user->id);
