@@ -79,7 +79,7 @@
                     <label class="lbl" for="f-priority">Priority</label>
                     <select id="f-priority" name="priority">
                         <option value="">All priorities</option>
-                        <option value="emergency" @selected($priorityNow === 'emergency')>Emergency</option>
+                        @if (config('school.emergency_enabled'))<option value="emergency" @selected($priorityNow === 'emergency')>Emergency</option>@endif
                         <option value="routine" @selected($priorityNow === 'routine')>Routine</option>
                     </select>
                 </div>
@@ -197,7 +197,7 @@
                 </thead>
                 <tbody>
                     @foreach ($tickets as $t)
-                        <tr @if ($t->is_emergency && ! $t->status->isTerminal()) style="background:var(--red-dim)" @endif>
+                        <tr @if (config('school.emergency_enabled') && $t->is_emergency && ! $t->status->isTerminal()) style="background:var(--red-dim)" @endif>
                             <td data-label="Ticket"><a href="{{ route('tickets.show', $t) }}" style="font-weight:800">{{ $t->ticket_no }}</a></td>
                             <td data-label="Status">
                                 <div style="display:flex;flex-wrap:wrap;gap:6px">@include('tickets._badges', ['ticket' => $t])</div>

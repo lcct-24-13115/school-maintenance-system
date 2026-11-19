@@ -14,7 +14,7 @@
     $dueSpan = $showDue ? $ticket->due_at->diffForHumans(null, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true, 2) : '';
 @endphp
 <span class="badge {{ $ticket->status->badgeClass() }}">{{ $ticket->status->label() }}</span>
-@if ($ticket->is_emergency)
+@if ($ticket->is_emergency && config('school.emergency_enabled'))
     <span class="badge" style="background:var(--red);border-color:var(--red);color:#fff;font-weight:800"><i class="fa-solid fa-triangle-exclamation"></i> Emergency</span>
 @endif
 @if ($ticket->is_confidential)

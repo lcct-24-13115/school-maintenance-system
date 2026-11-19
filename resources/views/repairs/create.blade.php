@@ -115,6 +115,9 @@
                     @error('reason')<p class="field-err">{{ $message }}</p>@enderror
                 </div>
 
+                @if (! config('school.emergency_enabled'))
+                    <input type="hidden" name="priority" value="first_come_first_served">
+                @else
                 <fieldset class="field" style="border:0;padding:0;min-width:0">
                     <legend class="lbl">Priority</legend>
                     <div class="tile-grid two">
@@ -141,6 +144,7 @@
                     @endunless
                     @error('priority')<p class="field-err">{{ $message }}</p>@enderror
                 </fieldset>
+                @endif
 
                 <div class="field" x-show="priority !== 'emergency' || {{ $emergencyBypass ? 'false' : 'true' }}">
                     <label class="lbl" for="needed_by">Date needed</label>

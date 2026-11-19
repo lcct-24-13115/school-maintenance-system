@@ -40,12 +40,12 @@ class TicketPolicy
 
     public function flagEmergency(User $user, MaintenanceRequest $ticket): bool
     {
-        return $this->can($user, $ticket, 'flag_emergency');
+        return config('school.emergency_enabled') && $this->can($user, $ticket, 'flag_emergency');
     }
 
     public function clearEmergency(User $user, MaintenanceRequest $ticket): bool
     {
-        return $this->can($user, $ticket, 'clear_emergency');
+        return config('school.emergency_enabled') && $this->can($user, $ticket, 'clear_emergency');
     }
 
     /** Approve. WHO is an authorizer is school.workflow.authorizers (CONFIRM WITH CLIENT), not the matrix. */
@@ -196,6 +196,12 @@ class TicketPolicy
     }
 
     public function close(User $user, MaintenanceRequest $ticket): bool
+    {
+        return $this->can($user, $ticket, 'close');
+    }
+
+    /** The Head tells the teacher the complaint is done (same people who may close a ticket). */
+    public function notifyDone(User $user, MaintenanceRequest $ticket): bool
     {
         return $this->can($user, $ticket, 'close');
     }

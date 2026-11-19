@@ -15,7 +15,7 @@ use Throwable;
 
 /**
  * 100 TEST tickets (change with SEED_TICKETS=250), made through the REAL workflow (approval chain, history,
- * assignment rules), so they behave exactly like tickets filed by people. Every one has reason "TEST DATA".
+ * assignment rules), so they behave exactly like tickets filed by people. No emergency flags. Every one has reason "TEST DATA".
  *
  *   php artisan db:seed --class=BulkTicketSeeder
  *
@@ -92,8 +92,6 @@ class BulkTicketSeeder extends Seeder
                     'location' => self::PLACES[mt_rand(0, count(self::PLACES) - 1)],
                     'description' => self::PROBLEMS[mt_rand(0, count(self::PROBLEMS) - 1)],
                     'reason' => 'TEST DATA',
-                    'is_emergency' => $i % 13 === 5,
-                    'emergency_reason' => $i % 13 === 5 ? 'Safety risk for students.' : null,
                     'is_confidential' => $i % 33 === 7,
                 ]);
 

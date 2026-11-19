@@ -70,13 +70,25 @@ class MaintenanceRequest extends Model
             // Multi-department Phase 1: until routing exists (Phase 3) every ticket is received by the Maintenance Office.
             $ticket->assigned_department_id ??= Department::maintenanceId();
             $ticket->ticket_no ??= self::generateTicketNo($ticket->submitted_at);
-            $ticket->due_at ??= self::computeDueAt($ticket->submitted_at, (bool) $ticket->is_emergency);
+            // The target date is set by the Head of Maintenance when assigning (cases differ). Only when
+            // school.auto_due_date is ON is it filled automatically from the SLA hours.
+            if (config('school.auto_due_date')) {
+                $ticket->due_at ??= self::computeDueAt($ticket->submitted_at, (bool) $ticket->is_emergency);
+            }
         });
 
         static::saving(function (self $ticket) {
+            // Emergency feature switched off: a ticket can never carry an emergency flag.
+            if (! config('school.emergency_enabled') && ($ticket->is_emergency || $ticket->emergency_reason !== null)) {
+                $ticket->is_emergency = false;
+                $ticket->emergency_reason = null;
+                $ticket->emergency_flagged_by = null;
+                $ticket->emergency_flagged_at = null;
+            }
+
             // M1: flagging / clearing an emergency changes the SLA class, so the target date is recomputed
             // from the ORIGINAL submission time (submitted_at never moves).
-            if ($ticket->exists && $ticket->isDirty('is_emergency') && $ticket->submitted_at) {
+            if (config('school.auto_due_date') && $ticket->exists && $ticket->isDirty('is_emergency') && $ticket->submitted_at) {
                 $ticket->due_at = self::computeDueAt($ticket->submitted_at, (bool) $ticket->is_emergency);
             }
 

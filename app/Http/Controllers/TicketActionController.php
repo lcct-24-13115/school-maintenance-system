@@ -179,6 +179,14 @@ class TicketActionController extends Controller
             'Escalated. The President and the Maintenance Admin were alerted.');
     }
 
+    /** The Head of Maintenance tells the teacher that the complaint is done. Never sent to a student. */
+    public function notifyDone(Request $request, MaintenanceRequest $ticket): RedirectResponse
+    {
+        return $this->act($request, $ticket, 'notifyDone', 'done', [], [],
+            fn () => TicketWorkflow::tellDone($ticket, $request->user()),
+            'The teacher was told that the complaint is done.');
+    }
+
     /** Phase 8: the requester cancels their own ticket, before it is Assigned. */
     public function cancel(Request $request, MaintenanceRequest $ticket): RedirectResponse
     {

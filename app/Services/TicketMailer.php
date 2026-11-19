@@ -71,7 +71,17 @@ class TicketMailer
 
             self::deliver($ticket, 'finish_date', 'Expected finish date',
                 self::name($by)." scheduled the work on your ticket. It should be finished by {$date}.",
-                self::people($ticket->requester), $by);
+                self::people(TicketWorkflow::noticeRecipient($ticket)), $by);
+        });
+    }
+
+    /** The Head told the teacher that the complaint is done. */
+    public static function done(MaintenanceRequest $ticket, User $by): void
+    {
+        self::guard(function () use ($ticket, $by) {
+            self::deliver($ticket, 'complaint_done', 'Your complaint is done',
+                self::name($by).' says the work on your complaint is finished. Please open the ticket and confirm that the problem is fixed.',
+                self::people(TicketWorkflow::noticeRecipient($ticket)), $by);
         });
     }
 
@@ -147,11 +157,11 @@ class TicketMailer
                 ],
                 TicketStatus::WorkCompleted => [
                     'work_completed', 'Work completed',
-                    "{$who} finished the work. Please open the ticket and confirm that the problem is fixed.", self::people($ticket->requester),
+                    "{$who} finished the work. Please check it, then tell the teacher that the complaint is done.", self::admins(),
                 ],
                 TicketStatus::Closed => [
                     'closed', 'Ticket closed', "{$who} closed the ticket.",
-                    self::people($ticket->requester)->merge(self::staff($ticket)),
+                    self::people(TicketWorkflow::noticeRecipient($ticket))->merge(self::staff($ticket)),
                 ],
                 TicketStatus::Reopened => [
                     'reopened', 'Ticket reopened', "{$who} reopened the ticket.", self::staff($ticket),
