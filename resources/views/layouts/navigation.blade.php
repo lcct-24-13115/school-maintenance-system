@@ -55,6 +55,14 @@
                 <i class="fa-solid fa-clipboard-list"></i> <span class="nl">Facility requests</span>
             </a>
         @endif
+        @if (in_array($u->role?->slug, config('school.filing_roles', []), true))
+            <a href="{{ route('requisitions.create') }}" class="{{ request()->routeIs('requisitions.create') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-invoice"></i> <span class="nl">Requisition slip</span>
+            </a>
+            <a href="{{ route('requisitions.index') }}" class="{{ request()->routeIs('requisitions.index', 'requisitions.show') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-invoice-dollar"></i> <span class="nl">My requisitions</span>
+            </a>
+        @endif
         @if ($u->canAuthorize())
             <a href="{{ route('approvals.index') }}" class="{{ request()->routeIs('approvals.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-clipboard-check"></i> <span class="nl">Approvals</span>

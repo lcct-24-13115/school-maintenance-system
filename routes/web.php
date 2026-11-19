@@ -80,6 +80,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/facilities/{facilityRequest}/sign', [\App\Http\Controllers\FacilityRequestFlowController::class, 'sign'])->whereNumber('facilityRequest')->middleware('throttle:30,1')->name('facilities.sign');
     Route::post('/facilities/{facilityRequest}/reject', [\App\Http\Controllers\FacilityRequestFlowController::class, 'reject'])->whereNumber('facilityRequest')->middleware('throttle:30,1')->name('facilities.reject');
     Route::post('/facilities/{facilityRequest}/returned', [\App\Http\Controllers\FacilityRequestFlowController::class, 'returned'])->whereNumber('facilityRequest')->middleware('throttle:30,1')->name('facilities.returned');
+    // ---- Form 2: Requisition Slip (Form 1-08): file, list, view, sign, disapprove, close, printable copy ----
+    Route::get('/requisitions/create', [\App\Http\Controllers\RequisitionSlipController::class, 'create'])->name('requisitions.create');
+    Route::post('/requisitions', [\App\Http\Controllers\RequisitionSlipController::class, 'store'])->middleware('throttle:20,1')->name('requisitions.store');
+    Route::get('/requisitions', [\App\Http\Controllers\RequisitionSlipController::class, 'index'])->name('requisitions.index');
+    Route::get('/requisitions/{requisitionSlip}', [\App\Http\Controllers\RequisitionSlipController::class, 'show'])->whereNumber('requisitionSlip')->name('requisitions.show');
+    Route::get('/requisitions/{requisitionSlip}/print', [\App\Http\Controllers\RequisitionSlipController::class, 'print'])->whereNumber('requisitionSlip')->name('requisitions.print');
+    Route::post('/requisitions/{requisitionSlip}/sign', [\App\Http\Controllers\RequisitionSlipController::class, 'sign'])->whereNumber('requisitionSlip')->middleware('throttle:30,1')->name('requisitions.sign');
+    Route::post('/requisitions/{requisitionSlip}/reject', [\App\Http\Controllers\RequisitionSlipController::class, 'reject'])->whereNumber('requisitionSlip')->middleware('throttle:30,1')->name('requisitions.reject');
+    Route::post('/requisitions/{requisitionSlip}/close', [\App\Http\Controllers\RequisitionSlipController::class, 'close'])->whereNumber('requisitionSlip')->middleware('throttle:30,1')->name('requisitions.close');
     // ---- Ticket list + detail (TicketPolicy / visibleTo decide what each user sees; hidden = 404) ----
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
     // Phase 14: finished tickets (Closed / Cancelled / Disapproved). MUST stay above /tickets/{ticket}.

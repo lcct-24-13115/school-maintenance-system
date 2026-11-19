@@ -28,6 +28,9 @@ class FormActivity extends Notification
         if (($this->payload['form_type'] ?? null) === 'facility' && ! empty($this->payload['form_id'])) {
             $url = route('facilities.show', $this->payload['form_id']);
         }
+        if (($this->payload['form_type'] ?? null) === 'requisition' && ! empty($this->payload['form_id'])) {
+            $url = route('requisitions.show', $this->payload['form_id']);
+        }
         return $this->payload + ['url' => $url];
     }
 
