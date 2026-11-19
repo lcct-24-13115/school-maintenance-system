@@ -46,8 +46,13 @@
         @endcan
 
         @if (in_array($u->role?->slug, config('school.filing_roles', []), true))
-            <a href="{{ route('facilities.create') }}" class="{{ request()->routeIs('facilities.*') ? 'active' : '' }}">
+            <a href="{{ route('facilities.create') }}" class="{{ request()->routeIs('facilities.create') ? 'active' : '' }}">
                 <i class="fa-solid fa-school"></i> <span class="nl">Use of facilities</span>
+            </a>
+        @endif
+        @if (in_array($u->role?->slug, config('school.filing_roles', []), true))
+            <a href="{{ route('facilities.index') }}" class="{{ request()->routeIs('facilities.index', 'facilities.show') ? 'active' : '' }}">
+                <i class="fa-solid fa-clipboard-list"></i> <span class="nl">Facility requests</span>
             </a>
         @endif
         @if ($u->canAuthorize())

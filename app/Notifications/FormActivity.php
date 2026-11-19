@@ -25,6 +25,9 @@ class FormActivity extends Notification
             ? route('maintenance.board')
             : route('notifications.index');
 
+        if (($this->payload['form_type'] ?? null) === 'facility' && ! empty($this->payload['form_id'])) {
+            $url = route('facilities.show', $this->payload['form_id']);
+        }
         return $this->payload + ['url' => $url];
     }
 

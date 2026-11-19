@@ -73,6 +73,13 @@ Route::middleware('auth')->group(function () {
     // ---- Form 1: Use of Facilities & Equipment ----
     Route::get('/facilities/create', [\App\Http\Controllers\FacilityRequestController::class, 'create'])->name('facilities.create');
     Route::post('/facilities', [\App\Http\Controllers\FacilityRequestController::class, 'store'])->middleware('throttle:20,1')->name('facilities.store');
+    // ---- Form 1 (Phase 2): list, view, sign, disapprove, record the return, printable copy ----
+    Route::get('/facilities', [\App\Http\Controllers\FacilityRequestFlowController::class, 'index'])->name('facilities.index');
+    Route::get('/facilities/{facilityRequest}', [\App\Http\Controllers\FacilityRequestFlowController::class, 'show'])->whereNumber('facilityRequest')->name('facilities.show');
+    Route::get('/facilities/{facilityRequest}/print', [\App\Http\Controllers\FacilityRequestFlowController::class, 'print'])->whereNumber('facilityRequest')->name('facilities.print');
+    Route::post('/facilities/{facilityRequest}/sign', [\App\Http\Controllers\FacilityRequestFlowController::class, 'sign'])->whereNumber('facilityRequest')->middleware('throttle:30,1')->name('facilities.sign');
+    Route::post('/facilities/{facilityRequest}/reject', [\App\Http\Controllers\FacilityRequestFlowController::class, 'reject'])->whereNumber('facilityRequest')->middleware('throttle:30,1')->name('facilities.reject');
+    Route::post('/facilities/{facilityRequest}/returned', [\App\Http\Controllers\FacilityRequestFlowController::class, 'returned'])->whereNumber('facilityRequest')->middleware('throttle:30,1')->name('facilities.returned');
     // ---- Ticket list + detail (TicketPolicy / visibleTo decide what each user sees; hidden = 404) ----
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
     // Phase 14: finished tickets (Closed / Cancelled / Disapproved). MUST stay above /tickets/{ticket}.

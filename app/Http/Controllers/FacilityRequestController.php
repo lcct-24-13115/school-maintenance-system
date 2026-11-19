@@ -67,7 +67,7 @@ class FacilityRequestController extends Controller
 
         FormNotifier::submitted($form);   // alerts the first signatory (Office-In-Charge)
 
-        return redirect()->route('dashboard')
+        return redirect()->route('facilities.show', $form)
             ->with('status', "Sent! Your request {$form->reference_no} was received. The Office-In-Charge has been alerted to endorse it.");
     }
 }

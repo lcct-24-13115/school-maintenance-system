@@ -190,6 +190,11 @@ class FormNotifier
 
     // ---------------------------------------------------------------------------------------------
 
+    /** The Property Custodian filled in "Returned by / Date Returned": the requester is alerted. */
+    public static function returned(FacilityRequest $form, User $actor): void
+    {
+        self::send(collect([$form->requester]), $form, 'returned', $actor, "recorded that {$form->reference_no} was returned");
+    }
     private static function send(Collection $recipients, Model $form, string $event, ?User $actor, string $text): void
     {
         $recipients = $recipients->filter()->unique('id')
@@ -265,6 +270,6 @@ class FormNotifier
             return collect();
         }
 
-        return self::usersWithRole($line->role_slug, $line->role_slug === Role::DEPARTMENT_HEAD ? $form->department_id : null);
+        return self::usersWithRole($line->role_slug === Role::DEPARTMENT_HEAD ? [Role::DEPARTMENT_HEAD, Role::HEAD] : $line->role_slug, $line->role_slug === Role::DEPARTMENT_HEAD ? $form->department_id : null);
     }
 }

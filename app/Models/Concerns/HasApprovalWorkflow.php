@@ -121,7 +121,7 @@ trait HasApprovalWorkflow
     {
         $line = $this->nextApproval() ?? throw new DomainException('This form has no pending signature.');
 
-        if (! $user->is_active || ! $user->hasRole($line->role_slug)) {
+        if (! $user->is_active || ! $user->hasRole(...($line->role_slug === 'department_head' ? ['department_head', 'head'] : [$line->role_slug]))) {
             throw new DomainException('You are not allowed to sign this line ('.$line->label.').');
         }
         if ($line->role_slug === 'department_head' && $user->department_id !== $this->department_id) {
