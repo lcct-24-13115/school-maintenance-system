@@ -27,3 +27,9 @@ Homestead.yaml
 Thumbs.db
 /reference_alumni
 *.csv
+
+.env.local.backup
+*.patch
+
+.env.local.backup
+*.patch
