@@ -112,7 +112,7 @@ class BulkTicketSeeder extends Seeder
         $sign = function (int $steps) use (&$t, $signer) {
             for ($k = 0; $k < $steps; $k++) {
                 $role = $t->approvals()->where('status', 'pending')->value('role_slug');
-                $t = TicketWorkflow::authorize($t, $signer[$role], 'OK.', [], $role === Role::FINANCE ? mt_rand(0, 5000) : null);
+                $t = TicketWorkflow::authorize($t, $signer[$role], [Role::VICE_PRINCIPAL => 'Reviewed and endorsed for processing.', Role::FINANCE => 'Budget verified and funds cleared.', Role::PRESIDENT => 'Final approval granted. Proceed with the work.'][$role] ?? 'Approved.', [], $role === Role::FINANCE ? mt_rand(0, 5000) : null);
             }
         };
 
