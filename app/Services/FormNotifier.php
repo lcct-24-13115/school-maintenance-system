@@ -35,6 +35,9 @@ class FormNotifier
 
         $recipients = self::usersWithRole(Role::maintenanceSlugs());
 
+        if ($form instanceof FacilityRequest) {   // Phase 3: Use of Facilities goes to the Property Custodian, not to Maintenance
+            $recipients = self::usersWithRole(Role::CUSTODIAN);
+        }
         // The 3 school forms have a signature chain; tickets do not (yet - Phase 3).
         if (method_exists($form, 'nextApproval')) {
             $recipients = $recipients->merge(self::approversFor($form->nextApproval(), $form));
@@ -54,7 +57,7 @@ class FormNotifier
             $recipients = $recipients->merge(self::approversFor($form->nextApproval(), $form));
 
             if ($form->isPresidentApproved()) {   // fully approved
-                $recipients = $recipients->merge(self::usersWithRole(Role::maintenanceSlugs()));
+                if (! $form instanceof FacilityRequest) { $recipients = $recipients->merge(self::usersWithRole(Role::maintenanceSlugs())); }
                 if ($form instanceof FacilityRequest) {
                     $recipients = $recipients->merge(self::usersWithRole(Role::CUSTODIAN));
                 }

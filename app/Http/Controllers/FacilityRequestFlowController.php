@@ -56,9 +56,26 @@ class FacilityRequestFlowController extends Controller
 
         $form = $facilityRequest->load(['requester', 'department', 'facilities', 'items', 'approvals.signer', 'receiver']);
 
+        // Phase 3: the Property Custodian (and the President / System Admin) are warned when another open request
+        // wants the same facility on the same date. A warning only: nothing is blocked. "Others" is free text, so it is not compared.
+        $conflicts = collect();
+        if ($user->hasRole(Role::CUSTODIAN, Role::PRESIDENT, Role::SYSTEM_ADMIN) && in_array($form->status, ['submitted', 'endorsed', 'noted', 'approved'], true)) {
+            $mine = $form->facilities->where('name', '!=', 'Others')->pluck('id');
+
+            if ($mine->isNotEmpty()) {
+                $conflicts = FacilityRequest::query()
+                    ->where('id', '!=', $form->id)
+                    ->whereDate('date_needed', $form->date_needed)
+                    ->whereIn('status', ['submitted', 'endorsed', 'noted', 'approved'])
+                    ->whereHas('facilities', fn ($q) => $q->whereIn('facilities.id', $mine))
+                    ->with(['requester', 'facilities'])
+                    ->orderBy('time_needed')
+                    ->get();
+            }
+        }
         return view('facilities.show', [
             'form' => $form,
-            'nextLine' => $form->nextApproval(),
+            'conflicts' => $conflicts, 'nextLine' => $form->nextApproval(),
             'canSign' => $this->canSignNext($user, $form),
             'canReturn' => $user->is_active && $user->hasRole(Role::CUSTODIAN)
                 && $form->status === 'approved' && $form->returned_at === null,
@@ -146,19 +163,19 @@ class FacilityRequestFlowController extends Controller
 
     // ---------------------------------------------------------------------------------------------
 
-    /** Everyone sees their own requests. Custodian, President, Maintenance team and System Admin see all; an OIC sees the department's. */
+    /** Everyone sees their own requests. Custodian, President and System Admin see all; an OIC (Department Head / Head) sees the department's. Maintenance does not see other people's. */
     private function visible(User $user): Builder
     {
         $q = FacilityRequest::query();
 
-        if ($user->hasRole(Role::CUSTODIAN, Role::PRESIDENT, Role::SYSTEM_ADMIN, ...Role::maintenanceSlugs())) {
+        if ($user->hasRole(Role::CUSTODIAN, Role::PRESIDENT, Role::SYSTEM_ADMIN)) {
             return $q;
         }
 
         return $q->where(function (Builder $w) use ($user) {
             $w->where('requester_id', $user->id);
 
-            if ($user->hasRole(Role::DEPARTMENT_HEAD) && $user->department_id) {
+            if ($user->hasRole(Role::DEPARTMENT_HEAD, Role::HEAD) && $user->department_id) {
                 $w->orWhere('department_id', $user->department_id);
             }
         });

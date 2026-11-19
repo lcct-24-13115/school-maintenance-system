@@ -26,6 +26,23 @@
 
         <div class="two-col">
             <div>
+                @if (($conflicts ?? collect())->isNotEmpty())
+                    <div class="alert warn" role="alert">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <div>
+                            <strong>Same facility, same date.</strong>
+                            {{ $conflicts->count() }} other open {{ $conflicts->count() === 1 ? 'request wants' : 'requests want' }} the same facility on {{ $form->date_needed?->format('M j, Y') }}. Check the times before you sign.
+                            @foreach ($conflicts as $c)
+                                <div style="margin-top:6px">
+                                    <a href="{{ route('facilities.show', $c) }}" style="font-weight:700">{{ $c->reference_no }}</a>
+                                    &middot; {{ \Carbon\Carbon::parse($c->time_needed)->format('g:i A') }}
+                                    &middot; {{ $c->facilities->whereIn('id', $form->facilities->pluck('id'))->where('name', '!=', 'Others')->pluck('name')->implode(', ') }}
+                                    &middot; {{ $c->requester?->name }} ({{ ucfirst($c->status) }})
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
                 {{-- The request, in the order of the paper form --}}
                 <div class="card">
                     <div class="card-h"><h3>Use of Facilities &amp; Equipment</h3></div>
