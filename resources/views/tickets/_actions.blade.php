@@ -217,21 +217,6 @@
             </form>
         @endif
 
-        {{-- Staff (Phase 9): ask the requester a question --}}
-        @if ($has(A::REQUEST_INFO))
-            <form method="POST" action="{{ route('tickets.request-info', $ticket) }}" style="{{ $box('#f1d78f', 'var(--amber-dim)') }}">
-                @csrf
-                <div class="lbl" style="font-size:16px"><i class="fa-regular fa-circle-question"></i> Ask the requester for information</div>
-                <div class="field">
-                    <label for="info_question" class="lbl">What do you need to know? (required)</label>
-                    <textarea id="info_question" name="info_question" rows="2" required style="{{ $area }}">{{ old('info_question') }}</textarea>
-                    @if ($errors->info->has('info_question'))<p class="field-err">{{ $errors->info->first('info_question') }}</p>@endif
-                </div>
-                <p class="hint" style="margin:0 0 12px">The ticket waits for the answer and its target time is paused. It goes back to where it is now when the requester answers.</p>
-                <button class="btn btn-primary" style="background:var(--gold);border-color:var(--gold);color:var(--navy)">Ask the requester</button>
-            </form>
-        @endif
-
         {{-- Staff (Phase 12): hand the ticket up to the President --}}
         @if ($has(A::ESCALATE))
             <form method="POST" action="{{ route('tickets.escalate', $ticket) }}" style="{{ $box('#d9c9ee') }}">

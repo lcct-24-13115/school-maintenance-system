@@ -47,7 +47,7 @@
                 <p class="hint" style="margin:-6px 0 14px">Choose a request type only if you are asking for materials, equipment or supplies. The category list below will match it.</p>
 
                 <div class="field">
-                    <label class="lbl" for="category_id">Maintenance category</label>
+                    <label class="lbl" for="category_id">Maintenance category <span class="req" style="color:var(--red)">*</span></label>
                     <select id="category_id" name="category_id" x-ref="category" @change="filterSubcategories()">
                         <option value="">— Choose one —</option>
                         @foreach ($categories as $c)
@@ -98,20 +98,23 @@
                 </div>
 
                 <div class="field">
-                    <label class="lbl" for="location">Where is it? (building / room)</label>
-                    <input id="location" type="text" name="location" value="{{ old('location') }}" placeholder="e.g. Grade 5 Room 204">
+                    <label class="lbl" for="location">Where is it? (building, floor and room) <span class="req" style="color:var(--red)">*</span></label>
+                    <input id="location" type="text" name="location" value="{{ old('location') }}" maxlength="255" minlength="3" required placeholder="e.g. Main Building, 2nd floor, Room 204 (Grade 5)">
+                    <p class="hint">Be exact so Maintenance can go straight to the spot. For a restroom, say which one (e.g. Boys' CR, 2nd floor).</p>
                     @error('location')<p class="field-err">{{ $message }}</p>@enderror
                 </div>
 
                 <div class="field">
-                    <label class="lbl" for="job_description">Job Description</label>
-                    <textarea id="job_description" name="job_description" rows="3" placeholder="What needs to be fixed or improved?">{{ old('job_description') }}</textarea>
+                    <label class="lbl" for="job_description">Job Description <span class="req" style="color:var(--red)">*</span></label>
+                    <textarea id="job_description" name="job_description" rows="4" maxlength="1000" minlength="10" required placeholder="What exactly is wrong? Which item is affected? How bad is it, and since when? e.g. The toilet in the 2nd-floor Boys' CR (2nd cubicle) does not flush since this morning. Water keeps running.">{{ old('job_description') }}</textarea>
+                    <p class="hint">Tell us: <strong>what</strong> is broken, <strong>which</strong> one, how <strong>serious</strong> it is, and since <strong>when</strong>. The clearer it is, the faster it gets fixed.</p>
                     @error('job_description')<p class="field-err">{{ $message }}</p>@enderror
                 </div>
 
                 <div class="field">
-                    <label class="lbl" for="reason">Reason for Request</label>
-                    <textarea id="reason" name="reason" rows="3">{{ old('reason') }}</textarea>
+                    <label class="lbl" for="reason">Reason for Request <span class="req" style="color:var(--red)">*</span></label>
+                    <textarea id="reason" name="reason" rows="3" maxlength="2000" minlength="5" required placeholder="Why does this need to be fixed? e.g. Students and staff cannot use the restroom; it is a health and safety concern.">{{ old('reason') }}</textarea>
+                    <p class="hint">Say who is affected or what is at risk if it is not fixed.</p>
                     @error('reason')<p class="field-err">{{ $message }}</p>@enderror
                 </div>
 
@@ -147,14 +150,15 @@
                 @endif
 
                 <div class="field" x-show="priority !== 'emergency' || {{ $emergencyBypass ? 'false' : 'true' }}">
-                    <label class="lbl" for="needed_by">Date needed</label>
+                    <label class="lbl" for="needed_by">Date needed <span class="req" style="color:var(--red)">*</span></label>
                     <input id="needed_by" type="date" name="needed_by" value="{{ old('needed_by') }}" min="{{ $earliest->toDateString() }}">
                     <p class="hint">Earliest allowed: {{ $earliest->format('M j, Y (l)') }}</p>
                     @error('needed_by')<p class="field-err">{{ $message }}</p>@enderror
                 </div>
 
                 <div class="field">
-                    <label class="lbl">Photos &amp; documents <span class="hint" style="display:inline">(optional)</span></label>
+                    <label class="lbl">Photos &amp; documents <span class="hint" style="display:inline">(strongly recommended)</span></label>
+                    <p class="hint" style="margin:-4px 0 8px">A clear photo of the problem helps Maintenance see what is wrong and bring the right tools and parts the first time.</p>
                     <x-file-picker name="files" />
                     @if ($errors->has('files') || $errors->has('files.*'))
                         <p class="hint">Your browser does not keep chosen files after an error, so please pick them again.</p>
@@ -186,6 +190,14 @@
                 <div class="pf-row"><span class="k">3. Assigned</span><span class="mono">Maintenance picks it up</span></div>
                 <div class="pf-row"><span class="k">4. Done</span><span class="mono">Work is completed and closed</span></div>
                 <p class="hint">You can follow every step on the ticket page.</p>
+
+                <div class="card-h" style="margin-top:18px"><h3>Before you send</h3></div>
+                <ul class="hint" style="margin:0;padding-left:18px;display:grid;gap:6px">
+                    <li>Is the <strong>exact location</strong> (building, floor, room) written?</li>
+                    <li>Does the description say <strong>what</strong> is wrong and <strong>how serious</strong> it is?</li>
+                    <li>Did you add a <strong>photo</strong> of the problem?</li>
+                    <li>Did you pick the right <strong>category</strong> and a realistic <strong>date needed</strong>?</li>
+                </ul>
             </aside>
         </div>
     </div>
