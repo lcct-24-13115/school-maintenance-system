@@ -23,8 +23,8 @@ class ApprovalController extends Controller
 
         $tickets = MaintenanceRequest::query()
             ->visibleTo($user)
-            ->awaitingAuthorization()
-            ->with(['requester', 'department', 'category'])
+            ->awaitingApprovalOf($user)   // only the tickets whose CURRENT step is this user's (VP, then Finance, then President)
+            ->with(['requester', 'department', 'category', 'approvals.signer'])
             ->queueOrder()   // emergencies on top, then ORIGINAL submission time (oldest first)
             ->paginate(self::PER_PAGE);
 

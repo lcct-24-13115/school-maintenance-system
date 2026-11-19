@@ -17,7 +17,9 @@ class UserSeeder extends Seeder
             [Role::SYSTEM_ADMIN, 'System Administrator', 'sysadmin@lcctanauan.edu.ph', null],
             [Role::MAINTENANCE_ADMIN, 'Head of Maintenance', 'maintenance@lcctanauan.edu.ph', Department::MAINTENANCE_CODE],
             [Role::CUSTODIAN, 'Property Custodian', 'custodian@lcctanauan.edu.ph', null],
+            [Role::VICE_PRINCIPAL, 'Vice Principal', 'viceprincipal@lcctanauan.edu.ph', null],
             [Role::FINANCE, 'Finance', 'finance@lcctanauan.edu.ph', 'FIN'],
+            [Role::PRESIDENT, 'School President', 'president@lcctanauan.edu.ph', null],
         ];
 
         // Retired roles: seeded only under phpunit, because the older tests still use them.
@@ -26,7 +28,6 @@ class UserSeeder extends Seeder
                 [Role::REQUESTER, 'Test Requester', 'requester@lcctanauan.edu.ph', 'FIRST'],
                 [Role::DEPARTMENT_HEAD, 'Test Dept Head', 'depthead@lcctanauan.edu.ph', 'FIRST'],
                 [Role::TREASURER, 'Test Treasurer', 'treasurer@lcctanauan.edu.ph', 'FIN'],
-                [Role::PRESIDENT, 'Test President', 'president@lcctanauan.edu.ph', null],
             ]);
         }
 

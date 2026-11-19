@@ -23,6 +23,16 @@ class FormNotifier
     /** A new form was filed: maintenance staff + the first approver are alerted. */
     public static function submitted(Model $form): void
     {
+        // A TICKET goes to the first signatory of the approval chain, never straight to Maintenance.
+        if ($form instanceof MaintenanceRequest) {
+            $first = $form->approvals()->first();
+
+            self::send(self::usersWithRole($first?->role_slug ?? Role::VICE_PRINCIPAL), $form, 'submitted', $form->requester,
+                'filed a new '.$form::LABEL.' that needs your approval');
+
+            return;
+        }
+
         $recipients = self::usersWithRole(Role::maintenanceSlugs());
 
         // The 3 school forms have a signature chain; tickets do not (yet - Phase 3).
@@ -55,6 +65,31 @@ class FormNotifier
         $verb = $rejected ? 'rejected' : ($event === 'approved' ? 'gave FINAL approval to' : 'signed');
 
         self::send($recipients, $form, $event, $actor, "{$verb} {$form->reference_no}".($note ? " — {$note}" : ''));
+    }
+
+    /**
+     * A ticket's approval chain moved: $line was signed (or rejected) by $actor.
+     *  - rejected            -> the requester is told
+     *  - signed, $next given -> the requester and the NEXT signatory are told
+     *  - signed, no $next    -> fully approved: the requester and the Head of Maintenance / staff are told
+     */
+    public static function ticketStep(MaintenanceRequest $ticket, User $actor, \App\Models\TicketApproval $line, ?\App\Models\TicketApproval $next): void
+    {
+        if ($line->status === \App\Models\TicketApproval::REJECTED) {
+            self::send(collect([$ticket->requester]), $ticket, 'rejected', $actor, "disapproved {$ticket->ticket_no} ({$line->label})");
+
+            return;
+        }
+
+        if ($next !== null) {
+            self::send(collect([$ticket->requester])->merge(self::usersWithRole($next->role_slug)), $ticket, 'signed', $actor,
+                "approved {$ticket->ticket_no} ({$line->label}). Next: {$next->label}");
+
+            return;
+        }
+
+        self::send(collect([$ticket->requester])->merge(self::usersWithRole(Role::maintenanceSlugs())), $ticket, 'approved', $actor,
+            "gave FINAL approval to {$ticket->ticket_no}. It is ready to be scheduled and assigned");
     }
 
     /** Maintenance tapped [Accept Task] / [Mark Completed] on a ticket (or the old repair form). */

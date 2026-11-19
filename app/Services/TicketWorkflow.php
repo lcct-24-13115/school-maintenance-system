@@ -6,6 +6,7 @@ use App\Enums\TicketStatus;
 use App\Models\MaintenanceRequest;
 use App\Models\RequestAttachment;
 use App\Models\RequestStatusLog;
+use App\Models\TicketApproval;
 use App\Models\TicketReply;
 use App\Models\Role;
 use App\Models\Setting;
@@ -99,6 +100,13 @@ class TicketWorkflow
                     foreach ($items as $item) {
                         $ticket->items()->create($item);
                     }
+
+                    // Approval chain: Vice Principal -> Finance -> President. Maintenance gets nothing until the last one signs.
+                    self::startChain($ticket);
+                    $first = $ticket->approvals()->first();
+                    $ticket->update(['status' => TicketStatus::PendingAuthorization]);
+                    $ticket->logEvent(RequestStatusLog::ACTION_STATUS, $requester,
+                        'Waiting for approval: '.($first?->label ?? 'authorizer').'.', TicketStatus::Submitted, TicketStatus::PendingAuthorization);
 
                     foreach ($files as $file) {
                         self::storeAttachment($ticket, $file, $requester, RequestAttachment::KIND_REQUEST, $stored);
@@ -216,28 +224,95 @@ class TicketWorkflow
         return self::apply($ticket, TicketStatus::PendingAuthorization, [], RequestStatusLog::ACTION_STATUS, $by, $note ?: 'Sent for authorization.');
     }
 
+    /** The configured chain, in order: [['step','role','label','needs_amount'], ...]. */
+    public static function chain(): array
+    {
+        return array_values((array) config('school.workflow.chain', []));
+    }
+
+    /** Create the signature lines of the chain (once). Also repairs an older ticket that has none. */
+    public static function startChain(MaintenanceRequest $ticket): void
+    {
+        if ($ticket->approvals()->exists()) {
+            return;
+        }
+
+        foreach (self::chain() as $i => $step) {
+            $ticket->approvals()->create([
+                'step_order' => $i + 1,
+                'step' => $step['step'],
+                'label' => $step['label'],
+                'role_slug' => $step['role'],
+                'status' => TicketApproval::PENDING,
+            ]);
+        }
+    }
+
     /**
-     * Record authorization and move to Approved. Only the roles in school.workflow.authorizers may do it
-     * (CONFIRM WITH CLIENT). Optional signed files are saved as `signed_evidence` in the SAME transaction.
+     * ONE signature of the approval chain. Only the person whose step is CURRENT may sign (right role, in order).
+     * Vice Principal and Finance sign -> the ticket stays "Pending Authorization" and the next person is told.
+     * The LAST step (the President) signs -> Approved: the ticket now reaches the Head of Maintenance.
+     * Finance must record the approved amount. Optional signed files are saved as `signed_evidence`.
      *
      * @param  array<int, UploadedFile>  $files
      */
-    public static function authorize(MaintenanceRequest $ticket, User $by, ?string $remarks = null, array $files = []): MaintenanceRequest
+    public static function authorize(MaintenanceRequest $ticket, User $by, ?string $remarks = null, array $files = [], string|float|int|null $amount = null): MaintenanceRequest
     {
         self::assertAuthorizer($by, 'authorize');
         self::assertAuthorizableStatus($ticket, TicketStatus::Approved);
+        self::startChain($ticket);
+
+        $step = self::turnOf($ticket, $by, 'approve');
+
+        if (self::stepConfig($step)['needs_amount'] ?? false) {
+            if ($amount === null || $amount === '' || ! is_numeric($amount) || (float) $amount < 0) {
+                throw new DomainException("{$step->label} must record the approved amount (0 if there is no cost).");
+            }
+        }
 
         $files = array_values(array_filter($files));
         if ($files !== [] && ($error = AttachmentService::checkMany($files))) {
             throw new DomainException($error);   // refused BEFORE anything is written
         }
 
-        return DB::transaction(function () use ($ticket, $by, $remarks, $files) {
-            self::apply($ticket, TicketStatus::Approved, [
-                'president_id' => $by->id,
-                'president_approved_at' => now(),
-                'president_remarks' => $remarks,
-            ], RequestStatusLog::ACTION_AUTHORIZATION, $by, $remarks ?: 'Authorized.');
+        $next = null;
+
+        $result = DB::transaction(function () use ($ticket, $by, $remarks, $files, $amount, $step, &$next) {
+            $fresh = TicketApproval::query()->lockForUpdate()->find($step->id);
+
+            if ($fresh === null || ! $fresh->isPending()) {
+                throw new DomainException(self::STALE_MESSAGE);
+            }
+
+            $fresh->update([
+                'status' => TicketApproval::APPROVED,
+                'user_id' => $by->id,
+                'signed_at' => now(),
+                'remarks' => $remarks,
+                'amount' => is_numeric($amount) ? $amount : null,
+            ]);
+
+            $next = $ticket->approvals()->where('status', TicketApproval::PENDING)->first();
+            $meta = ['approval_step' => $fresh->step, 'amount' => $fresh->amount];
+
+            if ($next !== null) {
+                // not the last step: no status change (a legacy "Submitted" ticket moves to Pending Authorization)
+                self::apply(
+                    $ticket,
+                    $ticket->status === TicketStatus::Submitted ? TicketStatus::PendingAuthorization : null,
+                    [],
+                    RequestStatusLog::ACTION_AUTHORIZATION,
+                    $by,
+                    trim("{$fresh->label} approved. Now with {$next->label}. ".($remarks ?? '')),
+                    $meta,
+                );
+            } else {
+                self::apply($ticket, TicketStatus::Approved, [
+                    'president_id' => $by->id,
+                    'president_approved_at' => now(),
+                    'president_remarks' => $remarks,
+                ], RequestStatusLog::ACTION_AUTHORIZATION, $by, trim("{$fresh->label} approved. Fully authorized. ".($remarks ?? '')), $meta);
+            }
 
             if ($files !== []) {
                 self::addAttachments($ticket, $files, $by, RequestAttachment::KIND_SIGNED_EVIDENCE);
@@ -245,8 +320,18 @@ class TicketWorkflow
 
             return $ticket->refresh();
         });
+
+        if ($next !== null) {
+            TicketMailer::stepApproved($result, $by, $step->refresh(), $next);
+            FormNotifier::ticketStep($result, $by, $step, $next);
+        } else {
+            FormNotifier::ticketStep($result, $by, $step, null);   // fully approved: requester + Head of Maintenance alerted
+        }
+
+        return $result;
     }
 
+    /** Disapprove at YOUR step: the chain stops, the requester is told who said no and why. */
     public static function disapprove(MaintenanceRequest $ticket, User $by, string $reason): MaintenanceRequest
     {
         self::assertAuthorizer($by, 'disapprove');
@@ -256,8 +341,52 @@ class TicketWorkflow
         }
 
         self::assertAuthorizableStatus($ticket, TicketStatus::Disapproved);
+        self::startChain($ticket);
 
-        return self::apply($ticket, TicketStatus::Disapproved, [], RequestStatusLog::ACTION_AUTHORIZATION, $by, $reason);
+        $step = self::turnOf($ticket, $by, 'disapprove');
+
+        $result = DB::transaction(function () use ($ticket, $by, $reason, $step) {
+            $fresh = TicketApproval::query()->lockForUpdate()->find($step->id);
+
+            if ($fresh === null || ! $fresh->isPending()) {
+                throw new DomainException(self::STALE_MESSAGE);
+            }
+
+            $fresh->update([
+                'status' => TicketApproval::REJECTED,
+                'user_id' => $by->id,
+                'signed_at' => now(),
+                'remarks' => $reason,
+            ]);
+
+            return self::apply($ticket, TicketStatus::Disapproved, [], RequestStatusLog::ACTION_AUTHORIZATION, $by,
+                "Disapproved by {$fresh->label}: {$reason}", ['approval_step' => $fresh->step]);
+        });
+
+        FormNotifier::ticketStep($result, $by, $step->refresh(), null);
+
+        return $result;
+    }
+
+    /** The step waiting for a signature, but only if it is $by's turn (right role). */
+    private static function turnOf(MaintenanceRequest $ticket, User $by, string $verb): TicketApproval
+    {
+        $step = $ticket->approvals()->where('status', TicketApproval::PENDING)->first();
+
+        if ($step === null) {
+            throw new DomainException("Ticket {$ticket->ticket_no} has no approval step waiting for a signature.");
+        }
+
+        if ($by->role?->slug !== $step->role_slug) {
+            throw new DomainException("It is the {$step->label}'s turn to {$verb} ticket {$ticket->ticket_no}. You can only act on your own step.");
+        }
+
+        return $step;
+    }
+
+    private static function stepConfig(TicketApproval $step): array
+    {
+        return collect(self::chain())->firstWhere('step', $step->step) ?? [];
     }
 
     /** Phase 16: the statuses a ticket may be assigned in (also used by the Reports "Needs attention" list). @return list<TicketStatus> */
@@ -294,7 +423,7 @@ class TicketWorkflow
      *    cross_department_transfer (Head / Maintenance Admin / System Administrator) and a reason is required.
      * System callers (the PM scheduler) pass no $by and are not checked.
      */
-    public static function assign(MaintenanceRequest $ticket, User $assignee, ?User $by = null, ?string $note = null): MaintenanceRequest
+    public static function assign(MaintenanceRequest $ticket, User $assignee, ?User $by = null, ?string $note = null, ?string $targetDate = null, ?string $scheduledStart = null): MaintenanceRequest
     {
         if (! $assignee->is_active || ! $assignee->isMaintenanceTeam()) {
             throw new DomainException('A ticket can only be assigned to active maintenance staff.');
@@ -365,6 +494,25 @@ class TicketWorkflow
         $previous = $ticket->assignee;
         $isReassignment = $previous !== null;
 
+        // The Head of Maintenance must schedule the work: when it starts (optional) and when it must be finished (required
+        // for the first assignment). A staff member claiming a ticket for themselves keeps the existing target date.
+        $schedule = [];
+        if ($by !== null && ! $by->isStaffOnly() && ! $isReassignment && blank($targetDate)) {
+            throw new DomainException('Set the target finish date before assigning this work.');
+        }
+        if (filled($targetDate)) {
+            $finish = Carbon::parse($targetDate)->endOfDay();
+
+            if (filled($scheduledStart) && Carbon::parse($scheduledStart)->startOfDay()->gt($finish)) {
+                throw new DomainException('The target finish date cannot be before the start date.');
+            }
+
+            $schedule['due_at'] = $finish;
+        }
+        if (filled($scheduledStart)) {
+            $schedule['scheduled_start'] = Carbon::parse($scheduledStart)->toDateString();
+        }
+
         if ($isReassignment && blank($note)) {
             throw new DomainException('A reassignment needs a note explaining why.');
         }
@@ -376,7 +524,7 @@ class TicketWorkflow
         return self::apply(
             $ticket,
             $status === TicketStatus::Approved ? TicketStatus::Assigned : null,
-            ['assigned_to' => $assignee->id, 'assigned_at' => now()],
+            ['assigned_to' => $assignee->id, 'assigned_at' => now()] + $schedule,
             $isReassignment ? RequestStatusLog::ACTION_REASSIGNMENT : RequestStatusLog::ACTION_ASSIGNMENT,
             $by,
             trim($text),

@@ -71,7 +71,7 @@ return [
     // Roles that may use the repair request form (/repairs/create).
     // Default keeps Phase 1 behaviour (every role). CONFIRM WITH CLIENT
     'filing_roles' => [
-        'requester', 'department_head', 'treasurer', 'custodian', 'staff', 'head', 'maintenance_admin', 'system_admin', 'finance', 'president',
+        'requester', 'department_head', 'treasurer', 'custodian', 'staff', 'head', 'maintenance_admin', 'system_admin', 'finance', 'president', 'vice_principal',
     ],
 
     // Phase 16 (Reports): CONFIRM WITH CLIENT
@@ -118,7 +118,15 @@ return [
     'workflow' => [
         // CONFIRM WITH CLIENT: who the final signatory/authorizer is.
         // (Phase 4A: system_admin added. Department scoping of approve / close comes in Phase 4C.)
-        'authorizers' => ['head', 'maintenance_admin', 'system_admin'],
+        // Approval chain: ONLY these roles sign, each at its own step, in this order (see 'chain' below).
+        'authorizers' => ['vice_principal', 'finance', 'president'],
+        // Every ticket goes through every step. Nothing reaches Maintenance until the LAST step (President) approves.
+        // 'needs_amount' = that step must record the approved amount (Finance: so the school can track where money goes).
+        'chain' => [
+            ['step' => 'vice_principal', 'role' => 'vice_principal', 'label' => 'Vice Principal', 'needs_amount' => false],
+            ['step' => 'finance', 'role' => 'finance', 'label' => 'Finance', 'needs_amount' => true],
+            ['step' => 'president', 'role' => 'president', 'label' => 'School President', 'needs_amount' => false],
+        ],
         // CONFIRM WITH CLIENT: who may formally close a ticket.
         'closers' => ['head', 'maintenance_admin', 'system_admin'],
         // CONFIRM WITH CLIENT: what must be on file before closing.

@@ -39,10 +39,11 @@ class TicketActionController extends Controller
     {
         return $this->act($request, $ticket, 'authorize', 'approve', [
             'remarks' => ['nullable', 'string', 'max:1000'],
+            'amount' => ['nullable', 'numeric', 'min:0', 'max:99999999'],   // Finance must fill it: TicketWorkflow checks it
             'files' => ['nullable', 'array', 'max:'.AttachmentService::maxFiles()],
             'files.*' => [new ValidAttachment],
         ], [],
-            fn (array $data) => TicketWorkflow::authorize($ticket, $request->user(), $data['remarks'] ?? null, $request->file('files', [])),
+            fn (array $data) => TicketWorkflow::authorize($ticket, $request->user(), $data['remarks'] ?? null, $request->file('files', []), $data['amount'] ?? null),
             'Approved. Authorization is recorded.');
     }
 
@@ -66,14 +67,20 @@ class TicketActionController extends Controller
         return $this->act($request, $ticket, 'assign', 'assign', [
             'assignee_id' => ['required', 'integer', Rule::exists('users', 'id')],
             'assign_note' => [Rule::requiredIf($isReassignment || $isCrossDepartment), 'nullable', 'string', 'max:500'],
+            // Scheduling: the Head of Maintenance sets when the work starts and when it must be finished.
+            'scheduled_start' => ['nullable', 'date'],
+            'target_date' => [Rule::requiredIf(! $isReassignment && ! $request->user()->isStaffOnly()), 'nullable', 'date', 'after_or_equal:today'],
         ], [
+            'target_date.required' => 'Set the target finish date for this work.',
+            'target_date.after_or_equal' => 'The target finish date cannot be in the past.',
             'assignee_id.required' => 'Choose a staff member.',
             'assign_note.required' => $isCrossDepartment && ! $isReassignment
                 ? 'A cross-department transfer needs a reason explaining why.'
                 : 'A reassignment needs a note explaining why.',
         ],
             fn (array $data) => TicketWorkflow::assign(
-                $ticket, User::findOrFail($data['assignee_id']), $request->user(), $data['assign_note'] ?? null
+                $ticket, User::findOrFail($data['assignee_id']), $request->user(), $data['assign_note'] ?? null,
+                $data['target_date'] ?? null, $data['scheduled_start'] ?? null
             ),
             $isReassignment ? 'Reassigned.' : 'Assigned.');
     }

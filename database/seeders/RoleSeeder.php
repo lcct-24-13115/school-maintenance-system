@@ -15,7 +15,9 @@ class RoleSeeder extends Seeder
             [Role::SYSTEM_ADMIN, 'System Administrator', 'Global: not tied to a department; manages users, settings and categories across all departments'],
             [Role::HEAD, 'Department Head', 'Scoped to their department: reviews and authorizes requests, assigns the department queue, closes tickets, reads reports and the audit log'],
             [Role::STAFF, 'Department Staff', 'Scoped to their department: takes and completes tasks; can take an unassigned ticket or transfer their own'],
-            [Role::FINANCE, 'Finance', 'Budget review, receipts and expenditures'],
+            [Role::VICE_PRINCIPAL, 'Vice Principal', 'Step 1 of the approval chain: reviews every request first'],
+            [Role::FINANCE, 'Finance', 'Step 2 of the approval chain: checks what is spent, where and why; records the approved budget'],
+            [Role::PRESIDENT, 'School President', 'Step 3 (final) of the approval chain: only a President-approved request reaches Maintenance'],
             [Role::CUSTODIAN, 'Property Custodian', 'Inventory, property tags and clearance'],
         ];
 
@@ -24,7 +26,6 @@ class RoleSeeder extends Seeder
             $roles = array_merge($roles, [
                 [Role::DEPARTMENT_HEAD, 'Department Head / OIC', 'Approves requests for the department'],
                 [Role::TREASURER, 'Treasurer', 'Budget approval'],
-                [Role::PRESIDENT, 'School President', 'Final approval'],
             ]);
         }
 
