@@ -13,7 +13,6 @@
     };
 
     $look = [
-        'Urgent' => ['fa-triangle-exclamation', 'var(--red)'],
         'Overdue' => ['fa-clock', 'var(--amber)'],
         'Unassigned' => ['fa-user-slash', 'var(--gold)'],
         'Assigned to me' => ['fa-user-check', 'var(--deep)'],

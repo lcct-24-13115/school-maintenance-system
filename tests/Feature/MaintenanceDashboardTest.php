@@ -89,14 +89,12 @@ class MaintenanceDashboardTest extends TestCase
     {
         $admin = $this->admin();
 
-        $this->ticket(['is_emergency' => true, 'emergency_reason' => 'Flooded room']);                                  // Urgent
         $this->ticket(['due_at' => now()->subDay()]);                                                                    // Overdue
         $this->ticket(['status' => TicketStatus::Approved->value]);                                                      // Unassigned
         $this->ticket(['status' => TicketStatus::Assigned->value, 'assigned_to' => $admin->id, 'assigned_at' => now()]); // Assigned to me
 
         $this->actingAs($admin)->get(route('maintenance.dashboard'))->assertOk()
-            ->assertViewHas('attention', fn ($a) => $a['Urgent']['count'] === 1
-                && $a['Overdue']['count'] === 1
+            ->assertViewHas('attention', fn ($a) => $a['Overdue']['count'] === 1
                 && $a['Unassigned']['count'] === 1
                 && $a['Assigned to me']['count'] === 1);
     }

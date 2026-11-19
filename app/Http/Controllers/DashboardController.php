@@ -67,7 +67,6 @@ class DashboardController extends Controller
 
         // "Needs attention" tiles, each linking to the ticket list with the same filter
         $attention = [
-            'Urgent' => $this->card($visible()->active()->where('is_emergency', true)->count(), route('tickets.index', ['emergency' => 1])),
             'Overdue' => $this->card($visible()->overdue()->count(), route('tickets.index', ['overdue' => 1])),
             'Unassigned' => $this->card(
                 $visible()->active()->whereNull('assigned_to')->whereIn('status', $assignable)->count(),
