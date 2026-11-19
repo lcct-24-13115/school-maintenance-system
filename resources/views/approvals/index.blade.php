@@ -22,7 +22,7 @@
         @endforeach
 
         <p class="page-sub" style="margin:0 0 18px">
-            Tickets waiting for your authorization. Emergencies are first, then the oldest request.
+            Requests waiting for YOUR approval (it is your turn). Emergencies are first, then the oldest request.
             The app records who authorized and when; it does not replace the official signatures.
             To attach a signed file, open the ticket.
         </p>
@@ -41,6 +41,11 @@
                 @if ($ticket->is_emergency)
                     <div class="alert err" style="margin:10px 0 0"><i class="fa-solid fa-triangle-exclamation"></i><div style="word-break:break-word"><b>Emergency:</b> {{ $ticket->emergency_reason }}</div></div>
                 @endif
+                <div style="margin-top:8px;font-size:14px;word-break:break-word"><b>Why:</b> {{ $ticket->reason ?: '—' }}</div>
+                @php $done = $ticket->approvals->where('status', 'approved'); @endphp
+                @if ($done->isNotEmpty())
+                    <div style="margin-top:4px;font-size:14px;color:var(--text-2)">Already approved by {{ $done->pluck('label')->implode(', ') }}</div>
+                @endif
                 <div class="tk-sub" style="margin-top:8px;font-size:13px">
                     {{ $ticket->requester->name }} · {{ $ticket->department?->name }} · {{ $ticket->category?->name }} · submitted {{ $fmt($ticket->submitted_at) }}
                 </div>
@@ -49,6 +54,12 @@
                     <form method="POST" action="{{ route('tickets.approve', $ticket) }}" style="background:var(--green-dim);border:1.5px solid #bfe6cc;border-radius:18px;padding:14px 16px">
                         @csrf
                         <input type="hidden" name="return" value="approvals">
+                        @if ($ticket->currentApproval()?->step === 'finance')
+                            <div class="field">
+                                <label for="amount-{{ $ticket->id }}" class="lbl">Approved amount (₱) — required</label>
+                                <input id="amount-{{ $ticket->id }}" type="number" name="amount" min="0" step="0.01" inputmode="decimal" required>
+                            </div>
+                        @endif
                         <div class="field">
                             <label for="remarks-{{ $ticket->id }}" class="lbl">Remarks (optional)</label>
                             <textarea id="remarks-{{ $ticket->id }}" name="remarks" rows="2" style="{{ $area }}"></textarea>

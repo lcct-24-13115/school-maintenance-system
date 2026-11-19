@@ -51,7 +51,8 @@ class TicketPolicy
     /** Approve. WHO is an authorizer is school.workflow.authorizers (CONFIRM WITH CLIENT), not the matrix. */
     public function authorize(User $user, MaintenanceRequest $ticket): bool
     {
-        return $user->canAuthorize() && $ticket->isVisibleTo($user);
+        // Approval chain: only the person whose step is CURRENT may approve / disapprove (right role, in order).
+        return $user->canAuthorize() && $ticket->isVisibleTo($user) && $ticket->awaitsApprovalBy($user);
     }
 
     /** Disapprove: the same people who may approve. */

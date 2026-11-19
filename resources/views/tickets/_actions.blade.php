@@ -45,6 +45,14 @@
             <form method="POST" action="{{ route('tickets.approve', $ticket) }}" enctype="multipart/form-data" style="{{ $box('#bfe6cc', 'var(--green-dim)') }}">
                 @csrf
                 <div class="lbl" style="font-size:16px;color:#0f6a31"><i class="fa-solid fa-circle-check"></i> Approve</div>
+                @if ($ticket->currentApproval()?->step === 'finance')
+                    <div class="field">
+                        <label for="amount" class="lbl">Approved amount (₱) — required</label>
+                        <input id="amount" type="number" name="amount" min="0" step="0.01" inputmode="decimal" value="{{ old('amount') }}" required>
+                        <p class="hint">The budget Finance releases for this request (type 0 if there is no cost).</p>
+                        @if ($errors->approve->has('amount'))<p class="field-err">{{ $errors->approve->first('amount') }}</p>@endif
+                    </div>
+                @endif
                 <div class="field">
                     <label for="remarks" class="lbl">Remarks (optional)</label>
                     <textarea id="remarks" name="remarks" rows="2" style="{{ $area }}">{{ old('remarks') }}</textarea>
@@ -134,6 +142,20 @@
                     </select>
                     @if ($errors->assign->has('assignee_id'))<p class="field-err">{{ $errors->assign->first('assignee_id') }}</p>@endif
                 </div>
+                @unless ($reassign)
+                    <div class="row2">
+                        <div class="field">
+                            <label for="scheduled_start" class="lbl">Start date (optional)</label>
+                            <input id="scheduled_start" type="date" name="scheduled_start" min="{{ now()->toDateString() }}" value="{{ old('scheduled_start') }}">
+                            @if ($errors->assign->has('scheduled_start'))<p class="field-err">{{ $errors->assign->first('scheduled_start') }}</p>@endif
+                        </div>
+                        <div class="field">
+                            <label for="target_date" class="lbl">Target finish date (required)</label>
+                            <input id="target_date" type="date" name="target_date" min="{{ now()->toDateString() }}" value="{{ old('target_date', $ticket->needed_by?->toDateString()) }}" required>
+                            @if ($errors->assign->has('target_date'))<p class="field-err">{{ $errors->assign->first('target_date') }}</p>@endif
+                        </div>
+                    </div>
+                @endunless
                 <div class="field">
                     <label for="assign_note" class="lbl">Note {{ $reassign ? '(required: why is it being reassigned?)' : '(optional)' }}</label>
                     <textarea id="assign_note" name="assign_note" rows="2" @required($reassign) style="{{ $area }}">{{ old('assign_note') }}</textarea>

@@ -207,6 +207,7 @@ class User extends Authenticatable implements MustVerifyEmail
             Role::FINANCE => 'finance.dashboard',
             Role::CUSTODIAN => 'custodian.dashboard',
             Role::PRESIDENT => 'president.dashboard',
+            Role::VICE_PRINCIPAL => 'approvals.index',   // the Vice Principal works from the approvals inbox
             // Dept. Heads and the Treasurer use the requester dashboard until their approvals inbox is built
             default => 'requester.dashboard',
         };

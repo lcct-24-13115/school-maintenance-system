@@ -54,6 +54,7 @@
             <div class="tk-sub" style="font-size:14px">{{ $ticket->category?->name }}@if ($ticket->department) · {{ $ticket->department->name }}@endif</div>
 
             @include('tickets._tracker', ['ticket' => $ticket, 'full' => true])
+            @include('tickets._approval_chain', ['ticket' => $ticket])
 
             @php $latest = $ticket->statusLogs->sortByDesc('created_at')->first(); @endphp
             @if ($latest)
@@ -99,6 +100,10 @@
                 <div><div class="k">Date needed</div><div>{{ $ticket->needed_by?->format('M j, Y') ?? '—' }}</div></div>
                 <div style="{{ $wide }}"><div class="k">Description</div><div style="{{ $text }}">{{ $ticket->description }}</div></div>
                 <div style="{{ $wide }}"><div class="k">Reason</div><div style="{{ $text }}">{{ $ticket->reason ?: '—' }}</div></div>
+                @if ($ticket->president_approved_at)
+                    <div><div class="k">Scheduled start</div><div>{{ $ticket->scheduled_start?->format('M j, Y') ?? '—' }}</div></div>
+                    <div><div class="k">Target finish</div><div>{{ $ticket->due_at?->format('M j, Y') ?? '—' }}</div></div>
+                @endif
                 @if ($ticket->problems_encountered)
                     <div style="{{ $wide }}"><div class="k">Problems encountered</div><div style="{{ $text }}">{{ $ticket->problems_encountered }}</div></div>
                 @endif

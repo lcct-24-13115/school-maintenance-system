@@ -23,6 +23,8 @@ class Role extends Model
 
     public const PRESIDENT = 'president';
 
+    public const VICE_PRINCIPAL = 'vice_principal';      // first signatory of the approval chain (Vice Principal -> Finance -> President)
+
     public const DEPARTMENT_HEAD = 'department_head';   // OIC / Unit Head / Dept. Head
 
     public const TREASURER = 'treasurer';

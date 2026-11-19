@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Enums\TicketStatus;
+use App\Models\Department;
 use App\Models\Inventory;
 use App\Models\MaintenanceRequest;
+use App\Models\Role;
+use App\Models\User;
 use App\Models\RequestStatusLog;
 use App\Services\ReportMetrics;
 use App\Services\TicketWorkflow;
@@ -47,7 +50,18 @@ class DashboardController extends Controller
     public function maintenance(Request $request): View
     {
         $user = $request->user();
-        $visible = fn () => MaintenanceRequest::query()->visibleTo($user);   // every number starts here: nobody counts a ticket they may not see
+
+        // Phase 6: department-specific work queues. Each query starts from visibleTo(), then adds
+        // the role's queue definition. Visibility remains the authoritative security boundary.
+        if ($user->isGlobalRole()) {
+            return $this->systemAdminDashboard($user);
+        }
+
+        if ($user->isStaffOnly() || $user->hasRole(Role::HEAD)) {
+            return $this->departmentDashboard($user);
+        }
+
+        $visible = fn () => MaintenanceRequest::query()->visibleTo($user);   // Maintenance Admin keeps the full dashboard
 
         $assignable = array_map(fn (TicketStatus $s) => $s->value, TicketWorkflow::assignableStatuses());
 
@@ -103,6 +117,112 @@ class DashboardController extends Controller
         ]);
     }
 
+    /** Phase 6: Department Staff get their personal queue + this department's unassigned queue + overdue work. */
+    private function departmentDashboard(User $user): View
+    {
+        $departmentId = $user->scopedDepartmentId();
+        $base = fn () => MaintenanceRequest::query()->visibleTo($user)
+            ->when($departmentId === null, fn ($q) => $q->whereRaw('1 = 0'), fn ($q) => $q->where('assigned_department_id', $departmentId));
+        $mine = fn () => $base()->where('assigned_to', $user->id)->pending();
+        $unassigned = fn () => $base()->whereNull('assigned_to')->whereIn('status', array_map(
+            fn (TicketStatus $s) => $s->value,
+            TicketWorkflow::assignableStatuses(),
+        ));
+        $overdue = fn () => $base()->overdue();
+        $isHead = $user->hasRole(Role::HEAD);
+
+        $tickets = $isHead
+            ? $base()->pending()->with(['requester:id,name', 'assignee:id,name', 'category:id,name'])
+                ->orderByRaw('due_at IS NULL')->orderBy('due_at')->orderByDesc('is_emergency')->limit(12)->get()
+            : $mine()->with(['requester:id,name', 'assignee:id,name', 'category:id,name'])
+                ->orderByRaw('due_at IS NULL')->orderBy('due_at')->orderByDesc('is_emergency')->limit(12)->get();
+
+        $workload = $isHead && $departmentId !== null
+            ? User::query()->where('department_id', $departmentId)->where('is_active', true)
+                ->whereHas('role', fn ($q) => $q->where('slug', Role::STAFF))
+                ->orderBy('name')->get(['id', 'name'])->map(function (User $staff) use ($user, $departmentId) {
+                    $open = MaintenanceRequest::query()->visibleTo($user)
+                        ->where('assigned_department_id', $departmentId)
+                        ->where('assigned_to', $staff->id)->pending()->count();
+
+                    return ['id' => $staff->id, 'name' => $staff->name, 'open' => $open];
+                })->all()
+            : [];
+
+        $escalated = $isHead ? $base()->where('status', TicketStatus::Escalated->value)->count() : 0;
+        $department = $departmentId ? Department::find($departmentId) : null;
+
+        $lastUpdate = $base()->orderByDesc('updated_at')->first(['updated_at'])?->updated_at;
+
+        return view('dashboards.department', [
+            'title' => $isHead ? 'Department Head Dashboard' : 'Department Staff Dashboard',
+            'department' => $department,
+            'lastUpdate' => $lastUpdate,
+            'isHead' => $isHead,
+            'cards' => $isHead ? [
+                'All department tickets' => $base()->count(),
+                'Open department tickets' => $base()->pending()->count(),
+                'My assigned tickets' => $mine()->count(),
+                'Unassigned queue' => $unassigned()->count(),
+                'Overdue' => $overdue()->count(),
+                'Escalated' => $escalated,
+            ] : [
+                'Assigned to me' => $mine()->count(),
+                'Unassigned department queue' => $unassigned()->count(),
+                'Overdue' => $overdue()->count(),
+            ],
+            'tickets' => $tickets,
+            'workload' => $workload,
+            'escalatedTickets' => $isHead
+                ? $base()->where('status', TicketStatus::Escalated->value)->with(['assignee:id,name'])->orderByDesc('updated_at')->limit(8)->get()
+                : collect(),
+        ]);
+    }
+
+    /** Phase 6: global System Administrator sees ticket counts grouped by receiving department. */
+    private function systemAdminDashboard(User $user): View
+    {
+        $visible = fn () => MaintenanceRequest::query()->visibleTo($user);
+        $pending = TicketStatus::pendingValues();
+        $overdueStatuses = array_values(array_diff($pending, [TicketStatus::WaitingForUser->value]));
+        $counts = $visible()->selectRaw('assigned_department_id, COUNT(*) as total, '
+            .'SUM(CASE WHEN status IN ('.implode(',', array_fill(0, count($pending), '?')).') THEN 1 ELSE 0 END) as open_count, '
+            .'SUM(CASE WHEN due_at IS NOT NULL AND due_at < ? AND status IN ('.implode(',', array_fill(0, count($overdueStatuses), '?')).') THEN 1 ELSE 0 END) as overdue_count',
+            array_merge($pending, [now()->toDateTimeString()], $overdueStatuses))
+            ->groupBy('assigned_department_id')->get()->keyBy('assigned_department_id');
+
+        $departments = Department::query()->orderBy('name')->get(['id', 'name', 'code'])->map(function (Department $department) use ($counts) {
+            $row = $counts->get($department->id);
+
+            return [
+                'id' => $department->id,
+                'name' => $department->name,
+                'code' => $department->code,
+                'active' => $department->is_active,
+                'total' => (int) ($row?->total ?? 0),
+                'open' => (int) ($row?->open_count ?? 0),
+                'overdue' => (int) ($row?->overdue_count ?? 0),
+            ];
+        });
+
+        $lastUpdate = $visible()->orderByDesc('updated_at')->first(['updated_at'])?->updated_at;
+
+        return view('dashboards.department', [
+            'title' => 'System Administrator Dashboard',
+            'department' => null,
+            'lastUpdate' => $lastUpdate,
+            'isHead' => false,
+            'isSystemAdmin' => true,
+            'cards' => [
+                'Departments' => $departments->count(),
+                'Open tickets' => $departments->sum('open'),
+                'Overdue' => $departments->sum('overdue'),
+                'Escalated' => $visible()->where('status', TicketStatus::Escalated->value)->count(),
+            ],
+            'departments' => $departments,
+        ]);
+    }
+
     public function finance(Request $request): View
     {
         $user = $request->user();
@@ -111,6 +231,7 @@ class DashboardController extends Controller
         $completed = TicketStatus::WorkCompleted->value;
 
         return $this->show('Finance Dashboard', [
+            'Waiting for your approval' => $this->card($visible()->awaitingApprovalOf($user)->count(), $user->canAuthorize() ? route('approvals.index') : null),
             'Pending tickets' => $this->card($visible()->pending()->count(), route('tickets.index', ['status' => TicketStatus::pendingValues()])),
             'Waiting for authorization' => $this->card($visible()->where('status', $pending)->count(), route('tickets.index', ['status' => [$pending]])),
             'Work completed (awaiting closure)' => $this->card($visible()->where('status', $completed)->count(), route('tickets.index', ['status' => [$completed]])),
@@ -133,7 +254,7 @@ class DashboardController extends Controller
         $closed = TicketStatus::Closed->value;
 
         return $this->show('School President Dashboard', [
-            'Waiting for your approval' => $this->card($visible()->awaitingAuthorization()->count(), $user->canAuthorize() ? route('approvals.index') : route('tickets.index', ['status' => [$pending]])),
+            'Waiting for your approval' => $this->card($visible()->awaitingApprovalOf($user)->count(), $user->canAuthorize() ? route('approvals.index') : route('tickets.index', ['status' => [$pending]])),
             'Authorized by you' => $this->card($visible()->whereNotNull('president_approved_at')->count()),
             'Closed' => $this->card($visible()->where('status', $closed)->count(), route('tickets.history', ['status' => [$closed]])),
         ]);

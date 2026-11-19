@@ -110,6 +110,9 @@ return [
         'cancel_own', 'reopen_own',
     ],
 
+    // Step 1 of the approval chain. Sees the tickets that have a Vice Principal step (scopeVisibleTo), no global powers.
+    'vice_principal' => ['view_analytics', 'cancel_own', 'reopen_own'],
+
     // CONFIRM WITH CLIENT: Finance sees all tickets EXCEPT confidential ones.
     'finance' => [
         'view_all_tickets', 'view_analytics', 'export_reports',

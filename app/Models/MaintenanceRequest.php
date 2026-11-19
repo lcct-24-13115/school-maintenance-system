@@ -35,7 +35,7 @@ class MaintenanceRequest extends Model
 
     protected $fillable = [
         'ticket_no', 'requester_id', 'department_id', 'assigned_department_id', 'category_id', 'subcategory_id',
-        'request_type', 'maintenance_type', 'location', 'description', 'needed_by', 'reason',
+        'request_type', 'maintenance_type', 'location', 'description', 'needed_by', 'scheduled_start', 'reason',
         'priority', 'is_emergency', 'emergency_reason', 'emergency_flagged_by', 'emergency_flagged_at',
         'is_confidential',
         'status', 'assigned_to', 'assigned_at',
@@ -51,6 +51,7 @@ class MaintenanceRequest extends Model
             'is_emergency' => 'boolean',
             'is_confidential' => 'boolean',
             'needed_by' => 'date',
+            'scheduled_start' => 'date',
             'submitted_at' => 'datetime',
             'due_at' => 'datetime',
             'assigned_at' => 'datetime',
@@ -269,12 +270,18 @@ class MaintenanceRequest extends Model
         return $query->where(function (Builder $q) use ($user) {
             $q->where('requester_id', $user->id)->orWhere('assigned_to', $user->id);
 
+            // Approval chain: a signatory (Vice Principal, Finance, President) sees every ticket that has a step for their role.
+            if ($user->canAuthorize()) {
+                $q->orWhereHas('approvals', fn (Builder $a) => $a->where('role_slug', $user->role?->slug));
+            }
+
             if (self::isRestrictedToAssignedDepartment($user)) {
                 $departmentId = $user->scopedDepartmentId();
 
                 if ($departmentId !== null) {
                     $q->orWhere(function (Builder $d) use ($user, $departmentId) {
-                        $d->where('assigned_department_id', $departmentId);
+                        // Maintenance only receives a request the President has approved (end of the approval chain).
+                        $d->where('assigned_department_id', $departmentId)->whereNotNull('president_approved_at');
 
                         if (! $user->can_do('view_confidential')) {
                             $d->where('is_confidential', false);
@@ -308,10 +315,15 @@ class MaintenanceRequest extends Model
             return true;
         }
 
+        if ($user->canAuthorize() && $this->approvals()->where('role_slug', $user->role?->slug)->exists()) {
+            return true;
+        }
+
         if (self::isRestrictedToAssignedDepartment($user)) {
             $departmentId = $user->scopedDepartmentId();
 
             return $departmentId !== null
+                && $this->president_approved_at !== null
                 && $this->assigned_department_id !== null
                 && (int) $this->assigned_department_id === $departmentId
                 && (! $this->is_confidential || $user->can_do('view_confidential'));
@@ -380,6 +392,40 @@ class MaintenanceRequest extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    /** The approval chain, in order: Vice Principal (1), Finance (2), President (3). */
+    public function approvals(): HasMany
+    {
+        return $this->hasMany(TicketApproval::class, 'request_id')->orderBy('step_order');
+    }
+
+    /** The step waiting for a signature right now, or null when the chain is finished / stopped. */
+    public function currentApproval(): ?TicketApproval
+    {
+        if (! in_array($this->status, [TicketStatus::Submitted, TicketStatus::PendingAuthorization], true)) {
+            return null;
+        }
+
+        return $this->approvals()->where('status', TicketApproval::PENDING)->first();
+    }
+
+    /** Is it $user's turn to sign this ticket? (right role AND it is the current step) */
+    public function awaitsApprovalBy(User $user): bool
+    {
+        $step = $this->currentApproval();
+
+        return $step !== null && $user->is_active && $user->role?->slug === $step->role_slug;
+    }
+
+    /** Tickets whose CURRENT step belongs to $user's role (the approvals inbox). */
+    public function scopeAwaitingApprovalOf(Builder $query, User $user): Builder
+    {
+        return $query->whereIn('status', [TicketStatus::Submitted->value, TicketStatus::PendingAuthorization->value])
+            ->whereHas('approvals', function (Builder $a) use ($user) {
+                $a->where('role_slug', $user->role?->slug)->where('status', TicketApproval::PENDING)
+                    ->whereRaw('step_order = (select min(t2.step_order) from ticket_approvals t2 where t2.request_id = ticket_approvals.request_id and t2.status = ?)', [TicketApproval::PENDING]);
+            });
     }
 
     public function president(): BelongsTo

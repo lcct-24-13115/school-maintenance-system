@@ -40,9 +40,27 @@ class TicketMailer
     public static function submitted(MaintenanceRequest $ticket, User $by): void
     {
         self::guard(fn () => self::deliver(
-            $ticket, 'submitted', 'New ticket submitted', self::name($by).' filed a new ticket.',
-            self::admins(), $by,
+            $ticket, 'submitted', 'New request waiting for your approval', self::name($by).' filed a new request. It needs your approval first.',
+            self::withRole($ticket->approvals()->value('role_slug') ?? Role::VICE_PRINCIPAL), $by,   // the FIRST step of the chain, not Maintenance
         ));
+    }
+
+    /**
+     * One step of the approval chain was signed and another is still to come: the next signatory is emailed that it
+     * is their turn, and the requester is told how far the request got. (The LAST signature is a normal "Approved"
+     * status change and is handled by changed().)
+     */
+    public static function stepApproved(MaintenanceRequest $ticket, User $by, \App\Models\TicketApproval $signed, \App\Models\TicketApproval $next): void
+    {
+        self::guard(function () use ($ticket, $by, $signed, $next) {
+            self::deliver($ticket, 'sent_for_authorization', 'Request waiting for your approval',
+                self::name($by)." ({$signed->label}) approved the request. It is now your turn ({$next->label}).",
+                self::withRole($next->role_slug), $by);
+
+            self::deliver($ticket, 'step_approved', 'Your request moved forward',
+                "{$signed->label} approved your request. Next: {$next->label}.",
+                self::people($ticket->requester), $by);
+        });
     }
 
     /**

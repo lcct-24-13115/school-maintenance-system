@@ -1,0 +1,23 @@
+APPROVAL CHAIN  (Teacher -> Vice Principal -> Finance -> President -> Head of Maintenance)
+=====================================================================================
+
+What changed
+  1. Every ticket gets 3 signature lines: Vice Principal, Finance, President. Only the CURRENT step's role can sign.
+  2. Finance must type the approved amount (there is no estimated cost on the teacher's form).
+  3. Disapproved at any step = the chain stops; the teacher sees who said no and why.
+  4. Maintenance (Sir Pamplona, staff) cannot see a ticket until the President approved it.
+  5. When assigning, the Head sets the target finish date (required) and start date (optional).
+  6. New role: vice_principal. Seeded accounts: viceprincipal@ / finance@ / president@lcctanauan.edu.ph (password: password).
+
+Steps
+  php artisan migrate
+  php artisan db:seed --class=RoleSeeder
+  php artisan db:seed --class=UserSeeder      (change the passwords before going live)
+  php artisan config:clear
+  php artisan test --filter=ApprovalChainTest
+
+Known follow-ups
+  - Older tests were written for the old rule (Head / Maintenance Admin approve in one step, maintenance sees new tickets). Those
+    that file or approve tickets will need updating to the new chain. I could not run PHP when making this change.
+  - Tickets that were already Pending Authorization before this change get their chain created the first time someone acts on them.
+  - Escalation still hands a ticket to "the authorizers" (now VP, Finance, President).
