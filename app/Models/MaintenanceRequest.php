@@ -285,7 +285,7 @@ class MaintenanceRequest extends Model
 
             // Approval chain: a signatory (Vice Principal, Finance, President) sees every ticket that has a step for their role.
             if ($user->canAuthorize()) {
-                $q->orWhereHas('approvals', fn (Builder $a) => $a->where('role_slug', $user->role?->slug));
+                $q->orWhereHas('approvals', fn (Builder $a) => $a->forUser($user));
             }
 
             if (self::isRestrictedToAssignedDepartment($user)) {
@@ -328,7 +328,7 @@ class MaintenanceRequest extends Model
             return true;
         }
 
-        if ($user->canAuthorize() && $this->approvals()->where('role_slug', $user->role?->slug)->exists()) {
+        if ($user->canAuthorize() && $this->approvals()->forUser($user)->exists()) {
             return true;
         }
 
@@ -428,7 +428,14 @@ class MaintenanceRequest extends Model
     {
         $step = $this->currentApproval();
 
-        return $step !== null && $user->is_active && $user->role?->slug === $step->role_slug;
+        if ($step === null || ! $user->is_active) {
+            return false;
+        }
+
+        // the adviser step names ONE teacher; the other steps belong to a role
+        return $step->approver_id !== null
+            ? (int) $step->approver_id === (int) $user->id
+            : $user->role?->slug === $step->role_slug;
     }
 
     /** Tickets whose CURRENT step belongs to $user's role (the approvals inbox). */
@@ -436,7 +443,7 @@ class MaintenanceRequest extends Model
     {
         return $query->whereIn('status', [TicketStatus::Submitted->value, TicketStatus::PendingAuthorization->value])
             ->whereHas('approvals', function (Builder $a) use ($user) {
-                $a->where('role_slug', $user->role?->slug)->where('status', TicketApproval::PENDING)
+                $a->forUser($user)->where('status', TicketApproval::PENDING)
                     ->whereRaw('step_order = (select min(t2.step_order) from ticket_approvals t2 where t2.request_id = ticket_approvals.request_id and t2.status = ?)', [TicketApproval::PENDING]);
             });
     }

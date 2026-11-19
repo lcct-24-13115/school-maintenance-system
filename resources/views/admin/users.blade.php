@@ -163,6 +163,17 @@
                     </div>
                 </div>
 
+                <div class="field">
+                    <label for="u-adv">Adviser <span class="hint" style="display:inline">(students only: the teacher who approves their complaints first)</span></label>
+                    <select id="u-adv" name="adviser_id">
+                        <option value="">No adviser</option>
+                        @foreach ($advisers as $a)
+                            <option value="{{ $a->id }}" @selected($adding && (string) old('adviser_id') === (string) $a->id)>{{ $a->name }} ({{ $a->email }})</option>
+                        @endforeach
+                    </select>
+                    @if ($adding) @error('adviser_id')<div class="field-err">{{ $message }}</div>@enderror @endif
+                </div>
+
                 <div class="p6-hint">Department Staff take and do the work (they can only assign tickets to themselves). The Department Head also assigns anyone in the department, authorizes, closes and reads the audit log. Staff and Heads need a Department: their powers apply to that department only. The Maintenance Admin also manages users, settings and categories. The System Administrator works across all departments and needs no Department.</div>
 
                 <div class="field">
@@ -244,6 +255,7 @@
                             $isEdit = (string) $editing === (string) $u->id;
                             $roleNow = $isEdit ? old('role_id') : $u->role_id;
                             $deptNow = $isEdit ? old('department_id') : $u->department_id;
+                            $advNow = $isEdit ? old('adviser_id') : $u->adviser_id;
                         @endphp
 
                         <tbody x-data="{ edit: {{ $isEdit ? 'true' : 'false' }} }">
@@ -255,6 +267,7 @@
                                     <div class="sub" style="font-size:12.5px;color:var(--text-3)">
                                         {{ $u->email }}@if ($u->employee_no) · {{ $u->employee_no }}@endif
                                     </div>
+                                    @if ($u->adviser)<div class="sub" style="font-size:12.5px;color:var(--text-3)">Adviser: {{ $u->adviser->name }}</div>@endif
                                 </td>
                                 <td data-label="Role">{{ $u->role?->name ?? '—' }}</td>
                                 <td data-label="Department">{{ $u->department?->name ?? '—' }}</td>
@@ -337,6 +350,18 @@
                                                 </select>
                                                 @if ($isEdit) @error('department_id')<div class="field-err">{{ $message }}</div>@enderror @endif
                                             </div>
+                                        </div>
+
+                                        <div class="field">
+                                            <label for="a-{{ $u->id }}">Adviser <span class="hint" style="display:inline">(students only)</span></label>
+                                            <select id="a-{{ $u->id }}" name="adviser_id">
+                                                <option value="">No adviser</option>
+                                                @foreach ($advisers as $a)
+                                                    @continue($a->id === $u->id)
+                                                    <option value="{{ $a->id }}" @selected((string) $advNow === (string) $a->id)>{{ $a->name }} ({{ $a->email }})</option>
+                                                @endforeach
+                                            </select>
+                                            @if ($isEdit) @error('adviser_id')<div class="field-err">{{ $message }}</div>@enderror @endif
                                         </div>
 
                                         <div class="p6-save">

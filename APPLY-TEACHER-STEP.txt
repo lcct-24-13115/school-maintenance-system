@@ -1,0 +1,46 @@
+TEACHER (ADVISER) STEP  -  Student -> Teacher -> Vice Principal -> Finance -> President -> Head of Maintenance -> Staff
+=========================================================================================================
+
+ANO ANG BAGO
+  1. Bawat student ay may ADVISER (isang teacher). Itinatakda ito ng admin sa Admin > Users (Add user o Edit).
+  2. Kapag STUDENT ang nag-file ng complaint, ang adviser niya ang unang nag-aapprove. Saka pa lang pupunta sa
+     Vice Principal, Finance, President, at sa Head of Maintenance.
+  3. Ang adviser lang ng student na iyon ang puwedeng pumirma at makakita ng ticket (hindi lahat ng teacher).
+  4. Kapag TEACHER mismo ang nag-file, laktaw ang teacher step (diretso sa Vice Principal, gaya ng dati).
+  5. Kapag nag-disapprove ang adviser, titigil ang chain at makikita ng student kung bakit.
+  6. Ang adviser ay may "Approvals" sa sidebar (lumalabas lang kapag may advisee siya).
+  7. Ang student na WALANG adviser ay hindi makaka-file (may malinaw na error). Para payagan sila na lumaktaw:
+     ADVISER_REQUIRED=false sa .env. Para patayin ang buong teacher step: ADVISER_STEP=false.
+
+STEPS (PowerShell sa project folder)
+  git add -A ; git commit -m "Before teacher step"
+  tar -xf "$env:USERPROFILE\Downloads\teacher-step-patch.zip" -C .
+  php artisan migrate
+  php artisan optimize:clear
+  php artisan test --filter=AdviserStepTest
+  php artisan test --filter=ApprovalChainTest
+
+PAANO MAG-SET NG ADVISER
+  Login bilang Maintenance Admin > Users > Edit ang student > piliin ang "Adviser" > Save.
+  (Ang listahan ng adviser ay mga active na non-student na requester account, ibig sabihin ang mga teacher.
+   Kung hindi lumalabas ang teacher, siguraduhing hindi digit ang simula ng email niya at hindi STUDENT ang type niya.)
+  Ang mga ticket na naka-file na bago nito ay hindi nababago.
+
+MIGRATION: 2026_11_30_000001_add_adviser_step.php
+  users.adviser_id            (teacher ng student)
+  ticket_approvals.approver_id (ang iisang taong puwedeng pumirma sa step na iyon; NULL sa ibang step)
+
+BINAGO / BAGO
+  Bago:    database/migrations/2026_11_30_000001_add_adviser_step.php, tests/Feature/AdviserStepTest.php
+  Binago:  config/school.php (workflow.adviser_step), app/Models/{User,TicketApproval,MaintenanceRequest}.php,
+           app/Services/{TicketWorkflow,FormNotifier,TicketMailer}.php,
+           app/Http/Controllers/Admin/UserController.php, resources/views/admin/users.blade.php
+
+DI KO NA-RUN (walang PHP sa pinaggawaan ko)
+  Patakbuhin ang dalawang test command sa itaas. Kung may pumalpak, ipadala ang error.
+  Ang mga lumang test na nag-file ng ticket gamit ang student-number email (hal. 24-12803@...) ay mangangailangan
+  na ngayon ng adviser.
+
+ROLLBACK
+  php artisan migrate:rollback --step=1
+  git checkout -- .

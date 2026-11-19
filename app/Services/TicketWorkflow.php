@@ -54,6 +54,11 @@ class TicketWorkflow
             throw new DomainException($error);
         }
 
+        // A student's complaint starts with the student's adviser: no adviser, no complaint (unless the school turned that off).
+        if (self::adviserStepApplies($requester) && self::adviserOf($requester) === null && config('school.workflow.adviser_step.required', true)) {
+            throw new DomainException('Your account has no adviser yet, so your teacher cannot approve this complaint. Please ask the Maintenance Admin to set your adviser first.');
+        }
+
         $attempts = 0;
 
         while (true) {
@@ -237,9 +242,26 @@ class TicketWorkflow
             return;
         }
 
-        foreach (self::chain() as $i => $step) {
+        $order = 1;
+
+        // Teacher (adviser) step first, only for a student's complaint.
+        $requester = $ticket->requester;
+        $adviser = $requester !== null && self::adviserStepApplies($requester) ? self::adviserOf($requester) : null;
+
+        if ($adviser !== null) {
             $ticket->approvals()->create([
-                'step_order' => $i + 1,
+                'step_order' => $order++,
+                'step' => 'adviser',
+                'label' => (string) config('school.workflow.adviser_step.label', 'Teacher (Adviser)'),
+                'role_slug' => 'adviser',   // not a real role: this step belongs to ONE person (approver_id)
+                'approver_id' => $adviser->id,
+                'status' => TicketApproval::PENDING,
+            ]);
+        }
+
+        foreach (self::chain() as $step) {
+            $ticket->approvals()->create([
+                'step_order' => $order++,
                 'step' => $step['step'],
                 'label' => $step['label'],
                 'role_slug' => $step['role'],
@@ -377,11 +399,29 @@ class TicketWorkflow
             throw new DomainException("Ticket {$ticket->ticket_no} has no approval step waiting for a signature.");
         }
 
-        if ($by->role?->slug !== $step->role_slug) {
+        $mine = $step->approver_id !== null
+            ? (int) $step->approver_id === (int) $by->id        // the adviser step: only the student's own adviser
+            : $by->role?->slug === $step->role_slug;
+
+        if (! $mine) {
             throw new DomainException("It is the {$step->label}'s turn to {$verb} ticket {$ticket->ticket_no}. You can only act on your own step.");
         }
 
         return $step;
+    }
+
+    /** Does this requester's complaint start with the teacher (adviser) step? Students only, and only when it is switched on. */
+    public static function adviserStepApplies(User $requester): bool
+    {
+        return (bool) config('school.workflow.adviser_step.enabled', true) && $requester->isStudent();
+    }
+
+    /** The student's adviser if there is one and the account is active, else null. */
+    public static function adviserOf(User $student): ?User
+    {
+        $adviser = $student->adviser_id !== null ? User::query()->find($student->adviser_id) : null;
+
+        return $adviser !== null && $adviser->is_active ? $adviser : null;
     }
 
     private static function stepConfig(TicketApproval $step): array

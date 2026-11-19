@@ -27,7 +27,7 @@ class FormNotifier
         if ($form instanceof MaintenanceRequest) {
             $first = $form->approvals()->first();
 
-            self::send(self::usersWithRole($first?->role_slug ?? Role::VICE_PRINCIPAL), $form, 'submitted', $form->requester,
+            self::send($first ? $first->approvers() : self::usersWithRole(Role::VICE_PRINCIPAL), $form, 'submitted', $form->requester,
                 'filed a new '.$form::LABEL.' that needs your approval');
 
             return;
@@ -85,7 +85,7 @@ class FormNotifier
         }
 
         if ($next !== null) {
-            self::send(collect([$ticket->requester])->merge(self::usersWithRole($next->role_slug)), $ticket, 'signed', $actor,
+            self::send(collect([$ticket->requester])->merge($next->approvers()), $ticket, 'signed', $actor,
                 "approved {$ticket->ticket_no} ({$line->label}). Next: {$next->label}");
 
             return;

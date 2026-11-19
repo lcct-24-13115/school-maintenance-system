@@ -52,7 +52,7 @@ class UserController extends Controller
         ]);
 
         $users = User::query()
-            ->with(['role:id,name,slug', 'department:id,name,code'])
+            ->with(['role:id,name,slug', 'department:id,name,code', 'adviser:id,name'])
             ->when($filters['q'] ?? null, function ($query, $term) {
                 $term = addcslashes($term, '%_\\');
 
@@ -79,6 +79,7 @@ class UserController extends Controller
             'roles' => Role::query()->orderBy('name')->get(['id', 'name', 'slug']),
             // Phase 5: the dropdown carries is_active so inactive departments can be shown but not newly chosen.
             'departments' => Department::query()->orderBy('name')->get(['id', 'name', 'code', 'is_active']),
+            'advisers' => self::adviserChoices(),
         ]);
     }
 
@@ -95,6 +96,7 @@ class UserController extends Controller
             'role_id' => ['required', 'integer', Rule::exists('roles', 'id')],
             // Phase 5: new assignments may only use an ACTIVE department.
             'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')->where('is_active', true)],
+            'adviser_id' => self::adviserRules(),
         ], [
             'email.unique' => 'An account with this email already exists.',
             'employee_no.unique' => 'This employee number is already used by another account.',
@@ -108,6 +110,7 @@ class UserController extends Controller
             'employee_no' => $data['employee_no'] ?? null,
             'role_id' => $data['role_id'],
             'department_id' => $data['department_id'] ?? null,
+            'adviser_id' => $data['adviser_id'] ?? null,
             'password' => $temporary,            // the "hashed" cast hashes it
             'is_active' => true,
         ]);
@@ -121,7 +124,38 @@ class UserController extends Controller
             ->with('temp_password', ['name' => $user->name, 'email' => $user->email, 'password' => $temporary]);
     }
 
-    /** Change role and / or department. */
+    /** Teachers who may be chosen as an adviser: active requester accounts that are not students (a student number email starts with a digit). */
+    private static function adviserChoices()
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->whereHas('role', fn ($q) => $q->where('slug', Role::REQUESTER))
+            ->where(fn ($q) => $q->whereNull('requester_type')->orWhere('requester_type', '!=', 'STUDENT'))
+            ->where(function ($q) {
+                foreach (range(0, 9) as $digit) {
+                    $q->where('email', 'not like', $digit.'%');
+                }
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+    }
+
+    /** adviser_id: optional, an active teacher (never a student, never the person themself). */
+    private static function adviserRules(?User $user = null): array
+    {
+        return [
+            'nullable', 'integer', Rule::exists('users', 'id')->where('is_active', true),
+            function (string $attribute, mixed $value, \Closure $fail) use ($user) {
+                if ($user !== null && (int) $value === (int) $user->id) {
+                    $fail('A person cannot be their own adviser.');
+                } elseif (User::query()->find($value)?->isStudent()) {
+                    $fail('The adviser must be a teacher, not a student.');
+                }
+            },
+        ];
+    }
+
+    /** Change role, department and / or adviser. */
     public function update(Request $request, User $user): RedirectResponse
     {
         $this->authorizeManage($request);
@@ -137,6 +171,7 @@ class UserController extends Controller
                     $query->orWhere('id', $user->department_id);
                 }
             })],
+            'adviser_id' => self::adviserRules($user),
         ]);
 
         if ($user->is($request->user()) && (int) $data['role_id'] !== (int) $user->role_id) {
@@ -145,6 +180,7 @@ class UserController extends Controller
 
         $user->role_id = (int) $data['role_id'];
         $user->department_id = isset($data['department_id']) ? (int) $data['department_id'] : null;
+        $user->adviser_id = isset($data['adviser_id']) ? (int) $data['adviser_id'] : null;
 
         if (! $user->isDirty()) {
             return back()->with('status', "No changes for {$user->name}.");

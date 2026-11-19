@@ -41,7 +41,7 @@ class TicketMailer
     {
         self::guard(fn () => self::deliver(
             $ticket, 'submitted', 'New request waiting for your approval', self::name($by).' filed a new request. It needs your approval first.',
-            self::withRole($ticket->approvals()->value('role_slug') ?? Role::VICE_PRINCIPAL), $by,   // the FIRST step of the chain, not Maintenance
+            ($first = $ticket->approvals()->first()) ? $first->approvers() : self::withRole(Role::VICE_PRINCIPAL), $by,   // the FIRST step of the chain (the student's adviser, or the Vice Principal), not Maintenance
         ));
     }
 
@@ -55,7 +55,7 @@ class TicketMailer
         self::guard(function () use ($ticket, $by, $signed, $next) {
             self::deliver($ticket, 'sent_for_authorization', 'Request waiting for your approval',
                 self::name($by)." ({$signed->label}) approved the request. It is now your turn ({$next->label}).",
-                self::withRole($next->role_slug), $by);
+                $next->approvers(), $by);
 
             self::deliver($ticket, 'step_approved', 'Your request moved forward',
                 "{$signed->label} approved your request. Next: {$next->label}.",

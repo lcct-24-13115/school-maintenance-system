@@ -145,6 +145,15 @@ return [
             ['step' => 'finance', 'role' => 'finance', 'label' => 'Finance', 'needs_amount' => true],
             ['step' => 'president', 'role' => 'president', 'label' => 'School President', 'needs_amount' => false],
         ],
+        // Teacher (adviser) step. A complaint filed by a STUDENT is first approved by that student's adviser
+        // (users.adviser_id), then goes through the chain above. A teacher's own request skips this step.
+        //   enabled   false = students go straight to the Vice Principal (the old behaviour). ADVISER_STEP=false in .env.
+        //   required  true = a student with no (active) adviser cannot file; false = such a student skips the step.
+        'adviser_step' => [
+            'enabled' => (bool) env('ADVISER_STEP', true),
+            'required' => (bool) env('ADVISER_REQUIRED', true),
+            'label' => 'Teacher (Adviser)',
+        ],
         // CONFIRM WITH CLIENT: who may formally close a ticket.
         'closers' => ['head', 'maintenance_admin', 'system_admin'],
         // CONFIRM WITH CLIENT: what must be on file before closing.

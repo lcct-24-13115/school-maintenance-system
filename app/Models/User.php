@@ -23,7 +23,7 @@ class User extends Authenticatable implements MustVerifyEmail
     public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
-        'role_id', 'department_id', 'employee_no',
+        'role_id', 'department_id', 'employee_no', 'adviser_id',
         'name', 'email', 'password', 'is_active',
     ];
 
@@ -83,6 +83,29 @@ class User extends Authenticatable implements MustVerifyEmail
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    /** A student's adviser: the teacher who approves the student's complaints first. */
+    public function adviser(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'adviser_id');
+    }
+
+    /** The students this teacher advises. */
+    public function advisees(): HasMany
+    {
+        return $this->hasMany(self::class, 'adviser_id');
+    }
+
+    protected ?bool $adviserCache = null;
+
+    /** Is this person a teacher who advises students (or is named on an approval step)? Remembered per request. */
+    public function isAdviser(): bool
+    {
+        return $this->adviserCache ??= $this->is_active && $this->exists && (
+            $this->advisees()->exists()
+            || TicketApproval::query()->where('approver_id', $this->id)->exists()
+        );
     }
 
     /** Requests this user submitted. */
@@ -210,7 +233,8 @@ class User extends Authenticatable implements MustVerifyEmail
     /** May this user approve / disapprove tickets? Configurable: school.workflow.authorizers. */
     public function canAuthorize(): bool
     {
-        return $this->is_active && $this->hasRole(...(array) config('school.workflow.authorizers', []));
+        // the signatories (VP, Finance, President) AND a teacher who is a student's adviser (his / her own step only)
+        return $this->is_active && ($this->hasRole(...(array) config('school.workflow.authorizers', [])) || $this->isAdviser());
     }
 
     /** Help & FAQ (Phase 1): may this user add, edit, order, hide and delete the FAQ entries? (Everyone may READ the ones meant for them.) */
