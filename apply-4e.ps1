@@ -1,4 +1,7 @@
-# FAQ Phase 4E: the <x-help-link> component + the links on 6 pages.
+git status
+git add -A
+git commit -m "Add E-mail log page (admin)"
+git push origin main# FAQ Phase 4E: the <x-help-link> component + the links on 6 pages.
 # Run from the project root (the folder that has "artisan"):
 #   powershell -ExecutionPolicy Bypass -File .\apply-4e.ps1
 

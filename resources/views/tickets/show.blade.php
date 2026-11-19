@@ -30,7 +30,7 @@
             <div class="alert ok"><i class="fa-solid fa-circle-check"></i><div>{{ session('status') }}</div></div>
         @endif
 
-        @if ($ticket->is_emergency)
+        @if ($ticket->is_emergency && config('school.emergency_enabled'))
             <div class="alert err">
                 <i class="fa-solid fa-triangle-exclamation"></i>
                 <div>
@@ -55,6 +55,7 @@
 
             @include('tickets._tracker', ['ticket' => $ticket, 'full' => true])
             @include('tickets._approval_chain', ['ticket' => $ticket])
+            @include('tickets._estimate_banner', ['ticket' => $ticket])
 
             @php $latest = $ticket->statusLogs->sortByDesc('created_at')->first(); @endphp
             @if ($latest)
@@ -71,7 +72,9 @@
                 <h3 class="pf-h" style="font-family:var(--font-display);font-size:18px;color:var(--navy);margin-bottom:10px">People</h3>
                 <div class="pf-row"><span class="k">Requester</span><span class="mono">{{ $ticket->requester->name }}@if ($ticket->requester->department?->name) · {{ $ticket->requester->department->name }}@endif</span></div>
                 <div class="pf-row"><span class="k">Assigned to</span><span class="mono">{{ $ticket->assignee?->name ?? 'Not assigned yet' }}</span></div>
+                @if (config('school.emergency_enabled'))
                 <div class="pf-row"><span class="k">Emergency flagged by</span><span class="mono">{{ $ticket->emergencyFlagger?->name ?? '—' }}</span></div>
+                @endif
                 <div class="pf-row">
                     <span class="k">Authorized by</span>
                     <span class="mono">{{ $ticket->president?->name ?? '—' }}@if ($ticket->president_remarks)<div class="sub" style="color:var(--text-3)">{{ $ticket->president_remarks }}</div>@endif</span>
@@ -177,6 +180,7 @@
             @endcan
         </section>
 
+        @include('tickets._estimate_form', ['ticket' => $ticket])
         @include('tickets._actions')
 
         @include('tickets._replies')

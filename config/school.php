@@ -74,6 +74,14 @@ return [
         'requester', 'department_head', 'treasurer', 'custodian', 'staff', 'head', 'maintenance_admin', 'system_admin', 'finance', 'president', 'vice_principal',
     ],
 
+    // false (default): the emergency feature is OFF (no flag, no badge, no emergency choice on the form).
+    // true: the old behaviour. EMERGENCY_ENABLED=true in .env.
+    'emergency_enabled' => (bool) env('EMERGENCY_ENABLED', false),
+
+    // false (default): a ticket has NO target finish date until the Head of Maintenance sets one when assigning it,
+    // because not every case takes the same time. true: the old behaviour, due = submitted + the SLA hours of the settings page.
+    'auto_due_date' => (bool) env('AUTO_DUE_DATE', false),
+
     // Phase 16 (Reports): CONFIRM WITH CLIENT
     //   stale_days      a pending ticket with no activity for this many days is listed as "stale"
     //   attention_limit how many rows the "Needs attention" list shows (the total is always shown)

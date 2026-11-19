@@ -107,6 +107,26 @@ class User extends Authenticatable implements MustVerifyEmail
         return in_array($this->role?->slug, $slugs, true);
     }
 
+    /**
+     * A student requester. Students never get the Head's "finish date" / "complaint is done" notices: those go to
+     * the teacher. Students are recognised by requester_type STUDENT, or (imported students have no type) by a
+     * student-number email such as 24-12803@lcctanauan.edu.ph.
+     */
+    public function isStudent(): bool
+    {
+        if (! $this->hasRole(Role::REQUESTER)) {
+            return false;
+        }
+
+        $type = $this->requester_type ?? null;
+
+        if ($type !== null && $type !== '') {
+            return $type === 'STUDENT';
+        }
+
+        return (bool) preg_match('/^\d+(-\d+)*@/', (string) $this->email);
+    }
+
     /** Staff, Head or Maintenance Admin: the people on the maintenance side. */
     public function isMaintenanceTeam(): bool
     {

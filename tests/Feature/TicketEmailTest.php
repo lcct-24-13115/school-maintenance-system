@@ -177,7 +177,8 @@ class TicketEmailTest extends TestCase
         Mail::fake();
 
         TicketWorkflow::markWorkCompleted($ticket, $this->user('maintenance'));
-        $this->assertSame(['requester'], $this->who('work_completed'));
+        // the Head side is told (not the person who did it); the teacher hears it from the Head (tellDone)
+        $this->assertSame(['maintenance2', 'maintenance3'], $this->who('work_completed'));
 
         TicketWorkflow::confirmResolved($ticket->refresh(), $this->user('requester'));
         $this->assertSame(['maintenance', 'maintenance2', 'maintenance3'], $this->who('closed'));   // not the requester who did it

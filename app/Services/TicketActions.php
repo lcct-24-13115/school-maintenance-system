@@ -54,6 +54,9 @@ class TicketActions
 
     public const TRANSFER = 'transfer';
 
+    // The Head tells the teacher the complaint is done (after the work is completed)
+    public const NOTIFY_DONE = 'notify_done';
+
     /** @return list<string> */
     public static function for(MaintenanceRequest $ticket, User $user): array
     {
@@ -132,6 +135,11 @@ class TicketActions
         }
         if ($can('cancel') && TicketWorkflow::cancelBlocker($ticket, $user) === null) {
             $actions[] = self::CANCEL;
+        }
+
+        if ($status === TicketStatus::WorkCompleted && $can('notifyDone') && TicketWorkflow::noticeRecipient($ticket) !== null
+            && ! $ticket->statusLogs()->where('action', \App\Models\RequestStatusLog::ACTION_NOTE)->where('meta->done_notice', true)->exists()) {
+            $actions[] = self::NOTIFY_DONE;
         }
 
         if ($can('addNote')) {

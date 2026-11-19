@@ -247,6 +247,16 @@
             </form>
         @endif
 
+        {{-- Head of Maintenance: tell the teacher the complaint is done --}}
+        @if ($has(A::NOTIFY_DONE))
+            <form method="POST" action="{{ route('tickets.notify-done', $ticket) }}" style="{{ $box('#bfe6cc', 'var(--green-dim)') }}">
+                @csrf
+                <div class="lbl" style="font-size:16px;color:#0f6a31"><i class="fa-solid fa-bell"></i> Tell the teacher it is done</div>
+                <p class="hint" style="margin:0 0 12px">The work is completed. Send the teacher the notice that this complaint is finished. The teacher can then confirm it or reopen it. Students never get this notice.</p>
+                <button class="btn btn-primary" style="background:var(--green);border-color:var(--green)">Tell the teacher</button>
+            </form>
+        @endif
+
         {{-- Requester (Phase 8): confirm the work is done --}}
         @if ($has(A::CONFIRM_RESOLVED))
             <form method="POST" action="{{ route('tickets.confirm-resolved', $ticket) }}" style="{{ $box('#bfe6cc', 'var(--green-dim)') }}">

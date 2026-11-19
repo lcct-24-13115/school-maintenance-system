@@ -96,9 +96,33 @@ class FormNotifier
     public static function work(Model $form, User $actor, string $event): void
     {
         $noun = $form instanceof MaintenanceRequest ? 'ticket' : 'repair request';
+        // A TICKET that is finished: the Head is told (not the requester). The Head then tells the teacher it is done.
+        if ($form instanceof MaintenanceRequest && $event !== 'accepted') {
+            self::send(self::usersWithRole(Role::maintenanceSlugs()), $form, $event, $actor,
+                "finished the work on {$form->ticket_no}. Please check it and tell the teacher it is done");
+
+            return;
+        }
+
         $text = $event === 'accepted' ? "accepted your {$noun} and will work on it" : "finished the work on your {$noun}";
 
         self::send(collect([$form->requester]), $form, $event, $actor, $text);
+    }
+
+    /** The Head of Maintenance set the target finish date: only the requester is alerted. */
+    public static function finishDate(MaintenanceRequest $ticket, User $actor): void
+    {
+        $date = $ticket->due_at?->copy()->timezone(config('app.timezone'))->format('M j, Y');
+
+        self::send(collect([TicketWorkflow::noticeRecipient($ticket)]), $ticket, 'finish_date', $actor,
+            "set the expected finish date of {$ticket->ticket_no}: {$date}");
+    }
+
+    /** The Head told the teacher that the complaint is done. Only the teacher is alerted, never a student. */
+    public static function done(MaintenanceRequest $ticket, User $actor): void
+    {
+        self::send(collect([TicketWorkflow::noticeRecipient($ticket)]), $ticket, 'complaint_done', $actor,
+            "says the work on {$ticket->ticket_no} is finished. Please confirm it");
     }
 
     /** Phase 9: staff asked the requester for information. Only the requester is alerted. */

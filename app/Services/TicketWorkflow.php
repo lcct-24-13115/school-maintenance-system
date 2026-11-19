@@ -508,6 +508,12 @@ class TicketWorkflow
             }
 
             $schedule['due_at'] = $finish;
+
+            // the target date set at assignment is also the estimated date the requester sees
+            if ($by !== null && ! $by->isStaffOnly()) {
+                $schedule['eta_set_at'] = now();
+                $schedule['eta_set_by'] = $by->id;
+            }
         }
         if (filled($scheduledStart)) {
             $schedule['scheduled_start'] = Carbon::parse($scheduledStart)->toDateString();
@@ -521,7 +527,7 @@ class TicketWorkflow
             ? "Reassigned from {$previous->name} to {$assignee->name}. {$note}"
             : "Assigned to {$assignee->name}.".($note ? " {$note}" : '');
 
-        return self::apply(
+        $result = self::apply(
             $ticket,
             $status === TicketStatus::Approved ? TicketStatus::Assigned : null,
             ['assigned_to' => $assignee->id, 'assigned_at' => now()] + $schedule,
@@ -530,6 +536,70 @@ class TicketWorkflow
             trim($text),
             ['from_user_id' => $previous?->id, 'to_user_id' => $assignee->id, 'reason' => ($isReassignment || $crossDepartment) ? trim((string) $note) : null, 'cross_department' => $crossDepartment],
         );
+
+        // The Head of Maintenance set the finish date: tell the complainant when the work will be done.
+        if ($by !== null && ! $by->isStaffOnly() && isset($schedule['due_at'])) {
+            self::tellFinishDate($result, $by);
+        }
+
+        return $result;
+    }
+
+    /** Who hears the Head's notices (finish date, complaint done): the teacher who filed it. Never a student. */
+    public static function noticeRecipient(MaintenanceRequest $ticket): ?User
+    {
+        $requester = $ticket->requester;
+
+        return $requester === null || $requester->isStudent() ? null : $requester;
+    }
+
+    /**
+     * The Head of Maintenance tells the teacher that the complaint is done (a Work Completed ticket).
+     * Written to the history once. The teacher can then confirm it or reopen it. Never sent to a student.
+     */
+    public static function tellDone(MaintenanceRequest $ticket, User $by): MaintenanceRequest
+    {
+        if ($ticket->status !== TicketStatus::WorkCompleted) {
+            throw new DomainException("Ticket {$ticket->ticket_no} is \"{$ticket->status->label()}\". You can tell the teacher after the work is completed.");
+        }
+
+        if (self::noticeRecipient($ticket) === null) {
+            throw new DomainException('This complaint was filed by a student. Notices go to the teacher only, not to students.');
+        }
+
+        if ($ticket->statusLogs()->where('action', RequestStatusLog::ACTION_NOTE)->where('meta->done_notice', true)->exists()) {
+            throw new DomainException('The teacher was already told that this complaint is done.');
+        }
+
+        $ticket->logEvent(RequestStatusLog::ACTION_NOTE, $by, 'The Head of Maintenance told the teacher that the complaint is done.', meta: ['done_notice' => true]);
+
+        TicketMailer::done($ticket, $by);
+        FormNotifier::done($ticket, $by);
+
+        return $ticket->refresh();
+    }
+
+    /**
+     * Tell the person who filed the ticket (a teacher; never a student) when the work should be finished.
+     * Only for an APPROVED ticket: a ticket whose approval chain is not complete (or was disapproved) gets no date,
+     * because nothing is going to be done yet. The teacher/approvers only approve; they are not sent this notice.
+     */
+    public static function tellFinishDate(MaintenanceRequest $ticket, User $by): void
+    {
+        if (self::noticeRecipient($ticket) === null) {
+            return;   // a student's complaint: students never get this notice
+        }
+
+        if ($ticket->due_at === null || ! in_array($ticket->status, self::assignableStatuses(), true)) {
+            return;
+        }
+
+        if ($ticket->approvals()->where('status', '!=', TicketApproval::APPROVED)->exists()) {
+            return;
+        }
+
+        TicketMailer::finishDate($ticket, $by);
+        FormNotifier::finishDate($ticket, $by);
     }
 
     /**

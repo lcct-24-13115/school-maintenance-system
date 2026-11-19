@@ -97,7 +97,7 @@ class SettingsController extends Controller
         }
 
         // Optional: re-date the tickets that are still pending. Quietly, so history/guards are untouched.
-        if ($request->boolean('recalculate_open')) {
+        if ($request->boolean('recalculate_open') && config('school.auto_due_date')) {
             MaintenanceRequest::query()->pending()->chunkById(200, function ($tickets) {
                 foreach ($tickets as $ticket) {
                     $ticket->forceFill([

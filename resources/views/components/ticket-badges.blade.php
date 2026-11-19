@@ -1,7 +1,7 @@
 @props(['ticket'])
 
 {{-- EMERGENCY / CONFIDENTIAL / DUE badges, shown next to the status badge --}}
-@if ($ticket->is_emergency)
+@if ($ticket->is_emergency && config('school.emergency_enabled'))
     <span class="badge badge-solid-red"><i class="fa-solid fa-triangle-exclamation"></i> Emergency</span>
 @endif
 @if ($ticket->is_confidential)
