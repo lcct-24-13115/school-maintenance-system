@@ -70,6 +70,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/repairs/create', [RepairRequestController::class, 'create'])->name('repairs.create');
     Route::post('/repairs', [RepairRequestController::class, 'store'])->name('repairs.store');
 
+    // ---- Form 1: Use of Facilities & Equipment ----
+    Route::get('/facilities/create', [\App\Http\Controllers\FacilityRequestController::class, 'create'])->name('facilities.create');
+    Route::post('/facilities', [\App\Http\Controllers\FacilityRequestController::class, 'store'])->middleware('throttle:20,1')->name('facilities.store');
     // ---- Ticket list + detail (TicketPolicy / visibleTo decide what each user sees; hidden = 404) ----
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
     // Phase 14: finished tickets (Closed / Cancelled / Disapproved). MUST stay above /tickets/{ticket}.
