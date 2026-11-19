@@ -29,12 +29,8 @@
                     @error('sla_hours_routine')<div class="field-err">{{ $message }}</div>@enderror
                 </div>
 
-                <div class="field">
-                    <label for="sla_hours_emergency">Emergency ticket (hours)</label>
-                    <input id="sla_hours_emergency" type="number" name="sla_hours_emergency" min="1" max="8760" required inputmode="numeric"
-                           value="{{ old('sla_hours_emergency', $values['sla_hours_emergency']) }}">
-                    @error('sla_hours_emergency')<div class="field-err">{{ $message }}</div>@enderror
-                </div>
+                {{-- Emergency tickets are switched off: the field is hidden but still sent so the settings form keeps validating. --}}
+                <input type="hidden" name="sla_hours_emergency" value="{{ old('sla_hours_emergency', $values['sla_hours_emergency']) }}">
             </div>
 
             <div class="field">

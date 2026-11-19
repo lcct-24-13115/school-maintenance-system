@@ -122,6 +122,7 @@
                     <select id="f-sort" name="sort">
                         <option value="">Default order</option>
                         @foreach ($sortOptions as $value => $label)
+                            @continue($value === 'priority' && ! config('school.emergency_enabled'))
                             <option value="{{ $value }}" @selected($sort === $value)>{{ $label }}</option>
                         @endforeach
                     </select>

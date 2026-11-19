@@ -47,7 +47,6 @@
 
 <table class="kpi"><tr>
     <td><div class="v">{{ $metrics['total'] }}</div><div class="k">Tickets</div></td>
-    <td><div class="v">{{ $metrics['emergency'] }}</div><div class="k">Emergency</div></td>
     <td><div class="v">{{ $metrics['overdue'] }}</div><div class="k">Overdue now</div></td>
     <td><div class="v">{{ $metrics['backlog'] }}</div><div class="k">Backlog</div></td>
     <td><div class="v">{{ $rate === null ? '—' : $rate.'%' }}</div><div class="k">Resolution rate</div></td>
@@ -101,7 +100,7 @@
         <tr><th>Ticket</th><th>Status</th><th>Category</th><th>Department</th><th>Requester</th><th>Assigned to</th><th>Submitted</th><th>Completed</th></tr>
         @foreach ($tickets as $t)
             <tr>
-                <td><b>{{ $t->ticket_no }}</b>@if ($t->is_emergency) <span class="em">EMERGENCY</span>@endif</td>
+                <td><b>{{ $t->ticket_no }}</b></td>
                 <td>{{ $t->status->label() }}</td>
                 <td>{{ $t->category?->name ?? '—' }}</td>
                 <td>{{ $t->department?->name ?? '—' }}</td>

@@ -91,11 +91,6 @@
                 <div class="v">{{ $metrics['total'] }}</div>
                 <span class="ic"><i class="fa-solid fa-ticket"></i></span>
             </div>
-            <div class="stat" style="--c:var(--red)">
-                <div class="k">Emergency</div>
-                <div class="v red">{{ $metrics['emergency'] }}</div>
-                <span class="ic"><i class="fa-solid fa-triangle-exclamation"></i></span>
-            </div>
             <div class="stat" style="--c:var(--gold)">
                 <div class="k">Overdue now</div>
                 <div class="v amber">{{ $metrics['overdue'] }}</div>
@@ -163,9 +158,6 @@
                             <tr>
                                 <td data-label="Ticket">
                                     <a href="{{ route('tickets.show', $t) }}"><b style="color:var(--navy)">{{ $t->ticket_no }}</b></a>
-                                    @if ($t->is_emergency)
-                                        <span class="badge" style="background:var(--red);border-color:var(--red);color:#fff;font-weight:800"><i class="fa-solid fa-triangle-exclamation"></i> Emergency</span>
-                                    @endif
                                     @if ($t->is_confidential)
                                         <span class="badge st-closed" style="font-weight:800"><i class="fa-solid fa-lock"></i> Confidential</span>
                                     @endif
