@@ -521,7 +521,7 @@ class TicketWorkflow
             ? "Reassigned from {$previous->name} to {$assignee->name}. {$note}"
             : "Assigned to {$assignee->name}.".($note ? " {$note}" : '');
 
-        return self::apply(
+        $result = self::apply(
             $ticket,
             $status === TicketStatus::Approved ? TicketStatus::Assigned : null,
             ['assigned_to' => $assignee->id, 'assigned_at' => now()] + $schedule,
@@ -530,6 +530,32 @@ class TicketWorkflow
             trim($text),
             ['from_user_id' => $previous?->id, 'to_user_id' => $assignee->id, 'reason' => ($isReassignment || $crossDepartment) ? trim((string) $note) : null, 'cross_department' => $crossDepartment],
         );
+
+        // The Head of Maintenance set the finish date: tell the complainant when the work will be done.
+        if ($by !== null && ! $by->isStaffOnly() && isset($schedule['due_at'])) {
+            self::tellFinishDate($result, $by);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Tell the person who filed the ticket (student, teacher or any requester) when the work should be finished.
+     * Only for an APPROVED ticket: a ticket whose approval chain is not complete (or was disapproved) gets no date,
+     * because nothing is going to be done yet. The teacher/approvers only approve; they are not sent this notice.
+     */
+    public static function tellFinishDate(MaintenanceRequest $ticket, User $by): void
+    {
+        if ($ticket->due_at === null || ! in_array($ticket->status, self::assignableStatuses(), true)) {
+            return;
+        }
+
+        if ($ticket->approvals()->where('status', '!=', TicketApproval::APPROVED)->exists()) {
+            return;
+        }
+
+        TicketMailer::finishDate($ticket, $by);
+        FormNotifier::finishDate($ticket, $by);
     }
 
     /**

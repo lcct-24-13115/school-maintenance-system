@@ -101,6 +101,15 @@ class FormNotifier
         self::send(collect([$form->requester]), $form, $event, $actor, $text);
     }
 
+    /** The Head of Maintenance set the target finish date: only the requester is alerted. */
+    public static function finishDate(MaintenanceRequest $ticket, User $actor): void
+    {
+        $date = $ticket->due_at?->copy()->timezone(config('app.timezone'))->format('M j, Y');
+
+        self::send(collect([$ticket->requester]), $ticket, 'finish_date', $actor,
+            "set the expected finish date of {$ticket->ticket_no}: {$date}");
+    }
+
     /** Phase 9: staff asked the requester for information. Only the requester is alerted. */
     public static function infoRequested(MaintenanceRequest $ticket, User $actor): void
     {

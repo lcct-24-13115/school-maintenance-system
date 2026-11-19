@@ -63,6 +63,18 @@ class TicketMailer
         });
     }
 
+    /** The Head of Maintenance set the target finish date: the requester is told when the work should be done. */
+    public static function finishDate(MaintenanceRequest $ticket, User $by): void
+    {
+        self::guard(function () use ($ticket, $by) {
+            $date = $ticket->due_at->copy()->timezone(config('app.timezone'))->format('F j, Y');
+
+            self::deliver($ticket, 'finish_date', 'Expected finish date',
+                self::name($by)." scheduled the work on your ticket. It should be finished by {$date}.",
+                self::people($ticket->requester), $by);
+        });
+    }
+
     /**
      * A status change or an assignment, called by TicketWorkflow::apply() once it is saved.
      * $ticket is the refreshed ticket (its new status / assignee).
