@@ -55,6 +55,7 @@
 
             @include('tickets._tracker', ['ticket' => $ticket, 'full' => true])
             @include('tickets._approval_chain', ['ticket' => $ticket])
+            @include('tickets._estimate_banner', ['ticket' => $ticket])
 
             @php $latest = $ticket->statusLogs->sortByDesc('created_at')->first(); @endphp
             @if ($latest)
@@ -179,6 +180,7 @@
             @endcan
         </section>
 
+        @include('tickets._estimate_form', ['ticket' => $ticket])
         @include('tickets._actions')
 
         @include('tickets._replies')

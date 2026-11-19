@@ -508,6 +508,12 @@ class TicketWorkflow
             }
 
             $schedule['due_at'] = $finish;
+
+            // the target date set at assignment is also the estimated date the requester sees
+            if ($by !== null && ! $by->isStaffOnly()) {
+                $schedule['eta_set_at'] = now();
+                $schedule['eta_set_by'] = $by->id;
+            }
         }
         if (filled($scheduledStart)) {
             $schedule['scheduled_start'] = Carbon::parse($scheduledStart)->toDateString();

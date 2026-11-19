@@ -41,7 +41,7 @@ class MaintenanceRequest extends Model
         'status', 'assigned_to', 'assigned_at',
         'president_id', 'president_approved_at', 'president_remarks',
         'problems_encountered', 'recommendations',
-        'submitted_at', 'due_at', 'completed_at', 'closed_at',
+        'submitted_at', 'due_at', 'eta_set_at', 'eta_set_by', 'eta_message', 'completed_at', 'closed_at',
     ];
 
     protected function casts(): array
@@ -54,6 +54,7 @@ class MaintenanceRequest extends Model
             'scheduled_start' => 'date',
             'submitted_at' => 'datetime',
             'due_at' => 'datetime',
+            'eta_set_at' => 'datetime',
             'assigned_at' => 'datetime',
             'emergency_flagged_at' => 'datetime',
             'president_approved_at' => 'datetime',
