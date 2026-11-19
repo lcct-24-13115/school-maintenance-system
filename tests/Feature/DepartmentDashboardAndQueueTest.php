@@ -49,7 +49,7 @@ class DepartmentDashboardAndQueueTest extends TestCase
         ]);
     }
 
-    private function head(Department $department, string $email): User
+    private function headUser(Department $department, string $email): User
     {
         return User::create([
             'name' => 'Head '.strtoupper($email),
@@ -82,7 +82,7 @@ class DepartmentDashboardAndQueueTest extends TestCase
         $finance = Department::where('code', 'FIN')->firstOrFail();
         $registrar = Department::where('code', 'REG')->firstOrFail();
         $staff = $this->staff($finance, 'finance-staff-dashboard');
-        $head = $this->head($finance, 'finance-head-dashboard');
+        $head = $this->headUser($finance, 'finance-head-dashboard');
 
         $mine = $this->ticket($finance, ['assigned_to' => $staff->id, 'status' => TicketStatus::InProgress->value]);
         $unassigned = $this->ticket($finance, ['status' => TicketStatus::Approved->value]);
@@ -109,7 +109,7 @@ class DepartmentDashboardAndQueueTest extends TestCase
     {
         $finance = Department::where('code', 'FIN')->firstOrFail();
         $registrar = Department::where('code', 'REG')->firstOrFail();
-        $head = $this->head($finance, 'finance-head-escalated');
+        $head = $this->headUser($finance, 'finance-head-escalated');
         $local = $this->ticket($finance, ['status' => TicketStatus::Escalated->value]);
         $this->ticket($registrar, ['status' => TicketStatus::Escalated->value]);
 

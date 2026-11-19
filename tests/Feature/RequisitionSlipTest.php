@@ -24,6 +24,7 @@ class RequisitionSlipTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
+        config(['school.form_roles' => array_merge(config('school.form_roles'), [Role::REQUESTER])]);   // these tests file as a Requester
         $this->seed(RoleSeeder::class);
         $this->seed(DepartmentSeeder::class);
         $this->dept = Department::query()->orderBy('id')->firstOrFail();

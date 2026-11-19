@@ -74,6 +74,16 @@ return [
         'requester', 'department_head', 'treasurer', 'custodian', 'staff', 'head', 'maintenance_admin', 'system_admin', 'finance', 'president', 'vice_principal',
     ],
 
+    // Who may FILE the Use of Facilities & Equipment form and the Requisition Slip, and who sees them in the sidebar.
+    // Students (requester), Staff and the Maintenance Admin are not in the list on purpose.
+    'form_roles' => [
+        'department_head', 'custodian', 'president', 'treasurer', 'finance', 'vice_principal', 'system_admin',
+    ],
+
+    // Extra roles that may still OPEN / SIGN a form of their own department (the Head of Maintenance signs as
+    // Office-In-Charge of the Maintenance department). They cannot file one and do not see it in the sidebar.
+    'form_signer_roles' => ['head'],
+
     // false (default): the emergency feature is OFF (no flag, no badge, no emergency choice on the form).
     // true: the old behaviour. EMERGENCY_ENABLED=true in .env.
     'emergency_enabled' => (bool) env('EMERGENCY_ENABLED', false),
