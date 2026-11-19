@@ -84,16 +84,6 @@
             </form>
         @endif
 
-        {{-- Staff: claim an unassigned ticket --}}
-        @if ($has(A::CLAIM))
-            <form method="POST" action="{{ route('tickets.claim', $ticket) }}" style="{{ $box('#bcd5ee', 'var(--sky)') }}">
-                @csrf
-                <div class="lbl" style="font-size:16px"><i class="fa-solid fa-hand"></i> Claim this ticket</div>
-                <div class="hint" style="margin:0 0 10px;color:var(--text-2)">Nobody has this ticket yet. Claim it to make it yours. You start the work later with Accept Task.</div>
-                <button class="btn btn-primary">Claim this ticket</button>
-            </form>
-        @endif
-
         {{-- Staff: transfer my own ticket (reason required) --}}
         @if ($has(A::TRANSFER))
             <form method="POST" action="{{ route('tickets.transfer', $ticket) }}" style="{{ $box('#bcd5ee', 'var(--sky)') }}">

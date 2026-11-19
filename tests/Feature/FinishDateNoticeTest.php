@@ -123,14 +123,14 @@ class FinishDateNoticeTest extends TestCase
         $this->assertSame(0, $this->finishMails($this->seeded('requester')->email));
     }
 
-    public function test_staff_claiming_a_ticket_sends_no_finish_date(): void
+    public function test_a_staff_claim_at_workflow_level_sends_no_finish_date(): void
     {
         $ticket = $this->filed();
         TicketWorkflow::authorize($ticket, $this->seeded('president'));
         $staff = $this->member('staff1', Role::STAFF);
         Mail::fake();
 
-        $this->actingAs($staff)->post(route('tickets.claim', $ticket))->assertSessionHas('status');
+        TicketWorkflow::claim($ticket->fresh(), $staff);
 
         $this->assertSame(0, $this->finishMails($this->seeded('requester')->email));
     }

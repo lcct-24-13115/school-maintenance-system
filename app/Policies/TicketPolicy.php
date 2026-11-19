@@ -173,9 +173,8 @@ class TicketPolicy
      */
     public function claim(User $user, MaintenanceRequest $ticket): bool
     {
-        return $user->isStaffOnly()
-            && $this->can($user, $ticket, 'work')
-            && $this->inOwnDepartment($user, $ticket);
+        // Claiming is switched off: only the Head of Maintenance assigns tickets. Staff can still transfer their own.
+        return false;
     }
 
     /**

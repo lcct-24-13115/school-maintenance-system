@@ -144,14 +144,10 @@ class BulkTicketSeeder extends Seeder
         if ($state === 'approved') {
             return $t;
         }
-        if ($state === 'claimed') {   // staff took it themselves: no target date, the Head did not schedule it
-            return TicketWorkflow::claim($t, $staff);
-        }
-
         $t = TicketWorkflow::assign($t, $staff, $head, 'Test data.', $date);
 
         return match ($state) {
-            'assigned' => $t,
+            'assigned', 'claimed' => $t,
             'in_progress' => TicketWorkflow::startWork($t, $staff),
             'waiting_user' => TicketWorkflow::requestInfo($t, $head, 'Which room exactly, and who can open it for us?'),
             'completed', 'closed' => $this->finish($t, $staff, $head, $state === 'closed'),

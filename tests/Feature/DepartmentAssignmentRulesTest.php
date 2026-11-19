@@ -108,12 +108,12 @@ class DepartmentAssignmentRulesTest extends TestCase
         $staffReg = $this->make('staff', 'REG');
         $headFin = $this->make('head', 'FIN');
 
-        // Staff in Finance claims a Finance ticket.
+        // Claiming is switched off: Staff in Finance cannot claim even a Finance ticket.
         $finTicket = $this->approved('FIN');
-        $this->assertTrue(Gate::forUser($staffFin)->allows('claim', $finTicket));
-        $this->assertContains(TicketActions::CLAIM, TicketActions::for($finTicket, $staffFin));
-        $this->actingAs($staffFin)->post(route('tickets.claim', $finTicket))->assertSessionHas('status');
-        $this->assertEquals($staffFin->id, $finTicket->fresh()->assigned_to);
+        $this->assertFalse(Gate::forUser($staffFin)->allows('claim', $finTicket));
+        $this->assertNotContains(TicketActions::CLAIM, TicketActions::for($finTicket, $staffFin));
+        $this->actingAs($staffFin)->post(route('tickets.claim', $finTicket))->assertForbidden();
+        $this->assertNull($finTicket->fresh()->assigned_to);
 
         // Staff in Finance cannot claim a Registrar ticket: hidden = 404, and the workflow refuses a direct call.
         $regTicket = $this->approved('REG');
@@ -131,9 +131,9 @@ class DepartmentAssignmentRulesTest extends TestCase
         $headFin = $this->make('head', 'FIN');
         $regTicket = $this->approved('REG');
 
-        // Registrar staff claims the Registrar ticket.
-        $this->actingAs($staffReg)->post(route('tickets.claim', $regTicket))->assertSessionHas('status');
-        $this->assertEquals($staffReg->id, $regTicket->fresh()->assigned_to);
+        // Registrar staff cannot claim the Registrar ticket any more.
+        $this->actingAs($staffReg)->post(route('tickets.claim', $regTicket))->assertForbidden();
+        $this->assertNull($regTicket->fresh()->assigned_to);
 
         // Head and requester never claim (they assign / file instead).
         $finTicket = $this->approved('FIN');

@@ -1,0 +1,180 @@
+--- a/app/Policies/TicketPolicy.php
++++ b/app/Policies/TicketPolicy.php
+@@ -173,9 +173,8 @@
+      */
+     public function claim(User $user, MaintenanceRequest $ticket): bool
+     {
+-        return $user->isStaffOnly()
+-            && $this->can($user, $ticket, 'work')
+-            && $this->inOwnDepartment($user, $ticket);
++        // Claiming is switched off: only the Head of Maintenance assigns tickets. Staff can still transfer their own.
++        return false;
+     }
+ 
+     /**
+--- a/resources/views/tickets/_actions.blade.php
++++ b/resources/views/tickets/_actions.blade.php
+@@ -84,16 +84,6 @@
+             </form>
+         @endif
+ 
+-        {{-- Staff: claim an unassigned ticket --}}
+-        @if ($has(A::CLAIM))
+-            <form method="POST" action="{{ route('tickets.claim', $ticket) }}" style="{{ $box('#bcd5ee', 'var(--sky)') }}">
+-                @csrf
+-                <div class="lbl" style="font-size:16px"><i class="fa-solid fa-hand"></i> Claim this ticket</div>
+-                <div class="hint" style="margin:0 0 10px;color:var(--text-2)">Nobody has this ticket yet. Claim it to make it yours. You start the work later with Accept Task.</div>
+-                <button class="btn btn-primary">Claim this ticket</button>
+-            </form>
+-        @endif
+-
+         {{-- Staff: transfer my own ticket (reason required) --}}
+         @if ($has(A::TRANSFER))
+             <form method="POST" action="{{ route('tickets.transfer', $ticket) }}" style="{{ $box('#bcd5ee', 'var(--sky)') }}">
+--- a/database/seeders/BulkTicketSeeder.php
++++ b/database/seeders/BulkTicketSeeder.php
+@@ -144,14 +144,10 @@
+         if ($state === 'approved') {
+             return $t;
+         }
+-        if ($state === 'claimed') {   // staff took it themselves: no target date, the Head did not schedule it
+-            return TicketWorkflow::claim($t, $staff);
+-        }
+-
+         $t = TicketWorkflow::assign($t, $staff, $head, 'Test data.', $date);
+ 
+         return match ($state) {
+-            'assigned' => $t,
++            'assigned', 'claimed' => $t,
+             'in_progress' => TicketWorkflow::startWork($t, $staff),
+             'waiting_user' => TicketWorkflow::requestInfo($t, $head, 'Which room exactly, and who can open it for us?'),
+             'completed', 'closed' => $this->finish($t, $staff, $head, $state === 'closed'),
+--- a/tests/Feature/StaffTicketRulesTest.php
++++ b/tests/Feature/StaffTicketRulesTest.php
+@@ -78,44 +78,41 @@
+ 
+     // ---- claim ----------------------------------------------------------------------------------
+ 
+-    public function test_staff_sees_claim_on_an_unassigned_approved_ticket_and_not_assign(): void
++    public function test_staff_sees_neither_claim_nor_assign_on_an_unassigned_approved_ticket(): void
+     {
+         $staff = $this->member('staff1', Role::STAFF);
+         $ticket = $this->approved();
+ 
+         $actions = TicketActions::for($ticket->fresh(), $staff);
+-        $this->assertContains(TicketActions::CLAIM, $actions);
++        $this->assertNotContains(TicketActions::CLAIM, $actions);
+         $this->assertNotContains(TicketActions::ASSIGN, $actions);
+         $this->assertNotContains(TicketActions::TRANSFER, $actions);
+ 
+-        $this->actingAs($staff)->get(route('tickets.show', $ticket))->assertOk()->assertSee('Claim this ticket');
++        $this->actingAs($staff)->get(route('tickets.show', $ticket))->assertOk()->assertDontSee('Claim this ticket');
+     }
+ 
+-    public function test_staff_can_claim_an_unassigned_ticket_without_starting_work(): void
++    public function test_staff_cannot_claim_an_unassigned_ticket(): void
+     {
+         $staff = $this->member('staff1', Role::STAFF);
+         $ticket = $this->approved();
+ 
+-        $this->actingAs($staff)->post(route('tickets.claim', $ticket))->assertSessionHas('status');
++        $this->actingAs($staff)->post(route('tickets.claim', $ticket))->assertForbidden();
+ 
+         $ticket->refresh();
+-        $this->assertEquals($staff->id, $ticket->assigned_to);
+-        $this->assertSame(TicketStatus::Assigned, $ticket->status);   // claimed, not started
+-        $this->assertDatabaseHas('request_status_logs', [
+-            'request_id' => $ticket->id, 'action' => RequestStatusLog::ACTION_ASSIGNMENT, 'to_status' => 'assigned',
+-        ]);
++        $this->assertNull($ticket->assigned_to);
++        $this->assertSame(TicketStatus::Approved, $ticket->status);
+     }
+ 
+-    public function test_staff_cannot_claim_a_ticket_a_colleague_already_has(): void
++    public function test_no_staff_member_can_claim_even_when_two_try(): void
+     {
+         $first = $this->member('staff1', Role::STAFF);
+         $second = $this->member('staff2', Role::STAFF);
+         $ticket = $this->approved();
+ 
+-        $this->actingAs($first)->post(route('tickets.claim', $ticket))->assertSessionHas('status');
+-        $this->actingAs($second)->post(route('tickets.claim', $ticket))->assertSessionHas('error');
++        $this->actingAs($first)->post(route('tickets.claim', $ticket))->assertForbidden();
++        $this->actingAs($second)->post(route('tickets.claim', $ticket))->assertForbidden();
+ 
+-        $this->assertEquals($first->id, $ticket->fresh()->assigned_to);
++        $this->assertNull($ticket->fresh()->assigned_to);
+     }
+ 
+     public function test_staff_cannot_claim_a_ticket_that_is_not_approved_yet(): void
+@@ -131,15 +128,15 @@
+ 
+         $this->assertNotContains(TicketActions::CLAIM, TicketActions::for($ticket->fresh(), $staff));
+ 
+-        $this->actingAs($staff)->post(route('tickets.claim', $ticket))->assertSessionHas('error');
++        $this->actingAs($staff)->post(route('tickets.claim', $ticket))->assertForbidden();
+         $this->assertNull($ticket->fresh()->assigned_to);
+     }
+ 
+-    public function test_only_the_staff_role_can_claim(): void
++    public function test_nobody_can_claim(): void
+     {
+         $ticket = $this->approved();
+ 
+-        foreach ([$this->seeded('requester'), $this->member('head1', Role::HEAD), $this->seeded('maintenance')] as $user) {
++        foreach ([$this->seeded('requester'), $this->member('staff1', Role::STAFF), $this->member('head1', Role::HEAD), $this->seeded('maintenance')] as $user) {
+             $this->actingAs($user)->post(route('tickets.claim', $ticket))->assertForbidden();
+         }
+ 
+--- a/tests/Feature/DepartmentAssignmentRulesTest.php
++++ b/tests/Feature/DepartmentAssignmentRulesTest.php
+@@ -108,12 +108,12 @@
+         $staffReg = $this->make('staff', 'REG');
+         $headFin = $this->make('head', 'FIN');
+ 
+-        // Staff in Finance claims a Finance ticket.
++        // Claiming is switched off: Staff in Finance cannot claim even a Finance ticket.
+         $finTicket = $this->approved('FIN');
+-        $this->assertTrue(Gate::forUser($staffFin)->allows('claim', $finTicket));
+-        $this->assertContains(TicketActions::CLAIM, TicketActions::for($finTicket, $staffFin));
+-        $this->actingAs($staffFin)->post(route('tickets.claim', $finTicket))->assertSessionHas('status');
+-        $this->assertEquals($staffFin->id, $finTicket->fresh()->assigned_to);
++        $this->assertFalse(Gate::forUser($staffFin)->allows('claim', $finTicket));
++        $this->assertNotContains(TicketActions::CLAIM, TicketActions::for($finTicket, $staffFin));
++        $this->actingAs($staffFin)->post(route('tickets.claim', $finTicket))->assertForbidden();
++        $this->assertNull($finTicket->fresh()->assigned_to);
+ 
+         // Staff in Finance cannot claim a Registrar ticket: hidden = 404, and the workflow refuses a direct call.
+         $regTicket = $this->approved('REG');
+@@ -131,9 +131,9 @@
+         $headFin = $this->make('head', 'FIN');
+         $regTicket = $this->approved('REG');
+ 
+-        // Registrar staff claims the Registrar ticket.
+-        $this->actingAs($staffReg)->post(route('tickets.claim', $regTicket))->assertSessionHas('status');
+-        $this->assertEquals($staffReg->id, $regTicket->fresh()->assigned_to);
++        // Registrar staff cannot claim the Registrar ticket any more.
++        $this->actingAs($staffReg)->post(route('tickets.claim', $regTicket))->assertForbidden();
++        $this->assertNull($regTicket->fresh()->assigned_to);
+ 
+         // Head and requester never claim (they assign / file instead).
+         $finTicket = $this->approved('FIN');
+--- a/tests/Feature/FinishDateNoticeTest.php
++++ b/tests/Feature/FinishDateNoticeTest.php
+@@ -123,14 +123,14 @@
+         $this->assertSame(0, $this->finishMails($this->seeded('requester')->email));
+     }
+ 
+-    public function test_staff_claiming_a_ticket_sends_no_finish_date(): void
++    public function test_a_staff_claim_at_workflow_level_sends_no_finish_date(): void
+     {
+         $ticket = $this->filed();
+         TicketWorkflow::authorize($ticket, $this->seeded('president'));
+         $staff = $this->member('staff1', Role::STAFF);
+         Mail::fake();
+ 
+-        $this->actingAs($staff)->post(route('tickets.claim', $ticket))->assertSessionHas('status');
++        TicketWorkflow::claim($ticket->fresh(), $staff);
+ 
+         $this->assertSame(0, $this->finishMails($this->seeded('requester')->email));
+     }

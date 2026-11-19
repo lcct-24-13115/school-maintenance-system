@@ -78,44 +78,41 @@ class StaffTicketRulesTest extends TestCase
 
     // ---- claim ----------------------------------------------------------------------------------
 
-    public function test_staff_sees_claim_on_an_unassigned_approved_ticket_and_not_assign(): void
+    public function test_staff_sees_neither_claim_nor_assign_on_an_unassigned_approved_ticket(): void
     {
         $staff = $this->member('staff1', Role::STAFF);
         $ticket = $this->approved();
 
         $actions = TicketActions::for($ticket->fresh(), $staff);
-        $this->assertContains(TicketActions::CLAIM, $actions);
+        $this->assertNotContains(TicketActions::CLAIM, $actions);
         $this->assertNotContains(TicketActions::ASSIGN, $actions);
         $this->assertNotContains(TicketActions::TRANSFER, $actions);
 
-        $this->actingAs($staff)->get(route('tickets.show', $ticket))->assertOk()->assertSee('Claim this ticket');
+        $this->actingAs($staff)->get(route('tickets.show', $ticket))->assertOk()->assertDontSee('Claim this ticket');
     }
 
-    public function test_staff_can_claim_an_unassigned_ticket_without_starting_work(): void
+    public function test_staff_cannot_claim_an_unassigned_ticket(): void
     {
         $staff = $this->member('staff1', Role::STAFF);
         $ticket = $this->approved();
 
-        $this->actingAs($staff)->post(route('tickets.claim', $ticket))->assertSessionHas('status');
+        $this->actingAs($staff)->post(route('tickets.claim', $ticket))->assertForbidden();
 
         $ticket->refresh();
-        $this->assertEquals($staff->id, $ticket->assigned_to);
-        $this->assertSame(TicketStatus::Assigned, $ticket->status);   // claimed, not started
-        $this->assertDatabaseHas('request_status_logs', [
-            'request_id' => $ticket->id, 'action' => RequestStatusLog::ACTION_ASSIGNMENT, 'to_status' => 'assigned',
-        ]);
+        $this->assertNull($ticket->assigned_to);
+        $this->assertSame(TicketStatus::Approved, $ticket->status);
     }
 
-    public function test_staff_cannot_claim_a_ticket_a_colleague_already_has(): void
+    public function test_no_staff_member_can_claim_even_when_two_try(): void
     {
         $first = $this->member('staff1', Role::STAFF);
         $second = $this->member('staff2', Role::STAFF);
         $ticket = $this->approved();
 
-        $this->actingAs($first)->post(route('tickets.claim', $ticket))->assertSessionHas('status');
-        $this->actingAs($second)->post(route('tickets.claim', $ticket))->assertSessionHas('error');
+        $this->actingAs($first)->post(route('tickets.claim', $ticket))->assertForbidden();
+        $this->actingAs($second)->post(route('tickets.claim', $ticket))->assertForbidden();
 
-        $this->assertEquals($first->id, $ticket->fresh()->assigned_to);
+        $this->assertNull($ticket->fresh()->assigned_to);
     }
 
     public function test_staff_cannot_claim_a_ticket_that_is_not_approved_yet(): void
@@ -131,15 +128,15 @@ class StaffTicketRulesTest extends TestCase
 
         $this->assertNotContains(TicketActions::CLAIM, TicketActions::for($ticket->fresh(), $staff));
 
-        $this->actingAs($staff)->post(route('tickets.claim', $ticket))->assertSessionHas('error');
+        $this->actingAs($staff)->post(route('tickets.claim', $ticket))->assertForbidden();
         $this->assertNull($ticket->fresh()->assigned_to);
     }
 
-    public function test_only_the_staff_role_can_claim(): void
+    public function test_nobody_can_claim(): void
     {
         $ticket = $this->approved();
 
-        foreach ([$this->seeded('requester'), $this->member('head1', Role::HEAD), $this->seeded('maintenance')] as $user) {
+        foreach ([$this->seeded('requester'), $this->member('staff1', Role::STAFF), $this->member('head1', Role::HEAD), $this->seeded('maintenance')] as $user) {
             $this->actingAs($user)->post(route('tickets.claim', $ticket))->assertForbidden();
         }
 
