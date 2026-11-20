@@ -129,6 +129,7 @@ return [
     // CONFIRM WITH CLIENT: no global powers. Requesters see their own tickets;
     // department heads also see their own department (school.department_visibility_roles).
     'requester' => ['cancel_own', 'reopen_own'],
+    'teacher' => ['cancel_own', 'reopen_own'],   // same powers as a requester; approving a student's complaint is the adviser step (school.workflow.adviser_step)
     'department_head' => ['cancel_own', 'reopen_own'],
     'treasurer' => ['cancel_own', 'reopen_own'],
     'custodian' => ['cancel_own', 'reopen_own'],

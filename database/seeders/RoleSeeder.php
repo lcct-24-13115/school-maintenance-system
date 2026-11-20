@@ -11,6 +11,7 @@ class RoleSeeder extends Seeder
     {
         $roles = [
             [Role::REQUESTER, 'Student', 'Submits and tracks maintenance requests'],
+            [Role::TEACHER, 'Teacher', 'Files requests; advises students and approves their complaints first'],
             [Role::MAINTENANCE_ADMIN, 'Maintenance Admin', 'Manages users, settings and categories; can do everything the Head and Staff can'],
             [Role::SYSTEM_ADMIN, 'System Administrator', 'Global: not tied to a department; manages users, settings and categories across all departments'],
             [Role::HEAD, 'Department Head', 'Scoped to their department: reviews and authorizes requests, assigns the department queue, closes tickets, reads reports and the audit log'],

@@ -29,7 +29,7 @@ class RequisitionSlipController extends Controller
 
     public function create(Request $request): View
     {
-        abort_unless(in_array($request->user()->role?->slug, config('school.filing_roles', []), true), 403);
+        abort_unless(in_array($request->user()->role?->slug, config('school.form_roles', []), true), 403);
 
         return view('requisitions.create', [
             'types' => RequisitionSlip::TYPES,
@@ -42,7 +42,7 @@ class RequisitionSlipController extends Controller
 
     public function store(StoreRequisitionSlipRequest $request): RedirectResponse
     {
-        abort_unless(in_array($request->user()->role?->slug, config('school.filing_roles', []), true), 403);
+        abort_unless(in_array($request->user()->role?->slug, config('school.form_roles', []), true), 403);
 
         $data = $request->validated();
         $types = array_values($data['request_types']);

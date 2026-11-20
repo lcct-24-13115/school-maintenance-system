@@ -19,8 +19,8 @@ class DemoApprovalSeeder extends Seeder
 
         $this->call([RoleSeeder::class, DepartmentSeeder::class, CategorySeeder::class, UserSeeder::class]);
 
-        $teacher1 = $this->account('teacher1@lcctanauan.edu.ph', 'Maria Santos (Teacher)', Role::REQUESTER, 'ACAD');
-        $teacher2 = $this->account('teacher2@lcctanauan.edu.ph', 'Jose Reyes (Teacher)', Role::REQUESTER, 'LIB');
+        $teacher1 = $this->account('teacher1@lcctanauan.edu.ph', 'Maria Santos (Teacher)', Role::TEACHER, 'ACAD');
+        $teacher2 = $this->account('teacher2@lcctanauan.edu.ph', 'Jose Reyes (Teacher)', Role::TEACHER, 'LIB');
         $this->account('staff1@lcctanauan.edu.ph', 'Pedro Cruz (Maintenance Staff)', Role::STAFF, 'MNT');
         $this->account('staff2@lcctanauan.edu.ph', 'Ana Lim (Maintenance Staff)', Role::STAFF, 'MNT');
 

@@ -127,7 +127,10 @@ class Faq extends Model
             return $this->is_public && $this->isForEveryone();
         }
 
-        return $this->isForEveryone() || in_array((string) $user->role?->slug, $this->audienceList(), true);
+        // a Teacher reads everything meant for Requesters too (a teacher used to be a Requester account)
+        $roles = $user->hasRole('teacher') ? [(string) $user->role?->slug, 'requester'] : [(string) $user->role?->slug];
+
+        return $this->isForEveryone() || array_intersect($roles, $this->audienceList()) !== [];
     }
 
     /** What this person may read, in display order. The table is small, so the audience is filtered in PHP (same on SQLite and MySQL). @return Collection<int, Faq> */

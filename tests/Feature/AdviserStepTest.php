@@ -33,7 +33,7 @@ class AdviserStepTest extends TestCase
 
     private function teacher(): User
     {
-        return $this->user(Role::REQUESTER, ['email' => 'teacher'.uniqid().'@lcctanauan.edu.ph']);
+        return $this->user(Role::TEACHER, ['email' => 'teacher'.uniqid().'@lcctanauan.edu.ph']);
     }
 
     private function student(?User $adviser): User

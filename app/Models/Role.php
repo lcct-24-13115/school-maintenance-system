@@ -9,6 +9,8 @@ class Role extends Model
 {
     public const REQUESTER = 'requester';
 
+    public const TEACHER = 'teacher';                        // files requests like a requester; advises students and approves their complaints first
+
     public const MAINTENANCE_ADMIN = 'maintenance_admin';   // Admin: users, settings, categories, e-mail log + everything the Head does
 
     public const HEAD = 'head';                              // Department Head (scoped to users.department_id): assigns anyone in the department, authorizes, closes, audit, FAQ

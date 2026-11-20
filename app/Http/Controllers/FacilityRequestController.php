@@ -21,7 +21,7 @@ class FacilityRequestController extends Controller
 {
     public function create(Request $request): View
     {
-        abort_unless(in_array($request->user()->role?->slug, config('school.filing_roles', []), true), 403);
+        abort_unless(in_array($request->user()->role?->slug, config('school.form_roles', []), true), 403);
 
         $facilities = Facility::where('is_active', true)->orderBy('sort_order')->get(['id', 'name']);
 

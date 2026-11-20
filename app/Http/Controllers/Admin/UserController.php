@@ -124,18 +124,12 @@ class UserController extends Controller
             ->with('temp_password', ['name' => $user->name, 'email' => $user->email, 'password' => $temporary]);
     }
 
-    /** Teachers who may be chosen as an adviser: active requester accounts that are not students (a student number email starts with a digit). */
+    /** Who may be chosen as an adviser: active accounts with the Teacher role. */
     private static function adviserChoices()
     {
         return User::query()
             ->where('is_active', true)
-            ->whereHas('role', fn ($q) => $q->where('slug', Role::REQUESTER))
-            ->where(fn ($q) => $q->whereNull('requester_type')->orWhere('requester_type', '!=', 'STUDENT'))
-            ->where(function ($q) {
-                foreach (range(0, 9) as $digit) {
-                    $q->where('email', 'not like', $digit.'%');
-                }
-            })
+            ->whereHas('role', fn ($q) => $q->where('slug', Role::TEACHER))
             ->orderBy('name')
             ->get(['id', 'name', 'email']);
     }
@@ -148,8 +142,8 @@ class UserController extends Controller
             function (string $attribute, mixed $value, \Closure $fail) use ($user) {
                 if ($user !== null && (int) $value === (int) $user->id) {
                     $fail('A person cannot be their own adviser.');
-                } elseif (User::query()->find($value)?->isStudent()) {
-                    $fail('The adviser must be a teacher, not a student.');
+                } elseif (! User::query()->find($value)?->hasRole(Role::TEACHER)) {
+                    $fail('The adviser must have the Teacher role.');
                 }
             },
         ];

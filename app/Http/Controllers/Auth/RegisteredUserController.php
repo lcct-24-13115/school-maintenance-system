@@ -74,7 +74,8 @@ class RegisteredUserController extends Controller
             'password' => $request->password,
             // The Department dropdown only exists for the types that use it.
             'department_id' => ($rule['department'] ?? false) ? $request->department_id : null,
-            'role_id' => Role::where('slug', Role::REQUESTER)->firstOrFail()->id,
+            // Faculty / Staff register as a Teacher (they can be a student's adviser); everyone else as a Requester
+            'role_id' => Role::where('slug', $type === 'FACULTY/STAFF' ? Role::TEACHER : Role::REQUESTER)->firstOrFail()->id,
         ]);
 
         $user->forceFill([

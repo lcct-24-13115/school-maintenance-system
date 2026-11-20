@@ -71,13 +71,13 @@ return [
     // Roles that may use the repair request form (/repairs/create).
     // Default keeps Phase 1 behaviour (every role). CONFIRM WITH CLIENT
     'filing_roles' => [
-        'requester', 'department_head', 'treasurer', 'custodian', 'staff', 'head', 'maintenance_admin', 'system_admin', 'finance', 'president', 'vice_principal',
+        'requester', 'teacher', 'department_head', 'treasurer', 'custodian', 'staff', 'head', 'maintenance_admin', 'system_admin', 'finance', 'president', 'vice_principal',
     ],
 
     // Who may FILE the Use of Facilities & Equipment form and the Requisition Slip, and who sees them in the sidebar.
-    // Students (requester), Staff and the Maintenance Admin are not in the list on purpose.
+    // Teachers file these too. Students (requester), Staff and the Maintenance Admin are not in the list on purpose.
     'form_roles' => [
-        'department_head', 'custodian', 'president', 'treasurer', 'finance', 'vice_principal', 'system_admin',
+        'teacher', 'department_head', 'custodian', 'president', 'treasurer', 'finance', 'vice_principal', 'system_admin',
     ],
 
     // Extra roles that may still OPEN / SIGN a form of their own department (the Head of Maintenance signs as

@@ -41,7 +41,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/requester/dashboard', [DashboardController::class, 'requester'])
         // Dept. Heads and the Treasurer land here too (User::dashboardRoute). Before Phase 2 they got a 403.
-        ->middleware(CheckRole::class.':'.Role::REQUESTER.','.Role::DEPARTMENT_HEAD.','.Role::TREASURER)->name('requester.dashboard');
+        ->middleware(CheckRole::class.':'.Role::REQUESTER.','.Role::TEACHER.','.Role::DEPARTMENT_HEAD.','.Role::TREASURER)->name('requester.dashboard');
 
     // Phase 4C: work screens are for the work roles (staff, head, maintenance_admin, system_admin).
     // Department scoping inside them comes from visibleTo() / the policies, never from a hardcoded department.

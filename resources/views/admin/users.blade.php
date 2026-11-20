@@ -164,7 +164,7 @@
                 </div>
 
                 <div class="field">
-                    <label for="u-adv">Adviser <span class="hint" style="display:inline">(students only: the teacher who approves their complaints first)</span></label>
+                    <label for="u-adv">Adviser <span class="hint" style="display:inline">(students only: the Teacher who approves their complaints first)</span></label>
                     <select id="u-adv" name="adviser_id">
                         <option value="">No adviser</option>
                         @foreach ($advisers as $a)

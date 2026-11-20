@@ -14,7 +14,7 @@ class StoreFacilityRequestRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return in_array($this->user()?->role?->slug, config('school.filing_roles', []), true);
+        return in_array($this->user()?->role?->slug, config('school.form_roles', []), true);
     }
 
     /** Rows of the equipment table that have no description are dropped, so an untouched row never blocks sending. */

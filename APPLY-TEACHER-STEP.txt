@@ -16,23 +16,44 @@ STEPS (PowerShell sa project folder)
   git add -A ; git commit -m "Before teacher step"
   tar -xf "$env:USERPROFILE\Downloads\teacher-step-patch.zip" -C .
   php artisan migrate
+  php artisan db:seed --class=RoleSeeder
   php artisan optimize:clear
   php artisan test --filter=AdviserStepTest
   php artisan test --filter=ApprovalChainTest
 
 PAANO MAG-SET NG ADVISER
   Login bilang Maintenance Admin > Users > Edit ang student > piliin ang "Adviser" > Save.
-  (Ang listahan ng adviser ay mga active na non-student na requester account, ibig sabihin ang mga teacher.
-   Kung hindi lumalabas ang teacher, siguraduhing hindi digit ang simula ng email niya at hindi STUDENT ang type niya.)
+  (Ang listahan ng adviser ay mga active na account na role Teacher. Para magdagdag: Users > New user > Role: Teacher.)
   Ang mga ticket na naka-file na bago nito ay hindi nababago.
+
+BAGONG "TEACHER" ROLE
+  May totoong role na "Teacher" na (dati Requester na naka-label na "Student"). Ang migration
+  2026_12_01_000001_add_teacher_role.php ay gumagawa ng role at inililipat ang mga dating teacher account:
+  Requester na type FACULTY/STAFF, at Requester na walang type at ang email ay hindi nagsisimula sa numero.
+  Hindi ginagalaw ang students, parents at alumni. Ang Adviser dropdown ay mga account na role Teacher na.
+  Ang mga bagong mag-register bilang "Faculty / Staff" ay Teacher na rin. Sa Users > Edit, puwedeng baguhin ang role.
+
+TEACHER AT ANG 2 FORM
+  Puwede nang mag-file ang Teacher ng "Use of facilities" at "Requisition slip" (nasa sidebar na nila).
+  Hindi dumadaan ang 2 form na ito sa adviser step. Ang pirmahan nila ay ang dati pa:
+    Use of facilities: Office-In-Charge > Property Custodian > School President > (Returned: Property Custodian)
+    Requisition slip:  OIC / Department Head > Finance > School President
+  Kailangan ng account na Role "Department Head" sa office ng nag-file para makapirma sa unang step.
+  php artisan db:seed --class=DepartmentHeadSeeder  gumagawa ng depthead.acad@ at depthead.lib@lcctanauan.edu.ph (password: password).
+  Ang mga form na ito ay para na lang sa roles sa config 'form_roles' (Teacher, Department Head, Custodian, President,
+  Finance, VP, System Admin). Hindi na makakapasok ang Student, Staff at Maintenance Admin kahit sa URL (dati puwede).
+
+ISANG COMMAND (PowerShell, pagkatapos i-extract):  .\apply-teacher-step.ps1
 
 MIGRATION: 2026_11_30_000001_add_adviser_step.php
   users.adviser_id            (teacher ng student)
   ticket_approvals.approver_id (ang iisang taong puwedeng pumirma sa step na iyon; NULL sa ibang step)
 
 BINAGO / BAGO
-  Bago:    database/migrations/2026_11_30_000001_add_adviser_step.php, tests/Feature/AdviserStepTest.php
-  Binago:  config/school.php (workflow.adviser_step), app/Models/{User,TicketApproval,MaintenanceRequest}.php,
+  Bago:    database/migrations/2026_11_30_000001_add_adviser_step.php, database/migrations/2026_12_01_000001_add_teacher_role.php,
+           tests/Feature/AdviserStepTest.php
+  Binago:  config/school.php, config/permissions.php, routes/web.php, app/Models/{Role,Faq}.php,
+           database/seeders/{RoleSeeder,DemoApprovalSeeder}.php, app/Http/Controllers/Auth/RegisteredUserController.php, app/Models/{User,TicketApproval,MaintenanceRequest}.php,
            app/Services/{TicketWorkflow,FormNotifier,TicketMailer}.php,
            app/Http/Controllers/Admin/UserController.php, resources/views/admin/users.blade.php
 
