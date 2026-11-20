@@ -15,5 +15,10 @@ class DatabaseSeeder extends Seeder
             FacilitySeeder::class,
             UserSeeder::class,
         ]);
+
+        // Optional: 100+ rows of test data in every table. Turn on with SEED_TEST_DATA=true in .env (testing only).
+        if (filter_var(env('SEED_TEST_DATA', false), FILTER_VALIDATE_BOOLEAN)) {
+            $this->call(TestDataSeeder::class);
+        }
     }
 }
