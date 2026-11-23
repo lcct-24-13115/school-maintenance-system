@@ -210,6 +210,33 @@ class PersonnelOnlyTest extends TestCase
         ])->assertSessionHasNoErrors();
     }
 
+    // ---- waiting registrations ------------------------------------------------------------------
+
+    public function test_a_waiting_student_or_parent_registration_cannot_be_approved(): void
+    {
+        $admin = User::where('email', 'maintenance@lcctanauan.edu.ph')->firstOrFail();
+
+        foreach (['STUDENT', 'PARENT/GUARDIAN'] as $type) {
+            $person = $this->account(Role::REQUESTER, ['approval_status' => User::STATUS_PENDING, 'requester_type' => $type]);
+
+            $this->actingAs($admin)->post(route('admin.users.approve', $person))->assertSessionHas('error');
+
+            $this->assertSame(User::STATUS_PENDING, $person->fresh()->approval_status);
+        }
+    }
+
+    public function test_a_waiting_faculty_registration_is_approved_as_a_teacher(): void
+    {
+        $admin = User::where('email', 'maintenance@lcctanauan.edu.ph')->firstOrFail();
+        $person = $this->account(Role::REQUESTER, ['approval_status' => User::STATUS_PENDING, 'requester_type' => 'FACULTY/STAFF']);
+
+        $this->actingAs($admin)->post(route('admin.users.approve', $person));
+
+        $person = $person->fresh();
+        $this->assertSame(User::STATUS_APPROVED, $person->approval_status);
+        $this->assertSame(Role::TEACHER, $person->role->slug);
+    }
+
     // ---- student-only console commands ----------------------------------------------------------
 
     public function test_the_student_commands_refuse_to_run(): void

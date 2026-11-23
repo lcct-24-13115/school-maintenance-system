@@ -56,7 +56,7 @@
                     <span class="badge nocap ab-file" style="margin-left:6px">{{ $pendingTotal }}</span>
                 </h3>
                 <p class="p6-card-s">
-                    These people registered themselves and <b>cannot sign in yet</b>. Approve them to let them in (they start as Requesters; change
+                    These people registered themselves and <b>cannot sign in yet</b>. Approve them to let them in (they start as @if (config('school.personnel_only', true))Teachers @else Requesters @endif; change
                     the role afterwards if needed), or reject them. They get an email with the result.
                     @if ($pendingTotal > $pending->count())The oldest {{ $pending->count() }} are shown.@endif
                 </p>

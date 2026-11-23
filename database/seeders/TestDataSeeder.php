@@ -237,8 +237,10 @@ class TestDataSeeder extends Seeder
 
         // 8 pending registrations of students / faculty (waiting for the admin)
         for ($i = 1; $i <= 8; $i++) {
-            $this->makeUser(Role::REQUESTER, "test.pending{$i}@lcctanauan.edu.ph", $this->depts[mt_rand(0, count($this->depts) - 1)]->id, "TEST-W{$i}", [
-                'requester_type' => $i % 2 ? 'STUDENT' : 'FACULTY/STAFF', 'affiliation' => self::PROGRAMS[mt_rand(0, count(self::PROGRAMS) - 1)],
+            // Personnel only: the waiting registrations are Faculty / Staff (Teacher), never students.
+            $personnelOnly = (bool) config('school.personnel_only', true);
+            $this->makeUser($personnelOnly ? Role::TEACHER : Role::REQUESTER, "test.pending{$i}@lcctanauan.edu.ph", $this->depts[mt_rand(0, count($this->depts) - 1)]->id, "TEST-W{$i}", [
+                'requester_type' => ($i % 2 && ! $personnelOnly) ? 'STUDENT' : 'FACULTY/STAFF', 'affiliation' => self::PROGRAMS[mt_rand(0, count(self::PROGRAMS) - 1)],
                 'reg_purpose' => 'TEST DATA - new registration.', 'approval_status' => User::STATUS_PENDING,
             ], active: false);
             $made++;

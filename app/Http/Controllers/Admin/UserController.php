@@ -215,6 +215,15 @@ class UserController extends Controller
             return back()->with('status', "{$user->name} is already approved.");
         }
 
+        // Personnel only: a Faculty / Staff registration is approved as a Teacher (never as a Student); anyone else is refused.
+        if (config('school.personnel_only', true) && $user->hasRole(Role::REQUESTER)) {
+            if ($user->requester_type !== 'FACULTY/STAFF') {
+                return back()->with('error', 'This system is for personnel only. Reject this registration; a student, parent or outside person cannot be approved.');
+            }
+
+            $user->role_id = (int) Role::query()->where('slug', Role::TEACHER)->value('id');
+        }
+
         $user->forceFill([
             'approval_status' => User::STATUS_APPROVED,
             'decided_by' => $request->user()->id,
