@@ -18,6 +18,12 @@ return [
     // itself when there is (never while someone is typing in a form). 0 turns the auto-refresh off.
     'live_refresh_seconds' => (int) env('LIVE_REFRESH_SECONDS', 8),
 
+    // PERSONNEL ONLY: true (default) = the system is for LCCT personnel (teachers, staff, heads, the signatories ...) and
+    // NOT for students. The Student (requester) role cannot sign in, an open Student session is ended, public
+    // registration only offers Faculty / Staff (and refuses student-number emails), and an admin cannot assign the
+    // Student role. false = the old behaviour (students allowed). PERSONNEL_ONLY=false in .env, then php artisan config:clear.
+    'personnel_only' => (bool) env('PERSONNEL_ONLY', true),
+
     // Public self-registration at /register (always creates a Requester). Set false to turn it off.
     // CONFIRM WITH CLIENT: should the school allow anyone to self-register in production?
     // Phase 2: the controller now really reads this switch. Default is CLOSED (registration was already closed by

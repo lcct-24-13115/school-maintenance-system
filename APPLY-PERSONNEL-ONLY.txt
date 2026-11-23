@@ -1,0 +1,59 @@
+PERSONNEL ONLY (hindi bukas sa Student accounts)
+================================================
+
+TERMINAL (PowerShell) sa project folder, hal. C:\laragon\www\school-maintenance-system:
+
+  cd C:\laragon\www\school-maintenance-system
+  git add -A ; git commit -m "Before personnel only"
+  tar -xf "$env:USERPROFILE\Downloads\personnel-only-patch.zip" -C .
+  php artisan optimize:clear
+  php artisan test --filter=PersonnelOnlyTest
+  php artisan test
+
+DI MO MA-EXTRACT ANG ZIP? Gamitin ang terminal (piliin ang isa), sa loob ng project folder:
+  A) tar -xf "$env:USERPROFILE\Downloads\personnel-only-patch.zip" -C .
+  B) Expand-Archive -Path "$env:USERPROFILE\Downloads\personnel-only-patch.zip" -DestinationPath . -Force
+
+WALANG migration. Walang "npm install", walang "npm run build". Walang kailangang baguhin sa .env
+(naka-ON na ito by default).
+
+ANO ANG NAGBAGO
+  1. Login: ang Student (requester role) ay HINDI na makaka-sign in, kahit tama ang password.
+     Lalabas: "This system is for LCCT personnel only. Student accounts cannot sign in."
+     (Lalabas lang ito kapag TAMA ang password, para hindi malaman ng iba kung sino ang registered.)
+  2. Kapag naka-sign in pa ang isang Student (galing sa dati), lo-logout siya sa susunod na request.
+  3. Registration (/register): Faculty / Staff na lang ang option (wala nang Student, Parent / Guardian).
+     Ang nagpa-register ay nagiging Teacher role. Tinatanggihan ang student-number email (hal. 24-12803@...).
+  4. Admin > Users: wala nang "Student" sa Role dropdown; hindi na rin pwedeng gawing Student ang kahit sino.
+     (Ang dati nang Student account ay nakikita pa rin sa listahan at pwedeng i-edit; hindi lang makaka-sign in.)
+  5. php artisan students:import at students:reset-passwords: tumatanggi na (naka-off ang Student accounts).
+  6. Login page: ang placeholder ay name@lcctanauan.edu.ph na (hindi na studentnumber@).
+
+PAANO IPAGPATULOY ANG PAGGAMIT NG STUDENTS (kung kailangan balang araw)
+  .env -> PERSONNEL_ONLY=false   tapos   php artisan config:clear
+
+BINAGO / BAGO
+  Bago:
+    app/Http/Middleware/EnsurePersonnel.php
+    tests/Feature/PersonnelOnlyTest.php
+    APPLY-PERSONNEL-ONLY.txt
+  Ino-overwrite:
+    config/school.php                                   <- bagong 'personnel_only' switch
+    bootstrap/app.php                                   <- nirerehistro ang EnsurePersonnel
+    app/Models/User.php                                 <- isBlockedAsStudent()
+    app/Http/Requests/Auth/LoginRequest.php             <- hinaharang ang Student sa sign-in
+    app/Http/Controllers/Auth/RegisteredUserController.php
+    app/Http/Controllers/Admin/UserController.php
+    app/Console/Commands/ImportStudents.php, ResetStudentPasswords.php
+    resources/views/auth/login.blade.php, register.blade.php
+    resources/views/admin/users.blade.php
+    phpunit.xml                                         <- PERSONNEL_ONLY=false para sa mga lumang test
+
+PAALALA
+  - Ang mga lumang test ay gumagamit ng Requester (Student) bilang karaniwang nagpa-file ng ticket, kaya naka-OFF
+    ang switch sa phpunit.xml. Ang PersonnelOnlyTest ang nag-o-ON nito at sumusubok sa bagong rule.
+  - Walang binura sa database: ang mga dating Student account at ang kanilang tickets ay nandoon pa rin.
+  - Ang "adviser step" (Teacher na nag-aapprove ng complaint ng Student) ay hindi na mag-aapply kasi walang
+    Student na makaka-file. Hindi ko ito tinanggal; kung gusto mo ring alisin, sabihin mo.
+
+Rollback: git checkout -- .   at burahin ang mga "Bago" na file.

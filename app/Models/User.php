@@ -150,6 +150,15 @@ class User extends Authenticatable implements MustVerifyEmail
         return (bool) preg_match('/^\d+(-\d+)*@/', (string) $this->email);
     }
 
+    /**
+     * Personnel-only mode (config school.personnel_only): the Student (requester) role may not use the system.
+     * Parents, alumni and outside organizations also registered as requesters, so they are blocked the same way.
+     */
+    public function isBlockedAsStudent(): bool
+    {
+        return (bool) config('school.personnel_only', true) && $this->hasRole(Role::REQUESTER);
+    }
+
     /** Staff, Head or Maintenance Admin: the people on the maintenance side. */
     public function isMaintenanceTeam(): bool
     {

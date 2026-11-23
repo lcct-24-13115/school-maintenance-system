@@ -145,7 +145,7 @@
                         <label for="u-role">Role</label>
                         <select id="u-role" name="role_id" required>
                             <option value="">Choose a role…</option>
-                            @foreach ($roles as $r)
+                            @foreach ($roles->reject(fn ($x) => config('school.personnel_only', true) && $x->slug === 'requester') as $r)
                                 <option value="{{ $r->id }}" @selected($adding && (string) old('role_id') === (string) $r->id)>{{ $r->name }}</option>
                             @endforeach
                         </select>
@@ -332,7 +332,7 @@
                                                     <div class="p6-hint">You cannot change your own role.</div>
                                                 @else
                                                     <select id="r-{{ $u->id }}" name="role_id" required>
-                                                        @foreach ($roles as $r)
+                                                        @foreach ($roles->reject(fn ($x) => config('school.personnel_only', true) && $x->slug === 'requester' && (string) $roleNow !== (string) $x->id) as $r)
                                                             <option value="{{ $r->id }}" @selected((string) $roleNow === (string) $r->id)>{{ $r->name }}</option>
                                                         @endforeach
                                                     </select>

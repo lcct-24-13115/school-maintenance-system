@@ -93,7 +93,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', new SchoolEmail, Rule::unique('users', 'email')],
             'employee_no' => ['nullable', 'string', 'max:50', Rule::unique('users', 'employee_no')],
-            'role_id' => ['required', 'integer', Rule::exists('roles', 'id')],
+            'role_id' => ['required', 'integer', Rule::exists('roles', 'id'), self::notStudentRole()],
             // Phase 5: new assignments may only use an ACTIVE department.
             'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')->where('is_active', true)],
             'adviser_id' => self::adviserRules(),
@@ -122,6 +122,27 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')
             ->with('status', "Account created for {$user->name}.")
             ->with('temp_password', ['name' => $user->name, 'email' => $user->email, 'password' => $temporary]);
+    }
+
+    /**
+     * Personnel only (config school.personnel_only): the Student role cannot be given to anyone. An account that already
+     * has it may keep it (so an unrelated change, like the department, can still be saved), it just cannot sign in.
+     */
+    private static function notStudentRole(?User $user = null): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail) use ($user): void {
+            if (! config('school.personnel_only', true)) {
+                return;
+            }
+
+            if ($user !== null && (int) $value === (int) $user->role_id) {
+                return;
+            }
+
+            if (Role::query()->whereKey($value)->where('slug', Role::REQUESTER)->exists()) {
+                $fail('This system is for personnel only. The Student role cannot be assigned.');
+            }
+        };
     }
 
     /** Who may be chosen as an adviser: active accounts with the Teacher role. */
@@ -155,7 +176,7 @@ class UserController extends Controller
         $this->authorizeManage($request);
 
         $data = $request->validate([
-            'role_id' => ['required', 'integer', Rule::exists('roles', 'id')],
+            'role_id' => ['required', 'integer', Rule::exists('roles', 'id'), self::notStudentRole($user)],
             // Phase 5: only ACTIVE departments may be ASSIGNED. The person's CURRENT department is
             // still accepted (otherwise saving an unrelated role change would fail on old data).
             'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')->where(function ($query) use ($user) {

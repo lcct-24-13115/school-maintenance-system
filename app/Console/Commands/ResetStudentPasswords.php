@@ -15,6 +15,12 @@ class ResetStudentPasswords extends Command
 
     public function handle(): int
     {
+        if (config('school.personnel_only', true)) {
+            $this->error('This system is for personnel only, so Student accounts are switched off (PERSONNEL_ONLY=true). Nothing was changed.');
+
+            return self::FAILURE;
+        }
+
         config(['hashing.bcrypt.rounds' => 8]);
 
         $roleId = Role::where('slug', Role::REQUESTER)->value('id');

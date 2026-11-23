@@ -19,7 +19,7 @@
             <div class="input-wrap">
                 <i class="fa-regular fa-envelope ic"></i>
                 <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus
-                    autocomplete="username" placeholder="studentnumber@lcctanauan.edu.ph">
+                    autocomplete="username" placeholder="{{ config('school.personnel_only', true) ? 'name' : 'studentnumber' }}@lcctanauan.edu.ph">
             </div>
         </div>
 

@@ -23,6 +23,12 @@ class ImportStudents extends Command
 
     public function handle(): int
     {
+        if (config('school.personnel_only', true)) {
+            $this->error('This system is for personnel only, so Student accounts are switched off (PERSONNEL_ONLY=true). Nothing was changed.');
+
+            return self::FAILURE;
+        }
+
         // Lower bcrypt cost keeps a ~2,000 row import fast; students must change this password at first sign-in anyway.
         config(['hashing.bcrypt.rounds' => 8]);
 

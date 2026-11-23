@@ -48,6 +48,7 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
         $this->ensureIsApproved();
+        $this->ensureIsPersonnel();
 
         if (! Auth::attempt($this->only('email', 'password') + ['is_active' => true, 'approval_status' => User::STATUS_APPROVED], $this->boolean('remember'))) {
             $max = $this->maxAttempts();
@@ -105,6 +106,33 @@ class LoginRequest extends FormRequest
             : 'Your registration was not approved.'.(filled($user->rejection_reason) ? ' Reason: '.$user->rejection_reason : '').' Please contact the Maintenance Office.';
 
         throw ValidationException::withMessages(['email' => $message]);
+    }
+
+    /**
+     * Personnel only (config school.personnel_only): a Student account cannot sign in. Like the approval message above,
+     * it is shown only to someone who typed the RIGHT password, so the page cannot be used to find out who is registered.
+     *
+     * @throws ValidationException
+     */
+    private function ensureIsPersonnel(): void
+    {
+        if (! config('school.personnel_only', true)) {
+            return;
+        }
+
+        $user = User::query()->where('email', Str::lower($this->string('email')->toString()))->first();
+
+        if ($user === null || ! $user->isBlockedAsStudent()) {
+            return;
+        }
+
+        if (! Hash::check($this->string('password')->toString(), (string) $user->password)) {
+            return;   // wrong password: the normal failed-sign-in rules (and the lock) apply
+        }
+
+        throw ValidationException::withMessages([
+            'email' => 'This system is for LCCT personnel only. Student accounts cannot sign in.',
+        ]);
     }
 
     /**

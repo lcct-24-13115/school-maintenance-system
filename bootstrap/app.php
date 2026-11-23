@@ -18,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Phase 2: an account with a temporary password may only reach the "choose a new password" page.
         $middleware->appendToGroup('web', \App\Http\Middleware\EnsurePasswordChanged::class);
 
+        // Personnel only: a Student account that is still signed in is signed out at the next request.
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnsurePersonnel::class);
+
         // Phase 3: optional "verify your email first" (config school.registration.require_verification).
         $middleware->appendToGroup('web', \App\Http\Middleware\RequireVerifiedEmail::class);
     })

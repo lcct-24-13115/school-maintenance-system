@@ -2,6 +2,7 @@
     $current = old('requester_type', $defaultType);
     if (! isset($types[$current])) { $current = $defaultType; }
     $cur = $types[$current];
+    $single = count($types) === 1;   // personnel only: just Faculty / Staff, so there is nothing to choose
     $domain = trim((string) config('school.registration.email_domain'));
 
     // What the page script needs to swap the fields when another option is chosen (same table the server validates with).
@@ -24,7 +25,7 @@
     <script src="{{ asset('js/register.js') }}?v={{ @filemtime(public_path('js/register.js')) }}" defer></script>
 
     <div class="reg">
-        <p class="eyebrow">Requester registration</p>
+        <p class="eyebrow">{{ config('school.personnel_only', true) ? 'Personnel registration' : 'Requester registration' }}</p>
         <h1 class="form-title">Request an account</h1>
         <p class="form-sub">
             @if (config('school.registration.require_approval'))
@@ -40,6 +41,9 @@
         <form method="POST" action="{{ route('register') }}" data-reg-rules="{{ json_encode($jsRules, JSON_UNESCAPED_UNICODE) }}">
             @csrf
 
+            @if ($single)
+                <input type="hidden" name="requester_type" value="{{ $current }}">
+            @else
             <section class="reg-sec">
                 <h2 class="reg-step"><b>1</b> Who are you?</h2>
                 <div class="rt-grid" role="radiogroup" aria-label="I am a">
@@ -53,9 +57,10 @@
                 </div>
                 @error('requester_type')<div class="field-err">{{ $message }}</div>@enderror
             </section>
+            @endif
 
             <section class="reg-sec">
-                <h2 class="reg-step"><b>2</b> Your details</h2>
+                <h2 class="reg-step"><b>{{ $single ? 1 : 2 }}</b> Your details</h2>
 
                 <div class="field">
                     <label for="name">Full name</label>
@@ -105,7 +110,7 @@
             </section>
 
             <section class="reg-sec">
-                <h2 class="reg-step"><b>3</b> Secure your account</h2>
+                <h2 class="reg-step"><b>{{ $single ? 2 : 3 }}</b> Secure your account</h2>
 
                 <div class="reg-2col">
                     <div class="field">

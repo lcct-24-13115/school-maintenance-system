@@ -23,12 +23,40 @@ class RegisteredUserController extends Controller
     {
         abort_unless(config('school.allow_public_registration'), 404);
 
+        $types = self::availableTypes();
+        abort_if($types === [], 404);   // personnel only, but Faculty / Staff was removed from config/registration.php
+
         return view('auth.register', [
             // Phase 5: inactive departments are not offered on the registration form either.
             'departments' => Department::active()->orderBy('name')->get(),
-            'types' => (array) config('registration.types'),
-            'defaultType' => (string) config('registration.default'),
+            'types' => $types,
+            'defaultType' => self::defaultType($types),
         ]);
+    }
+
+    /**
+     * The "I am a ..." options. Personnel only (config school.personnel_only): just Faculty / Staff. Students, parents,
+     * alumni and outside organizations are not offered and are refused if a hand-made POST sends them.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private static function availableTypes(): array
+    {
+        $types = (array) config('registration.types');
+
+        if (! config('school.personnel_only', true)) {
+            return $types;
+        }
+
+        return array_intersect_key($types, ['FACULTY/STAFF' => true]);
+    }
+
+    /** The preselected option: the configured default when it is offered, otherwise the first one offered. */
+    private static function defaultType(array $types): string
+    {
+        $default = (string) config('registration.default');
+
+        return isset($types[$default]) ? $default : (string) array_key_first($types);
     }
 
     public function store(Request $request): RedirectResponse
@@ -37,18 +65,27 @@ class RegisteredUserController extends Controller
 
         // "I am a ...": what the person must fill in depends on the type (config/registration.php).
         // No type sent (old form / old tests) = the default type.
-        $types = (array) config('registration.types');
+        $types = self::availableTypes();
+        abort_if($types === [], 404);
         $type = $request->input('requester_type');
         if (! is_string($type) || $type === '') {
-            $type = (string) config('registration.default');   // nothing sent (or junk: the 'in' rule below refuses it)
+            $type = self::defaultType($types);   // nothing sent (or junk: the 'in' rule below refuses it)
         }
-        $rule = $types[$type] ?? $types[config('registration.default')];
+        $rule = $types[$type] ?? $types[self::defaultType($types)];
         $schoolEmailOnly = (bool) ($rule['school_email'] ?? true);
 
         $emailRules = ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class];
         if ($schoolEmailOnly) {
             // Phase 2: students and staff use the school's own email addresses (see App\Rules\SchoolEmail).
             $emailRules[] = new SchoolEmail;
+        }
+        if (config('school.personnel_only', true)) {
+            // Personnel only: a student-number email (24-12803@...) is a student, who cannot register here.
+            $emailRules[] = function (string $attribute, mixed $value, \Closure $fail): void {
+                if (preg_match('/^\d+(-\d+)*@/', (string) $value)) {
+                    $fail('This system is for LCCT personnel only. Student accounts are not accepted.');
+                }
+            };
         }
 
         $request->validate([
@@ -74,12 +111,12 @@ class RegisteredUserController extends Controller
             'password' => $request->password,
             // The Department dropdown only exists for the types that use it.
             'department_id' => ($rule['department'] ?? false) ? $request->department_id : null,
-            // Faculty / Staff register as a Teacher (they can be a student's adviser); everyone else as a Requester
-            'role_id' => Role::where('slug', $type === 'FACULTY/STAFF' ? Role::TEACHER : Role::REQUESTER)->firstOrFail()->id,
+            // Faculty / Staff register as a Teacher; everyone else as a Requester (not offered when personnel only)
+            'role_id' => Role::where('slug', ($type === 'FACULTY/STAFF' || config('school.personnel_only', true)) ? Role::TEACHER : Role::REQUESTER)->firstOrFail()->id,
         ]);
 
         $user->forceFill([
-            'requester_type' => isset($types[$type]) ? $type : config('registration.default'),
+            'requester_type' => isset($types[$type]) ? $type : self::defaultType($types),
             'affiliation' => $request->input('affiliation'),
             'reg_purpose' => $request->input('purpose'),
         ]);
